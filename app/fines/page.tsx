@@ -1,5 +1,5 @@
 import { db } from "@/server";
-import { columns } from "./columns";
+import { playerFinesColumns } from "./player-fines-columns";
 import { PlayerFinesDataTable } from "./playerfines-data-table";
 import { desc } from "drizzle-orm";
 import { PlayerFinesSummaryDataTable } from "./player-summary-table";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export default async function Page() {
   const players = await db.query.players.findMany();
@@ -71,12 +72,7 @@ export default async function Page() {
 
   return (
     <div>
-        <Link href="/fines/add-fine" className="flex justify-center mt-22">
-          <Button className="mb-4" variant="outline">
-            Add Fine
-            </Button>
-        </Link>
-      <Tabs defaultValue="summary" className="mx-auto w-[50%] mt-2">
+      <Tabs defaultValue="summary" className="w-full px-2 mx-auto lg:w-[80%] mt-22">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
@@ -84,7 +80,19 @@ export default async function Page() {
         <TabsContent value="summary">
           <Card>
             <CardHeader>
-              <CardTitle>Player Totals</CardTitle>
+            <CardTitle className="flex items-center justify-between flex-row">
+            <div>Player Totals</div>
+            <div>
+              <Link
+                href="/fines/add-fine"
+                className="flex justify-center"
+              >
+                <Button size="sm" className="mb-4" variant="outline">
+                  Add Fine <Plus className="ml-2" size={16} />
+                </Button>
+              </Link>
+            </div>
+          </CardTitle>
               <CardDescription>Total fines per player</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -106,7 +114,7 @@ export default async function Page() {
             </CardHeader>
             <CardContent className="space-y-2">
               <PlayerFinesDataTable
-                columns={columns}
+                columns={playerFinesColumns}
                 data={data}
                 total={total}
               />

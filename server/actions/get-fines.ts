@@ -7,7 +7,7 @@ export async function getFines() {
         const playersList = await db.query.fines.findMany();
         return playersList.map((fine) => ({
             id: fine.id,
-            name: fine.title,
+            title: fine.title,
             description: fine.description,
             amount: fine.amount,
             createdAt: fine.createdAt ? fine.createdAt.toISOString() : null,

@@ -67,7 +67,7 @@ const ActionCell = ({ row }: { row: Row<PlayerFineColumn> }) => {
   )
 }
 
-export const columns: ColumnDef<PlayerFineColumn>[] = [
+export const playerFinesColumns: ColumnDef<PlayerFineColumn>[] = [
   {
     accessorKey: "id",
     header: "ID",
@@ -94,7 +94,12 @@ export const columns: ColumnDef<PlayerFineColumn>[] = [
     accessorKey: "fine",
     header: "Status",
     cell: ({ row }) => {
+        const status = row.getValue("fine")
+        if (status === "paid") {
         return <div className="font-medium text-xs"><Badge variant="default">Unpaid</Badge></div>
+        } else {
+          return <div className="font-medium text-xs"><Badge variant="destructive">Paid</Badge></div>
+        }
       },
   },
   {

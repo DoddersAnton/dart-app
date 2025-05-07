@@ -31,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { useAction } from "next-safe-action/hooks";
-import { CalendarIcon, PoundSterling } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { cn } from "@/lib/utils";
@@ -106,7 +106,7 @@ export default function FineForm() {
             setFinesList(
               finesData.map((fine) => ({
                 id: fine.id,
-                title: fine.name, // Map 'name' to 'title'
+                title: fine.title, // Map 'name' to 'title'
                 description: fine.description || "", // Handle null description
                 amount: fine.amount,
                 createdAt: fine.createdAt ? new Date(fine.createdAt) : new Date(), // Convert string to Date

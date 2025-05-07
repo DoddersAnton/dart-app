@@ -9,7 +9,7 @@ export async function getPlayerFine(id: number) {
             where: (fines) => eq(fines.id, id),
         });
 
-        if (!playerFine) throw new Error("Event not found")
+        if (!playerFine) throw new Error("Player fine not found")
 
         return { success: playerFine } 
       

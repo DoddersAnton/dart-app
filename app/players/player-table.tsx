@@ -35,7 +35,7 @@ interface DataTableProps<TData, TValue> {
   total: number
 }
 
-export function PlayerFinesDataTable<TData, TValue>({
+export function PlayerDataTable<TData, TValue>({
   columns,
   data,
   total
@@ -56,21 +56,21 @@ export function PlayerFinesDataTable<TData, TValue>({
   })
 
   return (
-    <div className="rounded-md border w-full mx-auto mt-6">
+    <div className="rounded-md border w-full mx-auto mt-1">
       <Card>
-        <CardContent className="mb-2 mp-2">
+        <CardContent>
           <div>
-            <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-2">
-            <h2 className="text-lg lg:text-2xl font-bold">Total Amount: £{total.toPrecision(4)}</h2>
+            <div className="mx-auto flex items-center justify-center w-[80%] mb-2">
+                <h2 className="text-xl lg:text-2xl font-bold">Total Players: {total}</h2>
             </div>
             <div>
               <Input
-                placeholder="Filter fines..."
+                placeholder="Filter players by name..."
                 value={
-                  (table.getColumn("fine")?.getFilterValue() as string) ?? ""
+                  (table.getColumn("name")?.getFilterValue() as string) ?? ""
                 }
                 onChange={(event) =>
-                  table.getColumn("fine")?.setFilterValue(event.target.value)
+                  table.getColumn("name")?.setFilterValue(event.target.value)
                 }
               />
             </div>
@@ -124,7 +124,7 @@ export function PlayerFinesDataTable<TData, TValue>({
               <TableFooter>
                 <TableRow>
                   <TableCell colSpan={5}>Total</TableCell>
-                  <TableCell  colSpan={5}>£{total.toPrecision(4)}</TableCell>
+                  <TableCell>{total}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

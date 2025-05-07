@@ -6,7 +6,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Nav } from "@/components/nav/nav";
 import Toaster from "@/components/ui/toaster";
 
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -28,24 +27,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-         <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          > 
-           <Nav/>
-           <Toaster/>
-          {children}
-          </ThemeProvider>
-       
-      </body>
-    </html>
-    </ClerkProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <ClerkProvider>
+        <html lang="en" suppressHydrationWarning>
+          <body
+            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          >
+            <Nav />
+            <Toaster />
+            {children}
+          </body>
+        </html>
+      </ClerkProvider>
+    </ThemeProvider>
   );
 }

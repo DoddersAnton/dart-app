@@ -13,14 +13,12 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -38,7 +36,7 @@ interface DataTableProps<TData, TValue> {
 
 export function PlayerFinesSummaryDataTable<TData, TValue>({
   columns,
-  data,
+  data, 
   total
 }: DataTableProps<TData, TValue>) {
   const [sorting] = useState<SortingState>([])
@@ -61,6 +59,9 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
       <Card>
         <CardContent>
           <div>
+          <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-2">
+                <h2 className="text-lg lg:text-2xl font-bold">Total Amount: £{total.toPrecision(4)}</h2>
+            </div>
             <div>
               <Input
                 placeholder="Filter fines by player name..."
@@ -119,6 +120,12 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
                   </TableRow>
                 )}
               </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={2}>Total</TableCell>
+                  <TableCell  colSpan={2}>£{total.toPrecision(4)}</TableCell>
+                </TableRow>
+              </TableFooter>
             </Table>
             <div className="flex items-center justify-end gap-4 pt-4">
               <Button

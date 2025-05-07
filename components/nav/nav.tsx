@@ -25,6 +25,7 @@ import {  Menu, X } from "lucide-react";
 import Image from "next/image";
 import Logo from "./logo";
 import { ModeToggle } from "./mode-toggle";
+import { useTheme } from "next-themes";
 
 const navLinks: {
   titleEng: string;
@@ -59,7 +60,7 @@ const navLinks: {
     img: "/dart-img.png",
     navDescriptionEng: "player fines",
     navDescriptionWal: "Pob ffordd rydym yn codi arian ar gyfer yr ysgol",
-    href: "/fundraising",
+    href: "/fines",
     icon: "TbHeartHandshake",
     subLinks: [
       {
@@ -70,11 +71,11 @@ const navLinks: {
         href: "/fines",
       },
       {
-        titleEng: "Players",
+        titleEng: "Add Fine",
         titleWal: "Partyware i'w llogi",
-        descriptionEng: "Mange players",
+        descriptionEng: "Create a new player fine",
         descriptionWal: "Mae gennym amrywiaeth o offer parti ar gael i'w llogi",
-        href: "/players",
+        href: "/fines/add-fine",
       },
       {
         titleEng: "Fine Types",
@@ -83,6 +84,17 @@ const navLinks: {
         descriptionWal: "Ymunwch â'n tynnu misol",
         href: "/fines/fine-types",
       },
+    ],
+  },
+  {
+    titleEng: "Players",
+    titleWal: "Amdanom ni",
+    img: "/backtoschool-nobg.png",
+    navDescriptionEng: "Player information",
+    navDescriptionWal: "Holl wybodaeth hanfodol am y CRhA",
+    href: "/players",
+    icon: "MdInfo",
+    subLinks: [
     ],
   },
   
@@ -97,6 +109,9 @@ export function Nav() {
   const toggleSubmenu = (key: string) => {
     setSubmenuOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const { setTheme } = useTheme()
+
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white/30 dark:bg-black/30 backdrop-blur-md border-b shadow-sm">
@@ -182,7 +197,7 @@ export function Nav() {
               >
                 {link.subLinks.length > 0 ? (
                   <>
-                    <NavigationMenuTrigger className="hover:text-primary text-[12.5px] bg-none">
+                    <NavigationMenuTrigger className="text-[12.5px] bg-none">
                       {link.titleEng}
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
@@ -200,7 +215,7 @@ export function Nav() {
                                 className="h-full w-full"
                                 alt={link.img}
                               />
-                              <div className="mb-2 mt-4 text-lg font-medium">
+                              <div className="mb-2 mt-4 text-lg font-medium dark:text-black text-primary">
                                 {link.titleEng}
                               </div>
                               <p className="text-sm leading-tight text-muted-foreground">
@@ -243,9 +258,10 @@ export function Nav() {
               <SignInButton />
             </div>
           </SignedOut>
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
+            <SignedIn>
+            <UserButton
+            />
+            </SignedIn>
           <ModeToggle />
           {/* Mobile Menu Toggle Button (Hidden on md+) */}
           <button

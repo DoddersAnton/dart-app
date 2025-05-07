@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "../ui/button";
 import { DartAnimation } from "./dart-animation";
 import { motion } from "framer-motion";
+import { Target } from "lucide-react";
 
 export function Home() {
   return (
@@ -33,13 +35,18 @@ export function Home() {
             transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
             className="text-lg md:text-xl text-gray-600 mt-4 max-w-xl"
           >
-            Welcome to the Dart App! This is a simple and elegant app that helps you manage your darts and track your scores.
+            Welcome to the Dart App! This is a simple app that helps you manage your dart fines and, maybe one day, track your scores.
           </motion.p>
 
           {/* CTA Button */}
-          <Button className="mt-6 px-6 py-3 text-lg font-semibold">
-            See Fines
-          </Button>
+          <Link
+                href="/fines"
+                className="flex justify-center"
+              >
+                <Button size="lg" className="mt-4" variant="outline">
+                  See Fines <Target className="ml-2" size={16} />
+                </Button>
+              </Link>
         </section>
       </main>
     </div>

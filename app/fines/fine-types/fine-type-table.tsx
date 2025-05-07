@@ -12,14 +12,12 @@ import {
 } from "@tanstack/react-table"
 import {
   Card,
-  CardContent
-
+  CardContent,
 } from "@/components/ui/card"
 import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -31,14 +29,12 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
-  data: TData[],
-  total: number
+  data: TData[]
 }
 
-export function PlayerFinesDataTable<TData, TValue>({
+export function FineTypeTable<TData, TValue>({
   columns,
-  data,
-  total
+  data
 }: DataTableProps<TData, TValue>) {
   const [sorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -56,21 +52,18 @@ export function PlayerFinesDataTable<TData, TValue>({
   })
 
   return (
-    <div className="rounded-md border w-full mx-auto mt-6">
+    <div className="rounded-md border w-full mx-auto mt-2">
       <Card>
-        <CardContent className="mb-2 mp-2">
+        <CardContent>
           <div>
-            <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-2">
-            <h2 className="text-lg lg:text-2xl font-bold">Total Amount: £{total.toPrecision(4)}</h2>
-            </div>
             <div>
               <Input
-                placeholder="Filter fines..."
+                placeholder="Filter fines type by title..."
                 value={
-                  (table.getColumn("fine")?.getFilterValue() as string) ?? ""
+                  (table.getColumn("title")?.getFilterValue() as string) ?? ""
                 }
                 onChange={(event) =>
-                  table.getColumn("fine")?.setFilterValue(event.target.value)
+                  table.getColumn("title")?.setFilterValue(event.target.value)
                 }
               />
             </div>
@@ -120,13 +113,8 @@ export function PlayerFinesDataTable<TData, TValue>({
                     </TableCell>
                   </TableRow>
                 )}
+                 
               </TableBody>
-              <TableFooter>
-                <TableRow>
-                  <TableCell colSpan={5}>Total</TableCell>
-                  <TableCell  colSpan={5}>£{total.toPrecision(4)}</TableCell>
-                </TableRow>
-              </TableFooter>
             </Table>
             <div className="flex items-center justify-end gap-4 pt-4">
               <Button
