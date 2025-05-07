@@ -11,6 +11,7 @@ import Link from "next/link";
 import { PlayerDataTable } from "./player-table";
 import { playerColumns } from "./player-columns";
 import { Plus } from "lucide-react";
+export const dynamic = "force-dynamic";
 
 export default async function GetFineTypePage() {
   const players = (await db.query.players.findMany()).map((player) => ({

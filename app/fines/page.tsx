@@ -15,6 +15,8 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+export const dynamic = "force-dynamic";
+    
 
 export default async function Page() {
   const players = await db.query.players.findMany();

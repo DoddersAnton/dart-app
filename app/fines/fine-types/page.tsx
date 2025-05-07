@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+export const dynamic = "force-dynamic";
+    
 
 export default async function GetFineTypePage() {
   const fines = (await db.query.fines.findMany()).map((fine) => ({
@@ -18,7 +20,11 @@ export default async function GetFineTypePage() {
     createdAt: fine.createdAt ? fine.createdAt.toISOString() : null,
   }));
 
+
+  
   return (
+ 
+    
     <div className="px-2 w-full mx-auto lg:w-[80%] mt-12">
       <Link
         href="/fines/fine-types/add-fine-type"
