@@ -16,7 +16,7 @@ export function Home() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="relative w-40 h-40 md:w-56 md:h-56 lg:w-72 lg:h-72 rounded-full overflow-hidden "
+            className="relative w-40 h-48 md:w-56 md:h-56 lg:w-72 lg:h-72 rounded-full overflow-hidden "
           >
             <DartAnimation />
           </motion.div>
@@ -25,7 +25,7 @@ export function Home() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            className="text-3xl md:text-5xl font-extrabold text-gray-900 mt-6 dark:text-white"
+            className="text-3xl md:text-5xl font-extrabold text-gray-900 mt-12 dark:text-white"
           >
             Dart App
           </motion.h1>

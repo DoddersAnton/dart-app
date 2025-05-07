@@ -101,15 +101,15 @@ export default function FineTypeForm() {
 
   return (
     <Suspense>
-      <div className="flex items-center justify-center h-screen bg-gray-100">
+      <div className="flex items-center justify-center mt-22">
         {loading && (
-          <div className="flex items-center justify-center h-screen bg-gray-100">
+          <div className="flex items-center justify-center bg-gray-100">
             <div className="loader"></div>
           </div>
         )}
 
         {!loading && (
-          <Card className="w-[50%] mx-auto">
+          <Card className="lg:w-[50%] mx-auto">
             <CardHeader>
               <CardTitle>{editMode ? "Edit" : "Create"} Fine</CardTitle>
               <CardDescription>

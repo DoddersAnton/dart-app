@@ -161,7 +161,7 @@ export default function FineForm() {
 
     return (
 
-      <div className="flex items-center justify-center h-screen bg-gray-100">
+      <div className="flex items-center justify-center mt-22">
 
       {loading && (
         <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -172,7 +172,7 @@ export default function FineForm() {
       {!loading && (
 
 
-        <Card className="w-[50%] mx-auto">
+        <Card className="lg:w-[50%] mx-auto">
           <CardHeader>
             <CardTitle>{editMode ? "Edit" : "Create"} Player Fine</CardTitle>
             <CardDescription>
