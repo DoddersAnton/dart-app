@@ -1,7 +1,6 @@
 import PlayerCard from "@/components/players/player-card";
 import { db } from "@/server";
 import { getPlayer } from "@/server/actions/get-player";
-import { create } from "domain";
 
 export default async function Player({
   params,

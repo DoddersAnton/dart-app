@@ -25,7 +25,6 @@ import {  Menu, X } from "lucide-react";
 import Image from "next/image";
 import Logo from "./logo";
 import { ModeToggle } from "./mode-toggle";
-import { useTheme } from "next-themes";
 
 const navLinks: {
   titleEng: string;
@@ -109,9 +108,6 @@ export function Nav() {
   const toggleSubmenu = (key: string) => {
     setSubmenuOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   };
-
-  const { setTheme } = useTheme()
-
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white/30 dark:bg-black/30 backdrop-blur-md border-b shadow-sm">
