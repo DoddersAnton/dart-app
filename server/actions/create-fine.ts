@@ -26,13 +26,15 @@ export const createFine = actionClient
         await db
           .update(fines)
           .set({
-            title: title ? "": undefined,
-            description: description ? "": undefined,
+            title: title ?? undefined,
+            description: description ?? undefined,
             amount: amount ?? 0,
             createdAt: existingFine.createdAt
           })
           .where(id ? eq(fines.id, id) : undefined)
           .returning();
+
+          
 
         revalidatePath("/fines/fine-types/add-fine-type");
         return { success: `Fine ${existingFine.title} has been updated` };
@@ -42,7 +44,7 @@ export const createFine = actionClient
       .insert(fines)
       .values({
         title: title ?? "(No Title)",
-        description: description ? "": undefined,
+        description: description ?? undefined,
         amount: amount ?? 0,
         createdAt: new Date()
       })

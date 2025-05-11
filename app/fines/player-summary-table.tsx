@@ -55,12 +55,12 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
   })
 
   return (
-    <div className="rounded-md border w-full mx-auto mt-2">
+    <div className=" w-full mx-auto mt-2">
       <Card>
-        <CardContent>
+        <CardContent className="mb-2 mp-2">
           <div>
-          <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-2">
-                <h2 className="text-lg lg:text-2xl font-bold">Total Amount: £{total.toPrecision(4)}</h2>
+          <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-4">
+                <h2 className="text-lg lg:text-2xl font-bold">Player Fines Summary (£{total.toPrecision(3)})</h2>
             </div>
             <div>
               <Input
@@ -123,7 +123,7 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
               <TableFooter>
                 <TableRow>
                   <TableCell colSpan={2}>Total</TableCell>
-                  <TableCell  colSpan={2}>£{total.toPrecision(4)}</TableCell>
+                  <TableCell  colSpan={2}>£{total.toPrecision(3)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

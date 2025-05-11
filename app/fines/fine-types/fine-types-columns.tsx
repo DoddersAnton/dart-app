@@ -38,7 +38,7 @@ const ActionCell = ({ row }: { row: Row<FineTypeColumn> }) => {
       toast.info("Deleting fine type...")
     },
   })
-  const event = row.original
+  const fineType = row.original
 
   return (
     <DropdownMenu>
@@ -49,12 +49,12 @@ const ActionCell = ({ row }: { row: Row<FineTypeColumn> }) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-          <Link href={`/fines/add-fine?id=${event.id}`}>
+          <Link href={`/fines/fine-types/add-fine-type?id=${fineType.id}`}>
             Edit Fine
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => execute({ id: event.id })}
+          onClick={() => execute({ id: fineType.id })}
           className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer"
         >
           Delete Fine

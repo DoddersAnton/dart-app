@@ -8,6 +8,20 @@
       "when": 1746394367756,
       "tag": "0000_smart_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1746956893973,
+      "tag": "0001_quiet_golden_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1746957049235,
+      "tag": "0002_burly_wallow",
+      "breakpoints": true
     }
   ]
 }

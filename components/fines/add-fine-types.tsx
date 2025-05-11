@@ -34,9 +34,6 @@ import { Suspense } from "react";
 export default function FineTypeForm() {
   const form = useForm<zFineSchema>({
     resolver: zodResolver(createFineSchema),
-    defaultValues: {
-      title: "",
-    },
     mode: "onChange",
   });
 

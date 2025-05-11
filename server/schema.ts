@@ -7,6 +7,7 @@ export const players = pgTable("players", {
     name: varchar("name", { length: 255 }).notNull(),
     nickname: varchar("nickname", { length: 100 }),
     team: varchar("team", { length: 255 }),
+    teamId: integer("team_id").references(() => team.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow(),
   });
 
@@ -26,7 +27,58 @@ export const players = pgTable("players", {
     notes: varchar("notes", { length: 1055 }),
     issuedBy: varchar("issued_by", { length: 255 }),
     createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    status: varchar("status", { length: 50 }).default("Unpaid"),
   });
+
+  export const fixtures = pgTable("fixtures", {
+    id: serial("id").primaryKey(),
+    homeTeam: varchar("home_team", { length: 255 }).notNull(),
+    homeTeamScore: integer("home_team_score").default(0).notNull(),
+    awayTeamScore: integer("away_team_score").default(0).notNull(),
+    awayTeam: varchar("away_team", { length: 255 }).notNull(),
+    matchDate: timestamp("match_date").notNull(),
+    matchTime: timestamp("match_time").notNull(),
+    matchLocation: varchar("match_location", { length: 255 }).notNull(),
+    league: varchar("league", { length: 255 }).notNull(),
+    season: varchar("season", { length: 255 }).notNull(),
+  
+    matchStatus: varchar("match_status", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  });
+
+  export const games = pgTable("games", {
+    id: serial("id").primaryKey(),
+    fixtureId: integer("fixture_id").notNull().references(() => fixtures.id, { onDelete: "cascade" }),
+    homeTeamPlayerId: integer("home_team_player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    awayTeamPlayerId: integer("away_team_player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    homeTeamScore: integer("home_team_score").default(0).notNull(),
+    awayTeamScore: integer("away_team_score").default(0).notNull(),
+    matchType: varchar("match_type", { length: 255 }).notNull()
+  });
+
+  
+
+
+  
+  export const team = pgTable("team", {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  });
+
+  export const playersTeamRelations = relations(players, ({ one }) => ({
+    team: one(team, {
+      fields: [players.teamId],
+      references: [team.id],
+    }),
+  }));
+  
+
+  export const teamRelations = relations(team, ({ many }) => ({
+    players: many(players),
+  }));
 
   export const playersRelations = relations(players, ({ many }) => ({
     playerFines: many(playerFines),
