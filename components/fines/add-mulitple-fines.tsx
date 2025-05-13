@@ -1,4 +1,16 @@
 "use client";
+
+import { createMulitplePlayerFines } from "@/server/actions/create-multiple-player-fines";
+import {
+  createMulitplePlayerFineSchema,
+  zMulitplePlayerFineSchema,
+} from "@/types/add-mulitple-fines.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAction } from "next-safe-action/hooks";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -6,27 +18,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-
+} from "../ui/card";
 import {
+  Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  Form,
-} from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  createPlayerFineSchema,
-  zPlayerFineSchema,
-} from "@/types/add-fine-schema";
-import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
-import { createPlayerFine } from "@/server/actions/create-player-fine";
-import { toast } from "sonner";
-import { useEffect, useState } from "react";
+} from "../ui/form";
 import {
   Select,
   SelectContent,
@@ -34,15 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
-import { useAction } from "next-safe-action/hooks";
-import { CalendarIcon, Info } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Calendar } from "../ui/calendar";
+import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { getPlayerFine } from "@/server/actions/get-player-fine";
+import { CalendarIcon, Info,  UserIcon } from "lucide-react";
+import { Calendar } from "../ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +47,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
+import { format } from "date-fns";
+import { MultiSelect } from "../ui/multi-select";
+
 
 interface FormProps {
   playersListData: {
@@ -69,59 +69,21 @@ interface FormProps {
   }[];
 }
 
-export default function FineForm({
-  playersListData,
-  finesListData,
-}: FormProps) {
-  const form = useForm<zPlayerFineSchema>({
-    resolver: zodResolver(createPlayerFineSchema),
+export default function MultipleFineForm({playersListData, finesListData}: FormProps) {
+  const form = useForm<zMulitplePlayerFineSchema>({
+    resolver: zodResolver(createMulitplePlayerFineSchema),
     defaultValues: {
       notes: "",
     },
     mode: "onChange",
   });
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const editMode = searchParams.get("id");
-
-  const checkPlayerFine = async (id: number) => {
-    if (editMode) {
-      const data = await getPlayerFine(id);
-      if (data?.error) {
-        toast.error(data.error);
-        router.push("/fines");
-        return;
-      }
-      if (data.success) {
-        const id = parseInt(editMode);
-        form.setValue("playerId", data.success.playerId);
-
-        setSelectedPlayer(data.success.playerId);
-        setSelectedFine(data.success.fineId);
-
-        form.setValue("fineId", data.success.fineId ?? "");
-        form.setValue("id", id);
-        form.setValue("notes", data.success.notes ?? "");
-        form.setValue("matchDate", new Date(data.success.matchDate ?? ""));
-      }
-    }
-  };
-
-  const [loading, setLoading] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null);
   const [selectedFine, setSelectedFine] = useState<number | null>(null);
+  const [selectedPlayers, setSelectedPlayers] = useState<
+    string[] | undefined
+  >(undefined);
+  const router = useRouter();
 
-  useEffect(() => {
-    if (editMode) {
-      setLoading(true);
-      checkPlayerFine(parseInt(editMode));
-      setLoading(false);
-    }
-
-  }, []);
-
-  const { execute, status } = useAction(createPlayerFine, {
+  const { execute, status } = useAction(createMulitplePlayerFines, {
     onSuccess: (data) => {
       if (data.data?.error) {
         toast.error(data.data.error);
@@ -134,67 +96,58 @@ export default function FineForm({
       }
     },
     onExecute: () => {
-      if (editMode) {
-        toast.info(`Editing fine for ${selectedPlayer}`);
-      }
-      if (!editMode) {
-        toast.info("Creating fine...");
-      }
+      toast.info("Creating fines...");
     },
   });
 
-  async function onSubmit(values: zPlayerFineSchema) {
+  async function onSubmit(values: zMulitplePlayerFineSchema) {
     console.log("form", values);
     execute(values);
   }
 
   return (
     <div className="flex items-center justify-center">
-      {loading && (
-        <div className="flex items-center justify-center h-screen bg-gray-100">
-          <div className="loader"></div>
-        </div>
-      )}
-
-      {!loading && (
+ 
+     
         <Card className="mx-auto w-full">
           <CardHeader>
-            <CardTitle>{editMode ? "Edit" : "Create"} Player Fine</CardTitle>
+            <CardTitle>Create Mulitple Player Fines</CardTitle>
             <CardDescription>
-              {editMode ? "Edit" : "Create"} player fine for breaching the rules
-              {selectedPlayer && selectedFine && (
-                <div className="mt-2 flex justify-start flex-col pt-2 border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
-                  {selectedPlayer && (
+              Group player fine for breaching the rules
+                {selectedPlayers && selectedFine && (
+                <div className="mt-2 flex flex-col gap-4">
+                  {selectedPlayers.map((playerId) => {
+                  const player = playersListData.find(
+                    (p) => p.id.toString() === playerId
+                  );
+                  const fine = finesListData.find(
+                    (fine) => fine.id === selectedFine
+                  );
+
+                  return (
+                    <div
+                    key={playerId}
+                    className="pt-2 border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+                    >
                     <div>
-                      Fine for:{" "}
-                      {
-                        playersListData.find(
-                          (player) => player.id === selectedPlayer
-                        )?.name
-                      }
+                      Player: {player?.name}{" "}
+                      {player?.nickname ? `(${player.nickname})` : ""}
                     </div>
-                  )}
-                  {selectedFine && (
-                    <>
-                      <div>
-                        reason:{" "}
-                        {
-                          finesListData.find((fine) => fine.id === selectedFine)
-                            ?.title
-                        }
-                      </div>
-                      <div className=" flex flex-row items-center gap-2 align-top">
+                    {fine && (
+                      <>
+                      <div>Reason: {fine.title}</div>
+                      <div className="flex flex-row items-center gap-2 align-top">
                         <div>
-                          £
-                          {finesListData
-                            .find((fine) => fine.id === selectedFine)
-                            ?.amount.toPrecision(3)}
+                        £{fine.amount.toPrecision(3)}
                         </div>
                       </div>
-                    </>
-                  )}
+                      </>
+                    )}
+                    </div>
+                  );
+                  })}
                 </div>
-              )}
+                )}
             </CardDescription>
             <div className="text-red-500">
               {Object.entries(form.formState.errors).map(([key, error]) => (
@@ -214,42 +167,39 @@ export default function FineForm({
                 className="space-y-4"
               >
                 <div className="grid w-full items-center gap-4"></div>
-                <FormField
-                  control={form.control}
-                  name="playerId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Player Name</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          field.onChange(Number(value));
-                          setSelectedPlayer(Number(value));
-                        }}
-                        value={selectedPlayer?.toString() ?? ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder="Select a player to fine"
-                            />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {playersListData.map((player) => (
-                            <SelectItem
-                              key={player.id}
-                              value={player.id.toString()}
-                            >
-                              {player.name}{" "}
-                              {player.nickname ? `(${player.nickname})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="playerIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Player Names</FormLabel>
+                        <MultiSelect
+                          options={playersListData.map((player) => ({
+                            value: player.id.toString(),
+                            label:
+                              player.name +
+                              " " +
+                              (player.nickname ? `(${player.nickname})` : ""),
+                            icon: UserIcon,
+                          }))}
+                          onValueChange={(values) => {
+                            const playerIds = values.map((value) =>
+                              parseInt(value, 10)
+                            );
+                            field.onChange(playerIds);
+                            setSelectedPlayers(values);
+                          }}
+                          value={selectedPlayers}
+                          placeholder="Select players"
+                          variant="inverted"
+                          animation={2}
+                          maxCount={3}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                 <FormField
                   control={form.control}
                   name="fineId"
@@ -261,12 +211,12 @@ export default function FineForm({
                           field.onChange(Number(value));
                           setSelectedFine(Number(value));
                         }}
-                         value={selectedFine?.toString() ?? ""}
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
                             <SelectValue
                               placeholder="Select a fine"
+                              defaultValue={selectedFine?.toString() ?? ""}
                             />
                           </SelectTrigger>
                         </FormControl>
@@ -386,7 +336,6 @@ export default function FineForm({
             </Form>
           </CardContent>
         </Card>
-      )}
     </div>
   );
 }

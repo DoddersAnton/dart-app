@@ -52,7 +52,7 @@ const ActionCell = ({ row }: { row: Row<PlayerFineColumn> }) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-          <Link href={`/fines/add-fine?id=${event.id}`}>
+          <Link href={`/fines/edit-fine?id=${event.id}`}>
             Edit Fine
           </Link>
         </DropdownMenuItem>

@@ -104,7 +104,7 @@ export function PlayerFinesSummary({ playerFinesData }: SummaryProps) {
                 <SelectLabel>Match dates</SelectLabel>
                 {dates.map((date) => (
                   <SelectItem key={date} value={date} defaultValue={date}>
-                    {new Date(date).toLocaleDateString("en-GB")}
+                    {date}
                   </SelectItem>
                 ))}
               </SelectGroup>
