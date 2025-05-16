@@ -124,7 +124,7 @@ export function PlayerFinesDataTable<TData, TValue>({
               <TableFooter>
                 <TableRow>
                   <TableCell colSpan={5}>Total</TableCell>
-                  <TableCell  colSpan={5}>£{total.toPrecision(4)}</TableCell>
+                  <TableCell  colSpan={5}>£{total.toFixed(4)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

@@ -12,7 +12,8 @@ import {
 } from "@tanstack/react-table"
 import {
   Card,
-  CardContent,
+  CardContent
+
 } from "@/components/ui/card"
 import {
   Table,
@@ -34,9 +35,9 @@ interface DataTableProps<TData, TValue> {
   total: number
 }
 
-export function PlayerFinesSummaryDataTable<TData, TValue>({
+export function TeamDataTable<TData, TValue>({
   columns,
-  data, 
+  data,
   total
 }: DataTableProps<TData, TValue>) {
   const [sorting] = useState<SortingState>([])
@@ -55,21 +56,21 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
   })
 
   return (
-    <div className=" w-full mx-auto mt-2">
+    <div className="rounded-md border w-full mx-auto mt-1">
       <Card>
-        <CardContent className="mb-2 mp-2">
+        <CardContent>
           <div>
-          <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-4">
-                <h2 className="text-lg lg:text-2xl font-bold">Player Fines Summary (£{total.toFixed(2)})</h2>
+            <div className="mx-auto flex items-center justify-center w-[80%] mb-2">
+                <h2 className="text-xl lg:text-2xl font-bold">Total Teams: {total}</h2>
             </div>
             <div>
               <Input
-                placeholder="Filter fines by player name..."
+                placeholder="Filter team by name..."
                 value={
-                  (table.getColumn("player")?.getFilterValue() as string) ?? ""
+                  (table.getColumn("name")?.getFilterValue() as string) ?? ""
                 }
                 onChange={(event) =>
-                  table.getColumn("player")?.setFilterValue(event.target.value)
+                  table.getColumn("name")?.setFilterValue(event.target.value)
                 }
               />
             </div>
@@ -122,8 +123,8 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={2}>Total</TableCell>
-                  <TableCell  colSpan={2}>£{total.toPrecision(3)}</TableCell>
+                  <TableCell colSpan={5}>Total</TableCell>
+                  <TableCell>{total}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

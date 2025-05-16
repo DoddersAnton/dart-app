@@ -20,9 +20,9 @@ export const createPlayer = actionClient
         await db
           .update(players)
           .set({
-            name: name ? "": undefined,
-            nickname: nickname ? "": undefined,
-            team: team ? "": undefined,
+            name: name ?? "",
+            nickname: nickname ?? "",
+            team: team ?? "",
             createdAt: new Date()
           })
           .where(id ? eq(players.id, id) : undefined)
@@ -35,9 +35,9 @@ export const createPlayer = actionClient
       await db
       .insert(players)
       .values({
-        name: name ?? "(Unknown)",
-        nickname: nickname ? "": undefined,
-        team: team ? "": undefined,
+       name: name ?? "(Unknown)",
+            nickname: nickname ?? "",
+            team: team ?? "",
         createdAt: new Date()
       })
       .returning();

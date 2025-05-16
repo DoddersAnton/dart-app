@@ -10,34 +10,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAction } from "next-safe-action/hooks"
-import { deletePlayer } from "@/server/actions/delete-player"
-import { toast } from "sonner"
 import Link from "next/link"
 
 
-export type PlayerColumn = {
+export type TeamColumn = {
     id: number;
   name: string;
-  nickname: string | null;
-  team: string | null;
   createdAt: string | null;
 }
 
-const ActionCell = ({ row }: { row: Row<PlayerColumn> }) => {
-  const { execute } = useAction(deletePlayer, {
-    onSuccess: (data: { error?: string; data?: { success?: string } }) => {
-      if (data?.error) {
-        toast.error(data.error)
-      }
-      if (data?.data?.success) {
-        toast.success(data.data.success)
-      }
-    },
-    onExecute: () => {
-      toast.info("Deleting player...")
-    },
-  })
+const ActionCell = ({ row }: { row: Row<TeamColumn> }) => {
+  
   const event = row.original
 
   return (
@@ -50,21 +33,15 @@ const ActionCell = ({ row }: { row: Row<PlayerColumn> }) => {
       <DropdownMenuContent>
         <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
           <Link href={`/players/add-player?id=${event.id}`}>
-            Edit Player
+            Edit Team
           </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => execute({ id: event.id })}
-          className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer"
-        >
-          Delete Player
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
 
-export const playerColumns: ColumnDef<PlayerColumn>[] = [
+export const teamColumns: ColumnDef<TeamColumn>[] = [
   {
     accessorKey: "id",
     header: "ID",
@@ -72,16 +49,7 @@ export const playerColumns: ColumnDef<PlayerColumn>[] = [
  
   {
     accessorKey: "name",
-    header: "Player Name",
-  },
-  {
-    accessorKey: "nickname",
-    header: "Nickname",
-  },
-  
-  {
-    accessorKey: "team",
-    header: "Team",
+    header: "Team Name",
   },
   {
     accessorKey: "createdAt",

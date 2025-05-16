@@ -172,7 +172,7 @@ export default function PlayerForm() {
                 />
                  <FormField
                   control={form.control}
-                  name="nickname"
+                  name="team"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Team</FormLabel>

@@ -91,14 +91,14 @@ export const playerFinesColumns: ColumnDef<PlayerFineColumn>[] = [
       },
   },
   {
-    accessorKey: "fine",
+    accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-        const status = row.getValue("fine")
-        if (status === "paid") {
-        return <div className="font-medium text-xs"><Badge variant="default">Unpaid</Badge></div>
+        const status = row.getValue("status")
+        if (status === "paid")       {
+         return <div className="font-medium text-xs"><Badge variant="default">Paid</Badge></div>
         } else {
-          return <div className="font-medium text-xs"><Badge variant="destructive">Paid</Badge></div>
+          return <div className="font-medium text-xs"><Badge variant="secondary">Unpaid</Badge></div>
         }
       },
   },
