@@ -28,7 +28,7 @@ export default async function Page() {
   }));
 
   return (
-    <div className="mt-22">
+    <div className="w-full mt-22 lg:w-[80%] px-2 mx-auto">
       <PlayerFinesSummary
         playerFinesData={data}
       />

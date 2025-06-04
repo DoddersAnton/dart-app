@@ -9,6 +9,8 @@ export default async function Player({
 }) {
   const { id } = await params;
   const player = await getPlayer(id);
+  const fines = await db.query.fines.findMany();
+
 
   if (player.error) {
     return <div>{player.error}</div>;
@@ -30,17 +32,31 @@ if (player.success) {
     },
   });
 
+
+  
+  
+    const data = totalFines.map((item) => ({
+      id: item.id,
+      player: player.success.name ?? "unknown", // Explicitly cast to Player
+      fine: fines.find((c) => c.id === item.fineId)?.title ?? "unknown", // Explicitly cast to Fine
+      matchDate: item.matchDate ? item.matchDate.toISOString() : null,
+      notes: item.notes,
+      amount: fines.find((c) => c.id === item.fineId)?.amount ?? 0,
+      createdAt: item.createdAt ? item.createdAt.toISOString() : null,
+    }));
+
   const total = totalFines.reduce((acc, item) => acc + item.fine.amount, 0); // Calculate the total amount
 
-  const playerWithFines = {
+  const playerDetails = {
     ...player.success,
     totalFines: total ?? 0,
     createdAt: player.success.createdAt ? player.success.createdAt.toLocaleDateString("en-GB"): null,
+    playerFinesData: data,
   };
 
   return (
-    <div className="mt-22 px-2 w-full mx-auto lg:w-[50%]">
-      <PlayerCard playerData={playerWithFines} />
+    <div className="mt-22 px-2 w-full mx-auto lg:w-[80%]">
+      <PlayerCard playerData={playerDetails} />
     </div>
   );
 }

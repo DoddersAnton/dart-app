@@ -1,52 +1,142 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
-
+import { Calendar, UserIcon, UsersIcon } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Button } from "../ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 
 export type Player = {
-    id: number;
+  id: number;
   name: string;
   nickname: string | null;
   team: string | null;
   createdAt: string | null;
   totalFines: number | null;
-}
+  playerFinesData: {
+    id: number;
+    player: string;
+    fine: string;
+    matchDate: string | null;
+    notes: string | null;
+    amount: number;
+    createdAt: string | null;
+  }[];
+};
 
 export default function PlayerCard({ playerData }: { playerData: Player }) {
-
   return (
     <Card>
-        <CardHeader>
-          <CardTitle>{playerData.name}</CardTitle>
-          <CardDescription>Player Details</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex-1 space-y-1 pb-3">
-              <p className="text-sm font-medium leading-none">
-                Nickname
-              </p>
-              <p className="text-sm text-muted-foreground">
-              {playerData.nickname}
-              </p>
+      <CardHeader>
+        <CardTitle>{playerData.name}</CardTitle>
+        <div className="flex flex-row items-center gap-6">
+    <CardDescription>
+          <div className="flex items-center gap-2">
+            <div>
+              <UserIcon size={12} />
             </div>
-          <div className="flex-1 space-y-1 pb-3">
-              <p className="text-sm font-medium leading-none">
-              Team
-              </p>
-              <p className="text-sm text-muted-foreground">
-              {playerData.team}
-              </p>
+            <div>{playerData.nickname}</div>
+          </div>{" "}
+        </CardDescription>
+         <CardDescription>
+          <div className="flex items-center gap-2">
+            <div>
+              <UsersIcon size={12} />
             </div>
-          <div className="flex-1 space-y-1  pb-3">
-              <p className="text-sm font-medium leading-none">
-              Total Fines
-              </p>
-              <p className="text-sm text-muted-foreground">
-              £{playerData.totalFines?.toPrecision(4)}
-              </p>
+            <div>{playerData.team}</div>
+          </div>{" "}
+        </CardDescription>
+         <CardDescription>
+          <div className="flex items-center gap-2">
+            <div>
+              <Calendar size={12} />
             </div>
-        </CardContent>
-        <CardFooter className="text-muted-foreground">
-            <p>Created: {playerData.createdAt}</p>
-        </CardFooter>
-      </Card>
+            <div>{playerData.createdAt}</div>
+          </div>{" "}
+        </CardDescription>
+        </div>
+    
+      </CardHeader>
+      <CardContent>
+         <Tabs defaultValue="fines">
+        <TabsList>
+          <TabsTrigger value="games">Games</TabsTrigger>
+          <TabsTrigger value="fines">Fines (£{playerData.totalFines ? playerData.totalFines.toFixed(2) : "0.00"})</TabsTrigger>
+          <TabsTrigger value="subs">Subs</TabsTrigger>
+          <TabsTrigger value="attendances">Attendance</TabsTrigger>
+        </TabsList>
+         <TabsContent value="subs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subs</CardTitle>
+               <CardDescription> No Data
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+              <div className="grid gap-3">
+                
+              </div>
+              <div className="grid gap-3">
+               
+              </div>
+            </CardContent>
+            <CardFooter>
+              
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="fines">
+          <Card>
+            <CardContent className="grid gap-6">
+               <PlayerFinesSummary
+                      playerFinesData={playerData.playerFinesData}
+                    />
+            </CardContent>
+            <CardFooter>
+              <Button>Save changes</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="games">
+          <Card>
+            <CardHeader>
+              <CardTitle>Password</CardTitle>
+              <CardDescription>
+                Change your password here. After saving, you&apos;ll be logged
+                out.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+              
+            </CardContent>
+            <CardFooter>
+              <Button>Save password</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="attendances">
+          <Card>
+            <CardHeader>
+              <CardTitle>Attendance List</CardTitle>
+                <CardDescription> No Data
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+              
+            </CardContent>
+            <CardFooter>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
+       
+      </CardContent>
+   
+    </Card>
   );
 }

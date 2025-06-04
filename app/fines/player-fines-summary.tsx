@@ -87,7 +87,7 @@ export function PlayerFinesSummary({ playerFinesData }: SummaryProps) {
     return (
       <Tabs
         defaultValue="summary"
-        className="w-full px-2 mx-auto lg:w-[80%] mt-22 "
+        className="w-full px-2 mx-auto"
       >
         <div className="flex items-center flex-row gap-2 mb-2">
           <FilterIcon className="" />

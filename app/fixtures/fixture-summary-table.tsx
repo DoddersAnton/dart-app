@@ -12,8 +12,7 @@ import {
 } from "@tanstack/react-table"
 import {
   Card,
-  CardContent
-
+  CardContent,
 } from "@/components/ui/card"
 import {
   Table,
@@ -32,13 +31,17 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[],
-  total: number
+  total: number,
+  totalHomeScore: number,
+  totalAwayScore: number
 }
 
-export function TeamDataTable<TData, TValue>({
+export function FixtureSummaryDataTable<TData, TValue>({
   columns,
-  data,
-  total
+  data, 
+  total,
+  totalHomeScore,
+  totalAwayScore,
 }: DataTableProps<TData, TValue>) {
   const [sorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -56,21 +59,21 @@ export function TeamDataTable<TData, TValue>({
   })
 
   return (
-    <div className="rounded-md border w-full mx-auto mt-1">
+    <div className=" w-full mx-auto mt-2">
       <Card>
-        <CardContent>
+        <CardContent className="mb-2 mp-2">
           <div>
-            <div className="mx-auto flex items-center justify-center w-[80%] mb-2">
-                <h2 className="text-xl lg:text-2xl font-bold">Total Teams: {total}</h2>
+          <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-4">
+                <h2 className="text-lg lg:text-2xl font-bold">Match Summary ({total})</h2>
             </div>
             <div>
               <Input
-                placeholder="Filter team by name..."
+                placeholder="Filter location name..."
                 value={
-                  (table.getColumn("name")?.getFilterValue() as string) ?? ""
+                  (table.getColumn("location")?.getFilterValue() as string) ?? ""
                 }
                 onChange={(event) =>
-                  table.getColumn("name")?.setFilterValue(event.target.value)
+                  table.getColumn("location")?.setFilterValue(event.target.value)
                 }
               />
             </div>
@@ -123,8 +126,9 @@ export function TeamDataTable<TData, TValue>({
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={5}>Total</TableCell>
-                  <TableCell>{total}</TableCell>
+                  <TableCell colSpan={5}>Total Games ({total})</TableCell>
+                  <TableCell  colSpan={1}>{totalHomeScore}</TableCell>
+                   <TableCell  colSpan={1}>{totalAwayScore}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

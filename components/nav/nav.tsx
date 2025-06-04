@@ -43,17 +43,6 @@ const navLinks: {
   }[];
 }[] = [
   {
-    titleEng: "Home",
-    titleWal: "Amdanom ni",
-    img: "/backtoschool-nobg.png",
-    navDescriptionEng: "All essential information about the PTA",
-    navDescriptionWal: "Holl wybodaeth hanfodol am y CRhA",
-    href: "/",
-    icon: "MdInfo",
-    subLinks: [
-    ],
-  },
-  {
     titleEng: "Fines",
     titleWal: "Codi Arian",
     img: "/dart-img.png",
@@ -92,6 +81,17 @@ const navLinks: {
     navDescriptionEng: "Player information",
     navDescriptionWal: "Holl wybodaeth hanfodol am y CRhA",
     href: "/players",
+    icon: "MdInfo",
+    subLinks: [
+    ],
+  },
+   {
+    titleEng: "Matches",
+    titleWal: "Gemau",
+    img: "/backtoschool-nobg.png",
+    navDescriptionEng: "Fixtures and results",
+    navDescriptionWal: "Gwybodaeth am gemau a chanlyniadau",
+    href: "/fixtures",
     icon: "MdInfo",
     subLinks: [
     ],

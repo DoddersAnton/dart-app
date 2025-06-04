@@ -7,7 +7,7 @@ export const players = pgTable("players", {
     name: varchar("name", { length: 255 }).notNull(),
     nickname: varchar("nickname", { length: 100 }),
     team: varchar("team", { length: 255 }),
-    teamId: integer("team_id").references(() => team.id, { onDelete: "cascade" }),
+    //teamId: integer("team_id").references(() => team.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow(),
   });
 
@@ -38,7 +38,6 @@ export const players = pgTable("players", {
     awayTeamScore: integer("away_team_score").default(0).notNull(),
     awayTeam: varchar("away_team", { length: 255 }).notNull(),
     matchDate: timestamp("match_date").notNull(),
-    matchTime: timestamp("match_time").notNull(),
     matchLocation: varchar("match_location", { length: 255 }).notNull(),
     league: varchar("league", { length: 255 }).notNull(),
     season: varchar("season", { length: 255 }).notNull(),
@@ -51,8 +50,8 @@ export const players = pgTable("players", {
   export const games = pgTable("games", {
     id: serial("id").primaryKey(),
     fixtureId: integer("fixture_id").notNull().references(() => fixtures.id, { onDelete: "cascade" }),
-    homeTeamPlayerId: integer("home_team_player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
-    awayTeamPlayerId: integer("away_team_player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    homeTeamPlayerId: integer("home_team_player_id").references(() => players.id, { onDelete: "cascade" }),
+    awayTeamPlayerId: integer("away_team_player_id").references(() => players.id, { onDelete: "cascade" }),
     homeTeamScore: integer("home_team_score").default(0).notNull(),
     awayTeamScore: integer("away_team_score").default(0).notNull(),
     matchType: varchar("match_type", { length: 255 }).notNull()
@@ -61,7 +60,7 @@ export const players = pgTable("players", {
   
 
 
-  
+  /*
   export const team = pgTable("team", {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),
@@ -79,6 +78,7 @@ export const players = pgTable("players", {
   export const teamRelations = relations(team, ({ many }) => ({
     players: many(players),
   }));
+  */
 
   export const playersRelations = relations(players, ({ many }) => ({
     playerFines: many(playerFines),

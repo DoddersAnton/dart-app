@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef, Row } from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react"
+import {  ArrowRight, MoreHorizontal } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +14,7 @@ import { useAction } from "next-safe-action/hooks"
 import { deletePlayer } from "@/server/actions/delete-player"
 import { toast } from "sonner"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 
 export type PlayerColumn = {
@@ -73,6 +74,17 @@ export const playerColumns: ColumnDef<PlayerColumn>[] = [
   {
     accessorKey: "name",
     header: "Player Name",
+    cell: ({ row }) => {
+      const playerName = row.getValue("name");
+      return <div className="font-medium">
+        <Link href={`/players/${row.original.id}`} className="text-blue-500 hover:underline">
+        <Badge variant="outline"  className="cursor-pointer min-w-[100px] text-left">
+          {String(playerName)}
+          <ArrowRight className="hidden ml-1 hover:flex" size={14} />
+          </Badge>
+        </Link>
+        </div>
+    }
   },
   {
     accessorKey: "nickname",
