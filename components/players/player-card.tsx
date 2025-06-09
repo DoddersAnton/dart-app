@@ -7,9 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
+//import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
+//import PayFinesForm from "./pay-fines";
 
 export type Player = {
   id: number;
@@ -23,13 +23,18 @@ export type Player = {
     player: string;
     fine: string;
     matchDate: string | null;
+    status : string | null;
     notes: string | null;
     amount: number;
     createdAt: string | null;
   }[];
 };
 
+
+
 export default function PlayerCard({ playerData }: { playerData: Player }) {
+
+  //<PayFinesForm playerFinesData={playerData.playerFinesData}  />
   return (
     <Card>
       <CardHeader>
@@ -93,30 +98,22 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
         <TabsContent value="fines">
           <Card>
             <CardContent className="grid gap-6">
-               <PlayerFinesSummary
-                      playerFinesData={playerData.playerFinesData}
-                    />
+
+              
+               
             </CardContent>
-            <CardFooter>
-              <Button>Save changes</Button>
-            </CardFooter>
           </Card>
         </TabsContent>
         <TabsContent value="games">
           <Card>
             <CardHeader>
-              <CardTitle>Password</CardTitle>
-              <CardDescription>
-                Change your password here. After saving, you&apos;ll be logged
-                out.
+              <CardTitle>Games</CardTitle>
+              <CardDescription> No Data
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
               
             </CardContent>
-            <CardFooter>
-              <Button>Save password</Button>
-            </CardFooter>
           </Card>
         </TabsContent>
         <TabsContent value="attendances">

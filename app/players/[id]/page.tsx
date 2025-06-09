@@ -42,6 +42,7 @@ if (player.success) {
       matchDate: item.matchDate ? item.matchDate.toISOString() : null,
       notes: item.notes,
       amount: fines.find((c) => c.id === item.fineId)?.amount ?? 0,
+      status: item.status,
       createdAt: item.createdAt ? item.createdAt.toISOString() : null,
     }));
 
