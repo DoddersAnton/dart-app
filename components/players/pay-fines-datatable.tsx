@@ -28,6 +28,7 @@ import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import PaymentDrawer from "./pay-drawer"
 
 interface DataTableProps<TData extends { id: number }, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -75,7 +76,7 @@ export function PayFinesDataTable<TData extends { id: number }, TValue>({
         <CardContent className="mb-2 mp-2">
           <div>
             <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-2">
-                <Button> Pay Fines (£{total.toPrecision(2)})</Button>
+                <PaymentDrawer amount={total} />
             </div>
             <div>
               <Input

@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import PayFinesForm from "./pay-fines";
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
 
@@ -99,7 +100,7 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
           <Card>
             <CardContent className="grid gap-6">
 
-              
+              <PayFinesForm playerFinesData={playerData.playerFinesData}  />
                
             </CardContent>
           </Card>

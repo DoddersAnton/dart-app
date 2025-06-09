@@ -17,7 +17,7 @@ import { payFinesColumns } from "./play-fines-columns";
     notes: string | null;
     amount: number;
     createdAt: string | null;
-    handleToggle: (id: number) => void;
+   
 };
 
 type PayFinesFormProps = {
