@@ -25,6 +25,7 @@ export default async function Page() {
     notes: item.notes,
     amount: fines.find((c) => c.id === item.fineId)?.amount ?? 0,
     createdAt: item.createdAt ? item.createdAt.toISOString() : null,
+    status: item.status ?? "Pending",
   }));
 
   return (

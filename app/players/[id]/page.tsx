@@ -30,6 +30,7 @@ if (player.success) {
     with: {
       fine: true,
     },
+    orderBy: (f, { desc }) => [desc(f.createdAt)],
   });
 
 

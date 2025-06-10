@@ -29,6 +29,7 @@ interface SummaryProps {
     notes: string | null;
     amount: number;
     createdAt: string | null;
+    status: string | null;
   }[];
 }
 

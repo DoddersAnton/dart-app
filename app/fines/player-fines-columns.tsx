@@ -25,6 +25,7 @@ export type PlayerFineColumn = {
   notes: string | null;
   amount: number;
   createdAt: string | null;
+  status: string | null;
 }
 
 const ActionCell = ({ row }: { row: Row<PlayerFineColumn> }) => {
@@ -95,7 +96,7 @@ export const playerFinesColumns: ColumnDef<PlayerFineColumn>[] = [
     header: "Status",
     cell: ({ row }) => {
         const status = row.getValue("status")
-        if (status === "paid")       {
+        if (status === "Paid")       {
          return <div className="font-medium text-xs"><Badge variant="default">Paid</Badge></div>
         } else {
           return <div className="font-medium text-xs"><Badge variant="secondary">Unpaid</Badge></div>

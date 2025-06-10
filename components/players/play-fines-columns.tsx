@@ -24,7 +24,7 @@ export const payFinesColumns: ColumnDef<PlayerFine>[] = [
             <Checkbox
                 checked={row.getIsSelected()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
-                disabled={row.getValue("status") === "paid"}
+                disabled={row.getValue("status") === "Paid"}
                 aria-label="Select row"
             />
         ),
@@ -72,7 +72,7 @@ export const payFinesColumns: ColumnDef<PlayerFine>[] = [
         header: "Status",
         cell: ({ row }) => {
             const status = row.getValue("status");
-            if (status === "paid") {
+            if (status === "Paid") {
                 return <div className="font-medium text-xs"><Badge variant="default">Paid</Badge></div>;
             } else {
                 return <div className="font-medium text-xs"><Badge variant="secondary">Unpaid</Badge></div>;

@@ -1,50 +1,80 @@
-
-
+import { Elements } from "@stripe/react-stripe-js";
 
 import { Button } from "../ui/button";
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "../ui/drawer";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "../ui/drawer";
+import PaymentForm from "./payment-form";
+import { useTheme } from "next-themes";
+import getStripe from "@/lib/get-stripe";
+import React from "react";
 
- type PaymentDrawerProps = {
-    
-    amount: number;
-    
-   
+export type PaymentDrawerProps = {
+  amount: number;
+  playerId?: number;
+  fineList?: number[];
+  setOpen?: (open: boolean) => void;
+  open?: boolean;
 };
 
+export default function PaymentDrawer({
+  amount,
+  playerId,
+  fineList,
+  setOpen,
+  open = false,
+}: PaymentDrawerProps) {
+  const stripe = getStripe();
+  const { theme } = useTheme();
 
-export default function PaymentDrawer({amount}: PaymentDrawerProps) {
+ 
+  //function to reload page on drawer close
 
-    return (
- <Drawer>
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
         <Button variant="outline">Pay fines (£{amount.toPrecision(2)})</Button>
       </DrawerTrigger>
-      <DrawerContent>
-        <div className="mx-auto w-full max-w-sm">
+      <DrawerContent className="fixed bottom-0 left-0 max-h-[70vh] min-h-[50vh]">
+        <div className="">
           <DrawerHeader>
-            <DrawerTitle>Fine Payment</DrawerTitle>
-            <DrawerDescription>Enter your payment detail below</DrawerDescription>
+            <DrawerTitle>Fine Payment (£{amount.toPrecision(2)})</DrawerTitle>
+            <DrawerDescription>
+              Enter your payment detail below
+            </DrawerDescription>
           </DrawerHeader>
-          <div className="p-4 pb-0">
-            <div className="flex items-center justify-center space-x-2">
-              
-                <div className="text-muted-foreground text-[0.70rem] uppercase">
-                  
-                </div>
-              </div>
-              
-            </div>
-            <div className="mt-3 h-[120px]">
-             
-            </div>
+          <div className="max-h-80 w-full  overflow-y-auto">
+            <Elements
+              stripe={stripe}
+              options={{
+                mode: "payment",
+                currency: "gbp",
+                amount: amount * 100,
+                appearance: { theme: theme === "dark" ? "night" : "flat" },
+              }}
+            >
+              <PaymentForm
+                amount={amount}
+                playerId={playerId}
+                fineList={fineList}
+                setOpen={setOpen}
+              />
+            </Elements>
           </div>
           <DrawerFooter>
-            
             <DrawerClose asChild>
               <Button variant="outline">Cancel</Button>
             </DrawerClose>
           </DrawerFooter>
-    
+        </div>
       </DrawerContent>
     </Drawer>
   );

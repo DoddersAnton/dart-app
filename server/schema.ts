@@ -57,6 +57,18 @@ export const players = pgTable("players", {
     matchType: varchar("match_type", { length: 255 }).notNull()
   });
 
+  export const payments = pgTable("payments", {
+    id: serial("id").primaryKey(),  
+    playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    amount: real("amount").default(0.00).notNull(),
+    paymentMethod: varchar("payment_method", { length: 255 }).notNull(),
+    paymentType: varchar("payment_type", { length: 50 }).default("One-time").notNull(),
+    paymentStatus: varchar("payment_status", { length: 50 }).default("Pending").notNull(),
+    transactionId: varchar("transaction_id", { length: 255 }),
+    createdAt: timestamp("created_at").defaultNow(),
+  });
+
+
   
 
 

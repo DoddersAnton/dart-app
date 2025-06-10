@@ -12,7 +12,8 @@ import {
 } from "@tanstack/react-table"
 import {
   Card,
-  CardContent
+  CardContent,
+  CardDescription
 
 } from "@/components/ui/card"
 import {
@@ -34,18 +35,23 @@ interface DataTableProps<TData extends { id: number }, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[],
   total: number,
+  playerId?: number,
    onSelectedIdsChange: (ids: number[]) => void 
+  selectedIds?: number[]
 }
 
 export function PayFinesDataTable<TData extends { id: number }, TValue>({
   columns,
   data,
   total,
-  onSelectedIdsChange
+  playerId,
+  onSelectedIdsChange,
+  selectedIds
 }: DataTableProps<TData, TValue>) {
   const [sorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = useState({})
+  const [open, setOpen] = useState(false)
   const table = useReactTable({
     data,
     columns,
@@ -68,7 +74,7 @@ export function PayFinesDataTable<TData extends { id: number }, TValue>({
     .rows.map((row) => (row.original)?.id) // 🔥 Grab IDs
 
     onSelectedIdsChange(selectedIds)
-}, [table.getSelectedRowModel().rows, onSelectedIdsChange])
+}, [table.getSelectedRowModel().rows, onSelectedIdsChange, open])
 
   return (
     <div className="w-full mx-auto mt-6">
@@ -76,7 +82,16 @@ export function PayFinesDataTable<TData extends { id: number }, TValue>({
         <CardContent className="mb-2 mp-2">
           <div>
             <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-2">
-                <PaymentDrawer amount={total} />
+              {total < 0.30 && (
+                <div>
+                  <CardDescription> 
+                    <strong>Please Note:</strong> Total fines are below £0.30, please select fines over 30p to proceed to payment.
+                  </CardDescription>
+                </div>
+              )}
+               {total > 0.30 && (
+                <PaymentDrawer amount={total} playerId={playerId} fineList={selectedIds} open={open} setOpen={setOpen} />
+               )}
             </div>
             <div>
               <Input
