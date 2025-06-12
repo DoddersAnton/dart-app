@@ -1,3 +1,5 @@
+"use client";
+
 import { Calendar, UserIcon, UsersIcon } from "lucide-react";
 import {
   Card,
@@ -9,6 +11,9 @@ import {
 } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import PayFinesForm from "./pay-fines";
+import { useEffect, useState } from "react";
+import { getPaymentsByPlayer } from "@/server/actions/get-payments-by-player";
+import { Badge } from "../ui/badge";
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
 
@@ -31,8 +36,57 @@ export type Player = {
   }[];
 };
 
+type Payment = {
+  id: number;
+        createdAt: Date | null;
+        amount: number;
+        playerId: number;
+        paymentMethod: string;
+        paymentType: string;
+        paymentStatus: string;
+        transactionId: string | null;
+};
+
+function usePlayerPayments(playerId: number) {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!playerId) return;
+    setLoading(true);
+    getPaymentsByPlayer(playerId)
+      .then((data) => {
+        const rawPayments = Array.isArray(data.success)
+          ? data.success
+          : data.success
+          ? [data.success]
+          : [];
+        const payments: Payment[] = rawPayments.map((p: Payment) => ({
+          id: p.id,
+          playerId: p.playerId,
+          amount: p.amount,
+          paymentMethod: p.paymentMethod || "",
+          paymentType: p.paymentType || "",
+          paymentStatus: p.paymentStatus || "",
+          transactionId: p.transactionId || null,
+          createdAt: p.createdAt ? (typeof p.createdAt === "string" ? new Date(p.createdAt) : p.createdAt) : null,
+        }));
+        setPayments(payments);
+      })
+      .catch((err) => setError(err.message || "Error fetching payments"))
+      .finally(() => setLoading(false));
+  }, [playerId]);
+
+  return { payments, loading, error };
+}
+
 export default function PlayerCard({ playerData }: { playerData: Player }) {
   //<PayFinesForm playerFinesData={playerData.playerFinesData}  />
+
+  const { payments, loading, error } = usePlayerPayments(playerData.id);
+
+
   return (
     <Card >
       <CardHeader>
@@ -86,6 +140,8 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
                 <CardDescription> No Data</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-6">
+              
+
                 <div className="grid gap-3"></div>
                 <div className="grid gap-3"></div>
               </CardContent>
@@ -124,12 +180,27 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
            <TabsContent value="payments">
             <Card>
               <CardHeader>
-                <CardTitle>Payments</CardTitle>
-                <CardDescription> No Data</CardDescription>
+                <CardTitle className="font-semibold">Payment History</CardTitle>
+               
               </CardHeader>
               <CardContent className="grid gap-6">
-                <div className="grid gap-3"></div>
-                <div className="grid gap-3"></div>
+                 {loading && <div>Loading payments...</div>}
+                {error && <div className="text-red-500">{error}</div>}
+                {payments.length > 0 ? (
+                  <div>
+            
+                    <ul className="list-disc pl-5">
+                      {payments.map((payment) => (
+                        <li key={payment.id}>
+                          {payment.createdAt?.toLocaleDateString()} - £
+                          {payment.amount.toFixed(2)} ({payment.paymentType}) - {<Badge variant={"default"}>{payment.paymentStatus}</Badge>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div>No payments found for this player.</div>
+                )}
               </CardContent>
               <CardFooter></CardFooter>
             </Card>
