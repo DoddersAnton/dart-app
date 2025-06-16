@@ -41,7 +41,7 @@ export default function PaymentDrawer({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button variant="outline">Pay fines (£{amount.toPrecision(2)})</Button>
+        <Button variant="outline">Make Payment (£{amount.toFixed(2)})</Button>
       </DrawerTrigger>
       <DrawerContent className="fixed bottom-0 left-0 max-h-[70vh] min-h-[50vh]">
         <div className="">

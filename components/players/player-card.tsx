@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, UserIcon, UsersIcon } from "lucide-react";
+import { Calendar, InfoIcon, UserIcon, UsersIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,6 +14,7 @@ import PayFinesForm from "./pay-fines";
 import { useEffect, useState } from "react";
 import { getPaymentsByPlayer } from "@/server/actions/get-payments-by-player";
 import { Badge } from "../ui/badge";
+import PaymentDrawer from "./pay-drawer";
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
 
@@ -83,8 +84,17 @@ function usePlayerPayments(playerId: number) {
 
 export default function PlayerCard({ playerData }: { playerData: Player }) {
   //<PayFinesForm playerFinesData={playerData.playerFinesData}  />
-
+ const [open, setOpen] = useState(false);
   const { payments, loading, error } = usePlayerPayments(playerData.id);
+
+  const paidFines = playerData.playerFinesData.filter(
+    (fine) => fine.status === "Paid"
+  );
+
+  const unpaidFines = playerData.playerFinesData.filter(
+    (fine) => fine.status === "Unpaid"
+  );
+
 
 
   return (
@@ -119,6 +129,48 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
         </div>
       </CardHeader>
       <CardContent>
+        <div className="flex items-center justify-start mb-4">
+          
+          <div className="flex flex-col gap-1">
+            <div className="text-sm text-muted-foreground">
+              Total Fines: £
+              {playerData.totalFines ? playerData.totalFines.toFixed(2) : "0.00"}
+            </div>
+            <div className="text-xs text-left text-muted-foreground">
+               <div className="text-left">
+                Paid Fines:{" "}
+                £{paidFines.reduce((sum, fine) => sum + fine.amount, 0).toFixed(2)}
+              </div>
+              <div className="text-left">
+                Unpaid Fines:{" "}
+                £{unpaidFines.reduce((sum, fine) => sum + fine.amount, 0).toFixed(2)}
+              </div>
+              
+              <div className="mt-4 flex items-center gap-1 flex-row">
+                <InfoIcon size={12} className="text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  All transactions will incur a 35p processing fee.
+                </span> 
+              </div>
+              
+             
+            </div>
+            {unpaidFines.length > 0 && unpaidFines.reduce((sum, fine) => sum + fine.amount, 0) > 0.30 ? (
+              <PaymentDrawer
+                amount={(playerData.totalFines ?? 0) + 0.35}
+                playerId={playerData.id}
+                fineList={unpaidFines.map(fine => fine.id)}
+                open={open}
+                setOpen={setOpen}
+              />
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Payment value must be over 30p to proceed to payment.
+              </span>
+            )}
+        </div>
+        </div>
+
         <Tabs defaultValue="fines">
           <TabsList>
             <TabsTrigger value="games">Games</TabsTrigger>
@@ -150,10 +202,13 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
           </TabsContent>
           <TabsContent value="fines">
             <Card>
-              <CardContent className="grid gap-6">
+              <CardContent className="grid gap-6 space-y-2 overflow-auto">
                 <PayFinesForm
                   playerFinesData={playerData.playerFinesData}
                   playerId={playerData.id}
+                   
+                  open={open}
+                   setOpen={setOpen}
                 />
               </CardContent>
             </Card>

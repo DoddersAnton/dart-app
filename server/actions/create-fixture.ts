@@ -65,6 +65,9 @@ season, league
       })
       .returning();
       revalidatePath("/fixtures/add-fixture");
+
+      // or each play create a subscription to the fixture
+
      return { success: `Fixture at ${matchLocation} on ${matchDate} has been created` };
     } catch (error) {
       console.error(error);

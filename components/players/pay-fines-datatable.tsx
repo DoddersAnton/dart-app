@@ -37,7 +37,9 @@ interface DataTableProps<TData extends { id: number }, TValue> {
   total: number,
   playerId?: number,
    onSelectedIdsChange: (ids: number[]) => void 
-  selectedIds?: number[]
+  selectedIds?: number[],
+  open: boolean,
+  setOpen: (open: boolean) => void
 }
 
 export function PayFinesDataTable<TData extends { id: number }, TValue>({
@@ -46,12 +48,14 @@ export function PayFinesDataTable<TData extends { id: number }, TValue>({
   total,
   playerId,
   onSelectedIdsChange,
-  selectedIds
+  selectedIds,
+  open,
+  setOpen,
 }: DataTableProps<TData, TValue>) {
   const [sorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = useState({})
-  const [open, setOpen] = useState(false)
+ 
   const table = useReactTable({
     data,
     columns,
@@ -85,12 +89,12 @@ export function PayFinesDataTable<TData extends { id: number }, TValue>({
               {total < 0.30 && (
                 <div>
                   <CardDescription> 
-                    <strong>Please Note:</strong> Total fines are below £0.30, please select fines over 30p to proceed to payment.
+                    <strong>Please Note:</strong> Total fines must be over 30p to proceed to payment.
                   </CardDescription>
                 </div>
               )}
                {total > 0.30 && (
-                <PaymentDrawer amount={total} playerId={playerId} fineList={selectedIds} open={open} setOpen={setOpen} />
+                <PaymentDrawer amount={total + 0.35} playerId={playerId} fineList={selectedIds} open={open} setOpen={setOpen} />
                )}
             </div>
             <div>

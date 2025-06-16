@@ -57,7 +57,7 @@ if (player.success) {
   };
 
   return (
-    <div className="mt-22 px-2 w-full mx-auto lg:w-[80%]">
+    <div className="w-full px-2 mx-auto lg:w-[80%] mt-24">
       <PlayerCard playerData={playerDetails} />
     </div>
   );

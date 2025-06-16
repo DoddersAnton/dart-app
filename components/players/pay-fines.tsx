@@ -20,12 +20,16 @@ type PayFinesFormProps = {
   playerFinesData: PlayerFine[];
   playerId?: number; // Optional playerId, if needed for context
   onSubmit?: (selectedFineIds: number[]) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void; // Function to control the open state of the form
 };
 
 const PayFinesForm: React.FC<PayFinesFormProps> = ({
   playerFinesData,
   onSubmit,
   playerId,
+  open, 
+  setOpen
 }) => {
   const [selectedFines, setSelectedFines] = useState<number[]>([]);
 
@@ -57,6 +61,8 @@ const PayFinesForm: React.FC<PayFinesFormProps> = ({
         onSelectedIdsChange={setSelectedFines}
         selectedIds={selectedFines}
         playerId={playerId} // Assuming playerId is the first fine's id
+        open={open}
+        setOpen={setOpen}
       />
     </form>
   );

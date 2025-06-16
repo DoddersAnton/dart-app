@@ -68,7 +68,19 @@ export const players = pgTable("players", {
     createdAt: timestamp("created_at").defaultNow(),
   });
 
-
+ export const subscriptions = pgTable("subscriptions", {
+    id: serial("id").primaryKey(),
+    playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    subscriptionType: varchar("subscription_type", { length: 255 }).notNull(),
+    season: varchar("season", { length: 255 }).notNull(),
+    description: varchar("description", { length: 255 }).notNull(),
+    amount: real("amount").default(0.00).notNull(),
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date").notNull(),
+    status: varchar("status", { length: 50 }).default("Active").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  });
   
 
 
