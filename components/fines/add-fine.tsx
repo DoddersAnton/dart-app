@@ -69,7 +69,7 @@ interface FormProps {
   }[];
 }
 
-export default function FineForm({
+  export default function FineForm({
   playersListData,
   finesListData,
 }: FormProps) {

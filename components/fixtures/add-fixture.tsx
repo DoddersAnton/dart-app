@@ -62,7 +62,7 @@ export default function FixtureForm() {
       const data = await getFixture(id);
       if (data?.error) {
         toast.error(data.error);
-        router.push("/fines");
+        router.push("/fixtures");
         return;
       }
       if (data.success) {
@@ -204,7 +204,7 @@ export default function FixtureForm() {
                         <FormControl>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select match status" />
+                              <SelectValue placeholder="Select season" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="scheduled">Spring/Summer 25</SelectItem>

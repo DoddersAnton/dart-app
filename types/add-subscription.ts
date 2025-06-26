@@ -6,10 +6,7 @@ export const subscriptionSchema = z.object({
     .max(255, { message: "Subscription type is required" }),
   season: z.string().max(255, { message: "Season is required" }),
   description: z.string().max(255, { message: "Description is required" }),
-  amount: z
-    .number()
-    .min(0, { message: "Amount must be a positive number" })
-    .default(0.0),
+  amount: z.coerce.number().positive(),
   startDate: z
     .date()
     .refine((date) => date <= new Date(), {
