@@ -20,7 +20,8 @@ export default function Payment({
   amount,
   playerId,
   fineList,
-  setOpen
+  setOpen,
+  sublist
 }: PaymentDrawerProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -121,6 +122,7 @@ export default function Payment({
           paymentStatus: "Completed",
           transactionId: successData.paymentIntentID ?? null,
           fineList: fineList ?? [],
+          subList: sublist ?? [],
         });
 
         setIsComplete(true);

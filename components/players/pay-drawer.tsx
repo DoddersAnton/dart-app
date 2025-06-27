@@ -20,6 +20,7 @@ export type PaymentDrawerProps = {
   amount: number;
   playerId?: number;
   fineList?: number[];
+  sublist?: number[];
   setOpen?: (open: boolean) => void;
   open?: boolean;
 };
@@ -30,6 +31,7 @@ export default function PaymentDrawer({
   fineList,
   setOpen,
   open = false,
+  sublist
 }: PaymentDrawerProps) {
   const stripe = getStripe();
   const { theme } = useTheme();
@@ -57,14 +59,15 @@ export default function PaymentDrawer({
               options={{
                 mode: "payment",
                 currency: "gbp",
-                amount: amount * 100,
+                amount: Number(amount.toFixed(2)) * 100,
                 appearance: { theme: theme === "dark" ? "night" : "flat" },
               }}
             >
               <PaymentForm
-                amount={amount}
+                amount={Number(amount.toFixed(2))}
                 playerId={playerId}
                 fineList={fineList}
+                sublist={sublist}
                 setOpen={setOpen}
               />
             </Elements>

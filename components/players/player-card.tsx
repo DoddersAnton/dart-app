@@ -17,7 +17,7 @@ import { Badge } from "../ui/badge";
 import PaymentDrawer from "./pay-drawer";
 import { getPlayerSubscriptions } from "@/server/actions/get-player-subscriptions";
 import { SubscriptionDataTable } from "@/app/subscriptions/subscriptions-table";
-import { subscriptionColumns } from "@/app/subscriptions/subscriptions-columns";
+import { playerSubscriptionColumns } from "./player-subscriptions-columns";
 
 
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
@@ -61,6 +61,7 @@ type Subscription = {
   description: string;
   subscriptionType: string;
   season: string;
+  status: string;
   startDate: Date | null;
   endDate: Date | null;
   createdAt: Date | null;
@@ -96,6 +97,7 @@ function usePlayerPayments(playerId: number, playerName?: string) {
             startDate?: string | Date | null;
             endDate?: string | Date | null;
             createdAt?: string | Date | null;
+            status?: string;
           }) => ({
             id: s.id,
             playerId: s.playerId,
@@ -103,6 +105,7 @@ function usePlayerPayments(playerId: number, playerName?: string) {
             description: s.description || "",
             subscriptionType: s.subscriptionType || "",
             amount: s.amount,
+            status: s.status || "Unpaid",
             season: s.season || "",
             startDate: s.startDate
               ? typeof s.startDate === "string"
@@ -169,6 +172,14 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
     (fine) => fine.status === "Unpaid"
   );
 
+  const unpaidSubs = subs.filter(
+    (sub) => sub.status === "Unpaid" || sub.status === "Active" 
+  );
+
+   const paidSubs = subs.filter(
+    (sub) => sub.status === "Paid" 
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -209,6 +220,13 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
                 ? playerData.totalFines.toFixed(2)
                 : "0.00"}
             </div>
+            <div className="text-sm text-muted-foreground">
+              Total Subs: £
+              {subs
+                  .reduce((sum, fine) => sum + fine.amount, 0)
+                  .toFixed(2) ??
+                 "0.00"}
+            </div>
             <div className="text-xs text-left text-muted-foreground">
               <div className="text-left">
                 Paid Fines: £
@@ -222,6 +240,19 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
                   .reduce((sum, fine) => sum + fine.amount, 0)
                   .toFixed(2)}
               </div>
+              <div className="text-left">
+                Unpaid Subs: £
+                {unpaidSubs
+                  .reduce((sum, sub) => sum + sub.amount, 0)
+                  .toFixed(2)}
+              </div>
+
+              <div className="text-left">
+                paid Subs: £
+                {paidSubs
+                  .reduce((sum, sub) => sum + sub.amount, 0)
+                  .toFixed(2)}
+              </div>
 
               <div className="mt-4 flex items-center gap-1 flex-row">
                 <InfoIcon size={12} className="text-muted-foreground" />
@@ -233,11 +264,14 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
             {unpaidFines.length > 0 &&
             unpaidFines.reduce((sum, fine) => sum + fine.amount, 0) > 0.3 ? (
               <PaymentDrawer
-                amount={(playerData.totalFines ?? 0) + 0.35}
+                amount={(unpaidFines
+                  .reduce((sum, fine) => sum + fine.amount, 0) ?? 0) + (unpaidSubs
+                  .reduce((sum, sub) => sum + sub.amount, 0)) + 0.35}
                 playerId={playerData.id}
                 fineList={unpaidFines.map((fine) => fine.id)}
                 open={open}
                 setOpen={setOpen}
+                sublist={unpaidSubs.map((sub) => sub.id)}
               />
             ) : (
               <span className="text-xs text-muted-foreground">
@@ -262,23 +296,21 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
             <TabsTrigger value="payments">Payments</TabsTrigger>
           </TabsList>
           <TabsContent value="subs">
-            <Card>
+            <Card className="overflow-auto">
               <CardHeader>
                 <CardTitle>Subs</CardTitle>
-                <CardDescription> No Data</CardDescription>
-
                 {loading && <div>Loading subs...</div>}
                 {error && <div className="text-red-500">{error}</div>}
                 {subs.length > 0 ? (
                   <div>
                     <SubscriptionDataTable
-                      columns={subscriptionColumns}
+                      columns={playerSubscriptionColumns}
                       data={subs}
                       total={subs.length}
                     />
                   </div>
                 ) : (
-                  <div>No subscriptions found for this player.</div>
+                  <CardDescription>No subscriptions found for this player.</CardDescription>
                 )}
               </CardHeader>
               <CardContent className="grid gap-6">

@@ -14,6 +14,7 @@ export const addPaymentSchema = z.object({
     paymentStatus: z.enum(["Pending", "Completed", "Failed"]).default("Pending"),
     transactionId: z.string().max(255).optional(), 
     fineList: z.array(z.number().int().positive()).optional().default([]),
+    subList: z.array(z.number().int().positive()).optional().default([]),
 });
 
 

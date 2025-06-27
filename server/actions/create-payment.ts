@@ -11,7 +11,7 @@ const actionClient = createSafeActionClient();
 
 export const createPayment = actionClient
 .schema(addPaymentSchema)
-.action(async ({ parsedInput: {playerId, amount, paymentMethod, paymentType, paymentStatus, transactionId, fineList } }) => {
+.action(async ({ parsedInput: {playerId, amount, paymentMethod, paymentType, paymentStatus, transactionId, fineList, subList } }) => {
     try {
       if (!playerId || !amount || !paymentMethod) {
         return { error: "Player ID, amount, and payment method are required" };
@@ -52,6 +52,19 @@ export const createPayment = actionClient
         const player = await db.query.players.findFirst({
           where: (p, { eq }) => eq(p.id, playerId),
         }); 
+
+        for (const subId of subList) {
+            //update sub to paid status
+            console.log("Updating sub with ID:", subId);
+
+            await db
+              .update(playerFines)
+              .set({
+                status: "Paid",
+              })
+              .where(eq(playerFines.id, subId))
+              .returning();
+        }
 
       revalidatePath("/players/" + playerId);
       return { success: `Payment of £${amount.toFixed(2)} for ${player?.name ?? "player"} has been created`, data: newPayment };

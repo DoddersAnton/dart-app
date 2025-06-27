@@ -1,9 +1,7 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
+
 
 
 export type SubscriptionColumn = {
@@ -11,8 +9,6 @@ export type SubscriptionColumn = {
   description: string;
   subscriptionType: string;
   amount: number;
-    player: string;
-    playerId: number;
   startDate: Date | null;
   endDate: Date | null;
   createdAt: Date | null;
@@ -20,40 +16,24 @@ export type SubscriptionColumn = {
 
 
 
-export const subscriptionColumns: ColumnDef<SubscriptionColumn>[] = [
+export const playerSubscriptionColumns: ColumnDef<SubscriptionColumn>[] = [
   {
     accessorKey: "id",
     header: "ID",
   },
- {
-    accessorKey: "player",
-    header: "Player Name",
-    cell: ({ row }) => {
-      const playerName = row.getValue("player");
-      const playerId = row.getValue("playerId");
-      return <div className="font-medium">
-        <Link href={`/players/${playerId}`} className="text-blue-500 hover:underline">
-        <Badge variant="outline"  className="cursor-pointer min-w-[100px] text-left">
-          {String(playerName)}
-          <ArrowRight className="hidden ml-1 hover:flex" size={14} />
-          </Badge>
-        </Link>
-        </div>
-    }
-  },
-  {
+{
     accessorKey: "subscriptionType",
     header: "Type",
     
   },
   {
-    accessorKey: "season",
-    header: "Season",
+    accessorKey: "status",
+    header: "Status",
     
   },
   {
-    accessorKey: "status",
-    header: "Status",
+    accessorKey: "season",
+    header: "Season",
     
   },
   {
