@@ -18,7 +18,7 @@ import PaymentDrawer from "./pay-drawer";
 import { getPlayerSubscriptions } from "@/server/actions/get-player-subscriptions";
 import { SubscriptionDataTable } from "@/app/subscriptions/subscriptions-table";
 import { playerSubscriptionColumns } from "./player-subscriptions-columns";
-
+import { getFinesByPlayer } from "@/server/actions/get-fines-by-player";
 
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
@@ -29,8 +29,8 @@ export type Player = {
   nickname: string | null;
   team: string | null;
   createdAt: string | null;
-  totalFines: number | null;
-  playerFinesData: {
+  //totalFines: number | null;
+  /*playerFinesData: {
     id: number;
     player: string;
     fine: string;
@@ -39,7 +39,7 @@ export type Player = {
     notes: string | null;
     amount: number;
     createdAt: string | null;
-  }[];
+  }[];*/
 };
 
 type Payment = {
@@ -67,16 +67,33 @@ type Subscription = {
   createdAt: Date | null;
 };
 
-function usePlayerPayments(playerId: number, playerName?: string) {
+type Fine = {
+  id: number;
+  player: string;
+  playerId: number;
+  fine: string;
+  fineId: number;
+  matchDate: string | null;
+  status: string;
+  notes: string | null;
+  amount: number;
+  createdAt: string | null;
+};
+
+function usePlayerData(playerId: number, playerName?: string) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [subs, setSubscriptions] = useState<Subscription[]>([]);
+  const [fines, setFines] = useState<Fine[]>([]);
+  const [unpaidFinesTotal, setUnpaidFinesTotal] = useState<number>(0);
+  const [paidFinesTotal, setPaidFinesTotal] = useState<number>(0);
+  const [unpaidSubsTotal, setUnpaidSubsTotal] = useState<number>(0);
+  const [paidSubsTotal, setPaidSubsTotal] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!playerId) return;
     setLoading(true);
-   
 
     getPlayerSubscriptions(playerId)
       .then((data) => {
@@ -85,49 +102,34 @@ function usePlayerPayments(playerId: number, playerName?: string) {
           : data.success
           ? [data.success]
           : [];
-        const subs: Subscription[] = rawSubscriptions.map(
-          (s: {
-            id: number;
-            playerId: number;
-            player?: string;
-            description?: string;
-            subscriptionType?: string;
-            amount: number;
-            season?: string;
-            startDate?: string | Date | null;
-            endDate?: string | Date | null;
-            createdAt?: string | Date | null;
-            status?: string;
-          }) => ({
-            id: s.id,
-            playerId: s.playerId,
-            player: playerName|| "",
-            description: s.description || "",
-            subscriptionType: s.subscriptionType || "",
-            amount: s.amount,
-            status: s.status || "Unpaid",
-            season: s.season || "",
-            startDate: s.startDate
-              ? typeof s.startDate === "string"
-                ? new Date(s.startDate)
-                : s.startDate
-              : null,
-            endDate: s.endDate
-              ? typeof s.endDate === "string"
-                ? new Date(s.endDate)
-                : s.endDate
-              : null,
-            createdAt: s.createdAt
-              ? typeof s.createdAt === "string"
-                ? new Date(s.createdAt)
-                : s.createdAt
-              : null,
-          })
-        );
+
+        const subs: Subscription[] = rawSubscriptions.map((s) => ({
+          id: s.id,
+          playerId: s.playerId,
+          player: playerName || "",
+          description: s.description || "",
+          subscriptionType: s.subscriptionType || "",
+          amount: s.amount,
+          status: s.status || "Unpaid",
+          season: s.season || "",
+          startDate: s.startDate ? new Date(s.startDate) : null,
+          endDate: s.endDate ? new Date(s.endDate) : null,
+          createdAt: s.createdAt ? new Date(s.createdAt) : null,
+        }));
+
         setSubscriptions(subs);
+        setUnpaidSubsTotal(
+          subs
+            .filter((sub) => sub.status === "Unpaid" || sub.status === "Active")
+            .reduce((sum, sub) => sum + sub.amount, 0)
+        );
+        setPaidSubsTotal(
+          subs
+            .filter((sub) => sub.status === "Paid")
+            .reduce((sum, sub) => sum + sub.amount, 0)
+        );
       })
-      .catch((err) => setError(err.message || "Error fetching subscriptions"))
-      .finally(() => setLoading(false));
+      .catch((err) => setError(err.message || "Error fetching subscriptions"));
 
     getPaymentsByPlayer(playerId)
       .then((data) => {
@@ -136,7 +138,8 @@ function usePlayerPayments(playerId: number, playerName?: string) {
           : data.success
           ? [data.success]
           : [];
-        const payments: Payment[] = rawPayments.map((p: Payment) => ({
+
+        const payments: Payment[] = rawPayments.map((p) => ({
           id: p.id,
           playerId: p.playerId,
           amount: p.amount,
@@ -144,40 +147,84 @@ function usePlayerPayments(playerId: number, playerName?: string) {
           paymentType: p.paymentType || "",
           paymentStatus: p.paymentStatus || "",
           transactionId: p.transactionId || null,
-          createdAt: p.createdAt
-            ? typeof p.createdAt === "string"
-              ? new Date(p.createdAt)
-              : p.createdAt
-            : null,
+          createdAt: p.createdAt ? new Date(p.createdAt) : null,
         }));
         setPayments(payments);
       })
-      .catch((err) => setError(err.message || "Error fetching payments"))
+      .catch((err) => setError(err.message || "Error fetching payments"));
+
+    getFinesByPlayer(playerId)
+      .then((data) => {
+        const rawFines = Array.isArray(data.success)
+          ? data.success
+          : data.success
+          ? [data.success]
+          : [];
+
+        const fines = rawFines.map((f) => ({
+          id: f.id,
+          player: playerName || "",
+          playerId: playerId,
+          fine: f.fineName ?? "",
+          fineId: f.fineId,
+          matchDate: f.matchDate
+            ? new Date(f.matchDate).toLocaleDateString("en-GB")
+            : null,
+          status: f.status ?? "Unpaid",
+          notes: f.notes ?? null,
+          amount: typeof f.amount === "number" ? f.amount : 0,
+          createdAt: f.createdAt
+            ? new Date(f.createdAt).toLocaleDateString("en-GB")
+            : null,
+        }));
+        setFines(fines);
+        setUnpaidFinesTotal(
+          fines
+            .filter((fine) => fine.status === "Unpaid")
+            .reduce((sum, fine) => sum + fine.amount, 0)
+        );
+        setPaidFinesTotal(
+          fines
+            .filter((fine) => fine.status === "Paid")
+            .reduce((sum, fine) => sum + fine.amount, 0)
+        );
+      })
+      .catch((err) => setError(err.message || "Error fetching fines"))
       .finally(() => setLoading(false));
   }, [playerId]);
 
-  return { payments, subs, loading, error };
+  return {
+    payments,
+    subs,
+    fines,
+    loading,
+    error,
+    unpaidFinesTotal,
+    paidFinesTotal,
+    unpaidSubsTotal,
+    paidSubsTotal,
+  };
 }
 
 export default function PlayerCard({ playerData }: { playerData: Player }) {
   //<PayFinesForm playerFinesData={playerData.playerFinesData}  />
   const [open, setOpen] = useState(false);
-  const { payments, subs, loading, error } = usePlayerPayments(playerData.id, playerData.name);
+  const {
+    payments,
+    subs,
+    fines,
+    loading,
+    error,
+    unpaidFinesTotal,
+    paidFinesTotal,
+    unpaidSubsTotal,
+    paidSubsTotal,
+  } = usePlayerData(playerData.id, playerData.name);
 
-  const paidFines = playerData.playerFinesData.filter(
-    (fine) => fine.status === "Paid"
-  );
-
-  const unpaidFines = playerData.playerFinesData.filter(
-    (fine) => fine.status === "Unpaid"
-  );
+  const unpaidFines = fines.filter((fine) => fine.status === "Unpaid");
 
   const unpaidSubs = subs.filter(
-    (sub) => sub.status === "Unpaid" || sub.status === "Active" 
-  );
-
-   const paidSubs = subs.filter(
-    (sub) => sub.status === "Paid" 
+    (sub) => sub.status === "Unpaid" || sub.status === "Active"
   );
 
   return (
@@ -211,90 +258,146 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-start mb-4">
-          <div className="flex flex-col gap-1">
-            <div className="text-sm text-muted-foreground">
-              Total Fines: £
-              {playerData.totalFines
-                ? playerData.totalFines.toFixed(2)
-                : "0.00"}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Total Subs: £
-              {subs
-                  .reduce((sum, fine) => sum + fine.amount, 0)
-                  .toFixed(2) ??
-                 "0.00"}
-            </div>
-            <div className="text-xs text-left text-muted-foreground">
-              <div className="text-left">
-                Paid Fines: £
-                {paidFines
-                  .reduce((sum, fine) => sum + fine.amount, 0)
-                  .toFixed(2)}
-              </div>
-              <div className="text-left">
-                Unpaid Fines: £
-                {unpaidFines
-                  .reduce((sum, fine) => sum + fine.amount, 0)
-                  .toFixed(2)}
-              </div>
-              <div className="text-left">
-                Unpaid Subs: £
-                {unpaidSubs
-                  .reduce((sum, sub) => sum + sub.amount, 0)
-                  .toFixed(2)}
-              </div>
-
-              <div className="text-left">
-                paid Subs: £
-                {paidSubs
-                  .reduce((sum, sub) => sum + sub.amount, 0)
-                  .toFixed(2)}
-              </div>
-
-              <div className="mt-4 flex items-center gap-1 flex-row">
-                <InfoIcon size={12} className="text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  All transactions will incur a 35p processing fee.
-                </span>
-              </div>
-            </div>
-            {unpaidFines.length > 0 &&
-            unpaidFines.reduce((sum, fine) => sum + fine.amount, 0) > 0.3 ? (
-              <PaymentDrawer
-                amount={(unpaidFines
-                  .reduce((sum, fine) => sum + fine.amount, 0) ?? 0) + (unpaidSubs
-                  .reduce((sum, sub) => sum + sub.amount, 0)) + 0.35}
-                playerId={playerData.id}
-                fineList={unpaidFines.map((fine) => fine.id)}
-                open={open}
-                setOpen={setOpen}
-                sublist={unpaidSubs.map((sub) => sub.id)}
-              />
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                Payment value must be over 30p to proceed to payment.
-              </span>
-            )}
-          </div>
-        </div>
-
-        <Tabs defaultValue="fines">
+      <CardContent className="overflow-auto">
+        <Tabs defaultValue="finSum" className="overflow-auto">
           <TabsList>
+            <TabsTrigger value="finSum">Financial Summary</TabsTrigger>
             <TabsTrigger value="games">Games</TabsTrigger>
             <TabsTrigger value="fines">
               Fines (£
-              {playerData.totalFines
-                ? playerData.totalFines.toFixed(2)
-                : "0.00"}
-              )
+              {(paidFinesTotal + unpaidFinesTotal)?.toFixed(2) ?? "0.00"})
             </TabsTrigger>
-            <TabsTrigger value="subs">Subs</TabsTrigger>
+            <TabsTrigger value="subs">
+              Subs (£{(paidSubsTotal + unpaidSubsTotal)?.toFixed(2) ?? "0.00"})
+            </TabsTrigger>
             <TabsTrigger value="attendances">Attendance</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
           </TabsList>
+          <TabsContent value="finSum">
+            <Card className="overflow-auto">
+              <CardHeader>
+                <CardTitle>Financial Summary</CardTitle>
+                <CardDescription>
+                  {`This section provides a summary of the player's financials.`}
+                </CardDescription>
+                <div className="mt-4 flex items-center gap-1 flex-row">
+                  <InfoIcon size={12} className="text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    All transactions will incur a 35p processing fee.
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Outstanding Total Overview */}
+
+                {unpaidSubsTotal + unpaidFinesTotal > 0.3 ? (
+                  <PaymentDrawer
+                    amount={unpaidFinesTotal + unpaidSubsTotal + 0.35}
+                    playerId={playerData.id}
+                    fineList={unpaidFines.map((fine) => fine.id)}
+                    open={open}
+                    setOpen={setOpen}
+                    sublist={unpaidSubs.map((sub) => sub.id)}
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Payment value must be over 30p to proceed to payment.
+                  </span>
+                )}
+
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">
+                    Total Outstanding (payment required)
+                  </h4>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Total Out. Fines:</span>
+                    <span>£{unpaidFinesTotal?.toFixed(2) ?? "0.00"}</span>
+                  </div>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Total Out. Subscriptions:</span>
+                    <span>£{unpaidSubsTotal?.toFixed(2) ?? "0.00"}</span>
+                  </div>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span
+                      className={
+                        unpaidSubsTotal + unpaidFinesTotal > 0
+                          ? "text-destructive"
+                          : "text-green-600"
+                      }
+                    >
+                      Total Out.:
+                    </span>
+                    <span
+                      className={
+                        unpaidSubsTotal + unpaidFinesTotal > 0
+                          ? "text-destructive"
+                          : "text-green-600"
+                      }
+                    >
+                      £
+                      {(unpaidSubsTotal + unpaidFinesTotal).toFixed(2) ??
+                        "0.00"}
+                    </span>
+                  </div>
+                </div>
+                {/* Total Overview */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 text-muted-foreground">
+                    Totals
+                  </h4>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Total Fines:</span>
+                    <span>
+                      £
+                      {(paidFinesTotal + unpaidFinesTotal)?.toFixed(2) ??
+                        "0.00"}
+                    </span>
+                  </div>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Total Subscriptions:</span>
+                    <span>
+                      £{(unpaidSubsTotal + paidSubsTotal)?.toFixed(2) ?? "0.00"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Fines Breakdown */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 text-muted-foreground">
+                    Fines Breakdown
+                  </h4>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Paid Fines:</span>
+                    <span>£{paidFinesTotal.toFixed(2) ?? "0.00"}</span>
+                  </div>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Unpaid Fines:</span>
+                    <span>£{unpaidFinesTotal.toFixed(2) ?? "0.00"}</span>
+                  </div>
+                </div>
+
+                {/* Subscriptions Breakdown */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 text-muted-foreground">
+                    Subscriptions Breakdown
+                  </h4>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Paid Subs:</span>
+                    <span>£{paidSubsTotal.toFixed(2) ?? "0.00"}</span>
+                  </div>
+                  <div className="w-full lg:w-[300px] flex justify-between text-sm text-muted-foreground">
+                    <span>Unpaid Subs:</span>
+                    <span>
+                      £
+                      {unpaidSubs
+                        .reduce((sum, sub) => sum + sub.amount, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           <TabsContent value="subs">
             <Card className="overflow-auto">
               <CardHeader>
@@ -310,7 +413,9 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
                     />
                   </div>
                 ) : (
-                  <CardDescription>No subscriptions found for this player.</CardDescription>
+                  <CardDescription>
+                    No subscriptions found for this player.
+                  </CardDescription>
                 )}
               </CardHeader>
               <CardContent className="grid gap-6">
@@ -324,7 +429,7 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
             <Card>
               <CardContent className="grid gap-6 space-y-2 overflow-auto">
                 <PayFinesForm
-                  playerFinesData={playerData.playerFinesData}
+                  playerFinesData={fines}
                   playerId={playerData.id}
                   open={open}
                   setOpen={setOpen}

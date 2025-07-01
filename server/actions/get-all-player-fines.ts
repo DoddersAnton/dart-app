@@ -2,7 +2,7 @@
 
 import { db } from ".."
 
-export async function getPlayerFines() {
+export async function getAllPlayerFines() {
     try {
         const playersList = await db.query.playerFines.findMany();
         return playersList.map((fine) => ({

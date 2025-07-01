@@ -47,7 +47,7 @@ export const payFinesColumns: ColumnDef<PlayerFine>[] = [
                 </PopoverTrigger>
                 <PopoverContent side="right" align="start" className="max-w-xs">
                     <div>
-                        <div className="text-muted-foreground text-sm">Created On: {new Date(row.getValue("createdAt")).toLocaleDateString("en-GB")}</div>
+                        <div className="text-muted-foreground text-sm">Created On: {row.getValue("createdAt")}</div>
                         <div className="text-muted-foreground text-sm">Player: {row.getValue("player")}</div>
                         <div className="font-semibold mb-1">Notes</div>
                         <div className="text-xs">
