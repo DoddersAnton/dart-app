@@ -8,6 +8,7 @@ export type PlayerFineSummaryColumn = {
   player: string;
   count: number;
   total: number;
+  games: number;
 
 }
 
@@ -20,6 +21,20 @@ export const summaryColumns: ColumnDef<PlayerFineSummaryColumn>[] = [
   {
     accessorKey: "count",
     header: "Count",
+  },
+  {
+    accessorKey: "games",
+    header: "Games",
+  },
+  {
+    accessorKey: "games",
+    header: "Average",
+    cell: ({ row }) => {
+      const games = parseFloat(row.getValue("games"))
+      const count = parseFloat(row.getValue("count"))
+      const avg = count / games
+      return <div className="font-medium text-xs">£{avg.toFixed(2)}</div>
+    }
   },
   {
     accessorKey: "total",

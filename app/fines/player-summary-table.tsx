@@ -31,13 +31,15 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[],
-  total: number
+  total: number,
+  average: number
 }
 
 export function PlayerFinesSummaryDataTable<TData, TValue>({
   columns,
   data, 
-  total
+  total,
+  average
 }: DataTableProps<TData, TValue>) {
   const [sorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -122,8 +124,9 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={2}>Total</TableCell>
-                  <TableCell  colSpan={2}>£{total.toPrecision(3)}</TableCell>
+                  <TableCell colSpan={3}>Total</TableCell>
+                  <TableCell  colSpan={1}>£{average.toFixed(2)}</TableCell>
+                  <TableCell  colSpan={2}>£{total.toFixed(2)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

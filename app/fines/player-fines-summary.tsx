@@ -62,7 +62,7 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
           (
             acc: Record<
               string,
-              { player: string; total: number; count: number }
+              { player: string; total: number; count: number, games: number }
             >,
             fine
           ) => {
@@ -72,13 +72,20 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
                 player: player,
                 total: 0,
                 count: 0,
+                games: 0,
               };
             }
             acc[player].total += fine.amount;
             acc[player].count += 1;
+            acc[player].games = new Set(
+              playerFinesData
+                .filter(f => f.player === player && f.matchDate)
+                .map(f => new Date(f.matchDate!).toLocaleDateString("en-GB"))
+            ).size;
+
             return acc;
           },
-          {} as Record<string, { player: string; total: number; count: number }>
+          {} as Record<string, { player: string; total: number; count: number; games: number }>
         )
     );
 
@@ -142,21 +149,36 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
         </TabsList>
         <TabsContent value="summary">
-          <PlayerFinesSummaryDataTable
+            <PlayerFinesSummaryDataTable
             columns={summaryColumns}
             data={[...finesSummary].sort((a, b) => b.count - a.count)}
             total={playerFinesData
               .filter(
-          (c) =>
-            c.matchDate &&
-            new Date(c.matchDate).toLocaleDateString("en-GB") ===
-              (filterDate !== undefined
-                ? filterDate
-                : new Date(c.matchDate).toLocaleDateString("en-GB"))
+              (c) =>
+                c.matchDate &&
+                new Date(c.matchDate).toLocaleDateString("en-GB") ===
+                (filterDate !== undefined
+                  ? filterDate
+                  : new Date(c.matchDate).toLocaleDateString("en-GB"))
               )
               .reduce((acc, item) => acc + item.amount, 0)}
-          />
-        </TabsContent>
+            average={
+              (() => {
+              const filtered = playerFinesData.filter(
+                (c) =>
+                c.matchDate &&
+                new Date(c.matchDate).toLocaleDateString("en-GB") ===
+                  (filterDate !== undefined
+                  ? filterDate
+                  : new Date(c.matchDate).toLocaleDateString("en-GB"))
+              );
+              const total = filtered.reduce((acc, item) => acc + item.amount, 0);
+              const games = new Set(filtered.map(item => item.matchDate)).size;
+              return games > 0 ? total / games : 0;
+              })()
+            }
+            />
+            </TabsContent>
          <TabsContent value="details">
               <PlayerFinesDataTable
                 columns={playerFinesColumns}
