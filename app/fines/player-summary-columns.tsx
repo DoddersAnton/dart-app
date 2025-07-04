@@ -24,15 +24,15 @@ export const summaryColumns: ColumnDef<PlayerFineSummaryColumn>[] = [
   },
   {
     accessorKey: "games",
-    header: "Games",
+    header: "Games Fined",
   },
   {
     accessorKey: "games",
     header: "Average",
     cell: ({ row }) => {
       const games = parseFloat(row.getValue("games"))
-      const count = parseFloat(row.getValue("count"))
-      const avg = count / games
+      const total = parseFloat(row.getValue("total"))
+      const avg = total / games
       return <div className="font-medium text-xs">£{avg.toFixed(2)}</div>
     }
   },
