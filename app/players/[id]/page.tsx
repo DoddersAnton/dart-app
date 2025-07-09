@@ -22,8 +22,6 @@ export default async function Player({
   }
 
 if (player.success) {
-  
-
   const playerDetails = {
     ...player.success,
     createdAt: player.success.createdAt ? player.success.createdAt.toLocaleDateString("en-GB"): null,

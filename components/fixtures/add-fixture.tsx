@@ -207,7 +207,7 @@ export default function FixtureForm() {
                               <SelectValue placeholder="Select season" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="scheduled">Spring/Summer 25</SelectItem>
+                              <SelectItem value="Spring/Summer 25">Spring/Summer 25</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -232,7 +232,7 @@ export default function FixtureForm() {
                               <SelectValue placeholder="Select match status" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="scheduled">Division 2</SelectItem>
+                              <SelectItem value="Division 2">Division 2</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
