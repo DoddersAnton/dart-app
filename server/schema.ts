@@ -50,11 +50,21 @@ export const players = pgTable("players", {
   export const games = pgTable("games", {
     id: serial("id").primaryKey(),
     fixtureId: integer("fixture_id").notNull().references(() => fixtures.id, { onDelete: "cascade" }),
-    homeTeamPlayerId: integer("home_team_player_id").references(() => players.id, { onDelete: "cascade" }),
-    awayTeamPlayerId: integer("away_team_player_id").references(() => players.id, { onDelete: "cascade" }),
     homeTeamScore: integer("home_team_score").default(0).notNull(),
     awayTeamScore: integer("away_team_score").default(0).notNull(),
-    matchType: varchar("match_type", { length: 255 }).notNull()
+    gameType: varchar("game_type", { length: 255 }).notNull()
+  });
+
+  export const gamePlayers = pgTable("game_players", {
+    id: serial("id").primaryKey(),
+    gameId: integer("game_id").notNull().references(() => games.id, {
+      onDelete: "cascade"
+    }),
+    playerId: integer("player_id").notNull().references(() => players.id, {
+      onDelete: "cascade"
+    }),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
   });
 
   export const payments = pgTable("payments", {

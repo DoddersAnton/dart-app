@@ -43,6 +43,13 @@
       "when": 1750973659576,
       "tag": "0005_low_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1752096133115,
+      "tag": "0006_giant_micromax",
+      "breakpoints": true
     }
   ]
 }
