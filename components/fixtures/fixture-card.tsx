@@ -1,7 +1,9 @@
+"use client";
 import { Calendar, HouseIcon } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-
+import { getGamesByFixture } from "@/server/actions/get-games-by-fixture";
+import React, { useEffect, useState } from "react";
 
 
 
@@ -18,7 +20,55 @@ type Fixture = {
     season: string;
 };
 
+type Game = {
+  id: number;
+  fixtureId: number;
+  homeTeamScore: number;
+  awayTeamScore: number;
+  gameType: string;
+  players: Array<{
+    id: number;
+    name: string;
+    nickname: string | null;}>;
+}
+
+function useGamesByFixture(fixtureId: number) {
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  
+  useEffect(() => {
+    async function fetchGames() {
+      try {
+        const response = await getGamesByFixture(fixtureId);
+        if (response.error) {
+          setError(response.error);
+        } else {
+          const gamesData = response.success;
+          setGames(Array.isArray(gamesData) ? gamesData : gamesData ? [gamesData] : []);
+        }
+      } catch (err) {
+        setError(`Failed to fetch games. ${err} `);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchGames();
+  }, [fixtureId]);
+
+  return { games, loading, error};
+}
+
+
+
 export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
+
+  const {
+    games,
+    loading,
+    error,
+  } = useGamesByFixture(fixtureData.id);
  
     return ( 
         <Card>
@@ -72,11 +122,28 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
       </CardHeader>
       <CardContent className="overflow-auto">
             <div>
-                <div>{fixtureData.homeTeam} vs {fixtureData.awayTeam}</div>
-                <div>{fixtureData.matchLocation} - {fixtureData.matchDate}</div>
-                <div>Score: {fixtureData.homeTeamScore} - {fixtureData.awayTeamScore}</div>
+                {loading ? (
+                    <div>Loading games...</div>
+                ) : error ? (
+                    <div className="text-red-500">{error}</div>  
+                ) : games.length > 0 ? (
+                    games.map((game) => (
+                        <div key={game.id} className="mb-4">
+                            <h3 className="font-semibold">Game Type: {game.gameType}</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {game.players.map((player) => (
+                                    <Badge key={player.id} variant="outline" className="cursor-pointer min-w-[100px] text-left">
+                                        {player.name} {player.nickname ? `(${player.nickname})` : ""}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div>No games found for this fixture.</div>
+                )}
             </div>
             </CardContent>
         </Card>
     );
-}
+  }
