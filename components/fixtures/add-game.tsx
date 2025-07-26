@@ -1,12 +1,5 @@
 "use client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 import {
   FormControl,
@@ -32,31 +25,56 @@ import {
 } from "../ui/select";
 import { Button } from "../ui/button";
 import { useAction } from "next-safe-action/hooks";
-import { Info } from "lucide-react";
+import { Info, Plus } from "lucide-react";
 import { addGameSchema, zGameSchema } from "@/types/add-game-schema";
 import { Input } from "../ui/input";
 import { getGame } from "@/server/actions/get-game";
 import { createGame } from "@/server/actions/create-game";
-import { MultiSelect } from "../ui/multi-select";
 import { getPlayers } from "@/server/actions/get-players";
+
 import { z } from "zod";
 
-
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "../ui/drawer";
+import MultipleSelector from "../ui/MultipleSelector";
 
 type GameFormProps = {
   fixtureId: number;
+  onGameAdded?: () => void;
 };
 
-export default function GameForm({ fixtureId }: GameFormProps) {
+export default function GameForm({ fixtureId, onGameAdded }: GameFormProps) {
+  const [playersListData, setPlayersListData] = useState<
+    {
+      id: number;
+      name: string;
+      nickname: string | null;
+      team: string | null;
+      createdAt: string | null;
+    }[]
+  >([]);
 
-    const [playersListData, setPlayersListData] = useState<
-      { id: number; name: string; nickname: string | null; team: string | null; createdAt: string | null }[]
-    >([]);
+  async function fetchPlayers() {
+    const result = await getPlayers();
+    if (Array.isArray(result)) {
+      setPlayersListData(result);
+    } else if ("error" in result) {
+      toast.error(result.error);
+    }
+  }
 
-    useEffect(() => {
-      
-    }, []);
-  
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
+
   const form = useForm<z.infer<typeof addGameSchema>>({
     resolver: zodResolver(addGameSchema),
     defaultValues: {
@@ -74,7 +92,7 @@ export default function GameForm({ fixtureId }: GameFormProps) {
   const searchParams = useSearchParams();
   const editMode = searchParams.get("id");
 
-  const checkGame= async (gameId: number) => {
+  const checkGame = async (gameId: number) => {
     if (editMode) {
       const data = await getGame(gameId);
       if (data?.error) {
@@ -89,40 +107,38 @@ export default function GameForm({ fixtureId }: GameFormProps) {
         form.setValue("gameType", data.success[0].gameType);
         form.setValue("homeTeamScore", data.success[0].homeTeamScore);
         form.setValue("awayTeamScore", data.success[0].awayTeamScore);
-        const playerIds = data.success[0].players.map(player => player.id);
+        const playerIds = data.success[0].players.map((player) => player.id);
         if (playerIds.length > 0) {
           form.setValue("playerList", playerIds as [number, ...number[]]);
         } else {
           form.resetField("playerList");
         }
-       
       }
     }
   };
 
   const [loading, setLoading] = useState(false);
-    const [selectedPlayers, setSelectedPlayers] = useState<
-    string[] | undefined
-  >(undefined);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedPlayers, setSelectedPlayers] = useState<string[] | undefined>(
+    undefined
+  );
 
   useEffect(() => {
-    
     async function fetchPlayers() {
-        const result = await getPlayers();
-        if (Array.isArray(result)) {
-          setPlayersListData(result);
-        } else if ("error" in result) {
-          toast.error(result.error);
-        }
+      const result = await getPlayers();
+      if (Array.isArray(result)) {
+        setPlayersListData(result);
+      } else if ("error" in result) {
+        toast.error(result.error);
       }
-      fetchPlayers();
+    }
+    fetchPlayers();
 
     if (editMode) {
       setLoading(true);
       checkGame(parseInt(editMode));
       setLoading(false);
     }
-
   }, []);
 
   const { execute, status } = useAction(createGame, {
@@ -130,11 +146,15 @@ export default function GameForm({ fixtureId }: GameFormProps) {
       if (data.data?.error) {
         toast.error(data.data.error);
         router.push(`/fixtures/${fixtureId}`);
+        window.location.reload();
+        onGameAdded?.();
+        setIsOpen(false);
         return;
       }
       if (data.data?.success) {
         router.push("/fixtures/" + fixtureId);
         toast.success(data.data.success);
+        window.location.reload();
       }
     },
     onExecute: () => {
@@ -154,165 +174,193 @@ export default function GameForm({ fixtureId }: GameFormProps) {
   }
 
   return (
-    <div className="flex items-center justify-center">
-      {loading && (
-        <div className="flex items-center justify-center h-screen bg-gray-100">
-          <div className="loader"></div>
-        </div>
-      )}
+    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+      <DrawerTrigger asChild>
+        <Button variant="outline">
+          Add Game <Plus />
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>{editMode ? "Edit" : "Create"} Game</DrawerTitle>
+          <DrawerDescription>
+            {editMode ? "Edit" : "Create"} a match game.
+          </DrawerDescription>
+        </DrawerHeader>
 
-      {!loading && (
-        <Card className="mx-auto w-full lg:w-[60%]">
-          <CardHeader>
-            <CardTitle>{editMode ? "Edit" : "Create"} Game</CardTitle>
-            <CardDescription>
-              {editMode ? "Edit" : "Create"} a match game.
-            </CardDescription>
-            <div className="text-red-500">
-              {Object.entries(form.formState.errors).map(([key, error]) => (
-                <div key={key} className="text-red-500">
-                  Field {key}
-                  {error.message}
-                </div>
-              ))}
+        <div className="flex items-center justify-center">
+          {loading && (
+            <div className="flex items-center justify-center h-screen bg-gray-100">
+              <div className="loader"></div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit, (errors) =>
-                  console.log("Form errors:", errors)
-                )}
-                className="space-y-4"
-              >
-                <div className="grid w-full items-center gap-4"></div>
-                
-            
+          )}
 
-                 <FormField
-                    control={form.control}
-                    name="gameType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Game Type</FormLabel>
-                        <FormDescription>
-                          <Info className="inline-block mr-2" size={14} />
-                          Set Game Type.
-                        </FormDescription>
-                        <FormControl>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select season" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Team Game">Team Game</SelectItem>
-                              <SelectItem value="Doubles">Doubles</SelectItem>
-                              <SelectItem value="Singles">Singles</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+          {!loading && (
+            <Card className=" w-[80%] mx-auto">
+              <CardHeader>
+                <div className="text-red-500">
+                  {Object.entries(form.formState.errors).map(([key, error]) => (
+                    <div key={key} className="text-red-500">
+                      Field {key}
+                      {error.message}
+                    </div>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit, (errors) =>
+                      console.log("Form errors:", errors)
                     )}
-                  />
-            
-
-                  <FormField
-                    control={form.control}
-                    name="homeTeamScore"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Home Team Score</FormLabel>
-                        <FormDescription>
-                          <Info className="inline-block mr-2" size={14} />
-                          You can override or set to 0 for future games.
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="add a amount"
-                            type="number"
+                    className="space-y-4 "
+                  >
+                    <FormField
+                      control={form.control}
+                      name="playerList"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Player Names</FormLabel>
+                          <MultipleSelector
+                            defaultOptions={playersListData.map((player) => ({
+                              value: player.id.toString(),
+                              label:
+                                player.name +
+                                " " +
+                                (player.nickname ? `(${player.nickname})` : ""),
+                            }))}
+                            value={
+                              selectedPlayers
+                                ? playersListData
+                                    .filter((player) =>
+                                      selectedPlayers.includes(
+                                        player.id.toString()
+                                      )
+                                    )
+                                    .map((player) => ({
+                                      value: player.id.toString(),
+                                      label:
+                                        player.name +
+                                        " " +
+                                        (player.nickname
+                                          ? `(${player.nickname})`
+                                          : ""),
+                                    }))
+                                : undefined
+                            }
+                            placeholder="Select players"
+                            // You may need to use a supported callback like 'onChange' if available in MultipleSelectorProps
+                            onChange={(
+                              values: { value: string; label: string }[]
+                            ) => {
+                              const playerIds = values.map((option) =>
+                                parseInt(option.value, 10)
+                              );
+                              field.onChange(playerIds);
+                              setSelectedPlayers(
+                                values.map((option) => option.value)
+                              );
+                            }}
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid w-full items-center gap-4"></div>
 
-                   <FormField
-                    control={form.control}
-                    name="awayTeamScore"
-                    
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Away Team Score</FormLabel>
-                        <FormDescription>
-                          <Info className="inline-block mr-2" size={14} />
-                          You can override or set to 0 for future games.
-                        </FormDescription>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="add a amount"
-                            type="number"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="gameType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Game Type</FormLabel>
+                          <FormDescription>
+                            <Info className="inline-block mr-2" size={14} />
+                            Set Game Type.
+                          </FormDescription>
+                          <FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select season" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Team Game">
+                                  Team Game
+                                </SelectItem>
+                                <SelectItem value="Doubles">Doubles</SelectItem>
+                                <SelectItem value="Singles">Singles</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                   <FormField
-                    control={form.control}
-                    name="playerList"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Player Names</FormLabel>
-                        <MultiSelect
-                          options={playersListData.map((player) => ({
-                            value: player.id.toString(),
-                            label:
-                              player.name +
-                              " " +
-                              (player.nickname ? `(${player.nickname})` : ""),
-                            
-                          }))}
-                          onValueChange={(values) => {
-                            const playerIds = values.map((value) =>
-                              parseInt(value, 10)
-                            );
-                            field.onChange(playerIds);
-                            setSelectedPlayers(values);
-                          }}
-                          value={selectedPlayers}
-                          placeholder="Select players"
-                          variant="inverted"
-                          animation={2}
-                          maxCount={3}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="homeTeamScore"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Home Team Score</FormLabel>
+                          <FormDescription>
+                            <Info className="inline-block mr-2" size={14} />
+                            You can override or set to 0 for future games.
+                          </FormDescription>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="add a amount"
+                              type="number"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
+                    <FormField
+                      control={form.control}
+                      name="awayTeamScore"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Away Team Score</FormLabel>
+                          <FormDescription>
+                            <Info className="inline-block mr-2" size={14} />
+                            You can override or set to 0 for future games.
+                          </FormDescription>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="add a amount"
+                              type="number"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  
+                    <div className="grid w-full items-center gap-4"></div>
+                    <Button disabled={status == "executing"} type="submit">
+                      Save
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
-                 
-
-                  
-
-                <CardFooter className="flex justify-between">
-                  <Button variant="outline">Cancel</Button>
-                  <Button disabled={status == "executing"} type="submit">
-                    Save
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+        <DrawerFooter>
+          <DrawerClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }
