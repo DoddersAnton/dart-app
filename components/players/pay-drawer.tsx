@@ -48,7 +48,7 @@ export default function PaymentDrawer({
       <DrawerContent className="fixed bottom-0 left-0 max-h-[70vh] min-h-[50vh]">
         <div className="">
           <DrawerHeader>
-            <DrawerTitle>Fine Payment (£{amount.toPrecision(2)})</DrawerTitle>
+            <DrawerTitle>Payment (£{amount.toPrecision(2)})</DrawerTitle>
             <DrawerDescription>
               Enter your payment detail below
             </DrawerDescription>
@@ -59,12 +59,12 @@ export default function PaymentDrawer({
               options={{
                 mode: "payment",
                 currency: "gbp",
-                amount: Number(amount.toFixed(2)) * 100,
+                amount: Math.round(amount * 100),
                 appearance: { theme: theme === "dark" ? "night" : "flat" },
               }}
             >
               <PaymentForm
-                amount={Number(amount.toFixed(2))}
+                amount={Number(Math.round(amount).toFixed(2))}
                 playerId={playerId}
                 fineList={fineList}
                 sublist={sublist}

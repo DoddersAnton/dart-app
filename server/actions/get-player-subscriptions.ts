@@ -5,7 +5,7 @@ import { db } from ".."
 
 export async function getPlayerSubscriptions(id: number) {
     try {
-        const subs = await db.query.subscriptions.findFirst({
+        const subs = await db.query.subscriptions.findMany({
             where: (sub) => eq(sub.playerId, id),
         });
 

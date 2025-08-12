@@ -4,8 +4,9 @@ import { createSafeActionClient } from "next-safe-action";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { payments, playerFines } from "../schema";
+import { payments, playerFines, subscriptions } from "../schema";
 import { addPaymentSchema } from "@/types/add-payment-schema";
+
 
 const actionClient = createSafeActionClient();
 
@@ -15,10 +16,12 @@ export const createPayment = actionClient
     try {
       if (!playerId || !amount || !paymentMethod) {
         return { error: "Player ID, amount, and payment method are required" };
+
       }
 
-      if(fineList && fineList.length === 0) {
-        return { error: "No fines selected for payment" };
+      
+      if(fineList && fineList.length === 0 && subList && subList.length === 0) {
+        return { error: "No fines or subs selected for payment" };
       }
 
       // Make sure to import the correct payments table at the top: import { payments } from "../schema";
@@ -58,11 +61,11 @@ export const createPayment = actionClient
             console.log("Updating sub with ID:", subId);
 
             await db
-              .update(playerFines)
+              .update(subscriptions)
               .set({
                 status: "Paid",
               })
-              .where(eq(playerFines.id, subId))
+              .where(eq(subscriptions.id, subId))
               .returning();
         }
 
