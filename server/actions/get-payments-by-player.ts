@@ -5,12 +5,11 @@ import { db } from ".."
 
 export async function getPaymentsByPlayer(playerId: number) {
     try {
-        const payments = await db.query.payments.findFirst({
+        const payments = await db.query.payments.findMany({
             where: (payment) => eq(payment.playerId, playerId),
         });
 
-       
-        return { success: payments } 
+        return { success: payments }
       
     } catch (error) {
         console.error(error);

@@ -136,7 +136,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
             <GameForm fixtureId={fixtureData.id} onGameAdded={fetchGames} />
           </CardHeader>
         </Card>
-        <Separator className="my-4" />
+        <Separator />
         {loading ? (
           <div>Loading games...</div>
         ) : error ? (
