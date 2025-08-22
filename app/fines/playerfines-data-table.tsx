@@ -61,7 +61,7 @@ export function PlayerFinesDataTable<TData, TValue>({
         <CardContent className="mb-2 mp-2">
           <div>
             <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-2">
-            <h2 className="text-lg lg:text-2xl font-bold">Player Fines Detail (£{total.toPrecision(3)})</h2>
+            <h2 className="text-lg lg:text-2xl font-bold">Player Fines Detail (£{total.toFixed(2)})</h2>
             </div>
             <div>
               <Input

@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -22,12 +21,7 @@ import { FineSummaryProps } from "./player-fines-summary"
 export const description = "A chart showing total fines and cost by match date."
 
 
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig
+
 
 export function FineChart( {playerFinesData }: FineSummaryProps) {
 
@@ -85,7 +79,6 @@ return (
                 totalFines: { label: "Total Fines", color: "var(--chart-1)" },
                 totalCost: { label: "Total Cost", color: "var(--chart-2)" },
                 avgCost: { label: "Avg. Cost", color: "var(--chart-3)" },
-                ...chartConfig,
             }}>
                 <AreaChart
                     accessibilityLayer
