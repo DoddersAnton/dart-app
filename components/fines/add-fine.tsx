@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
   Form,
+  FormDescription,
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +52,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
+import { Input } from "../ui/input";
 
 interface FormProps {
   playersListData: {
@@ -375,6 +377,32 @@ interface FormProps {
                     </FormItem>
                   )}
                 />
+
+                 <FormField
+                      control={form.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormDescription>
+                            <Info className="inline-block mr-2" size={14} />
+                            You can add mulitple fines at once.
+                          </FormDescription>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="add a quantity"
+                              type="number"
+                              defaultValue={1}
+                              min={1}
+                              step={1}
+                              disabled={!!editMode} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                 <CardFooter className="flex justify-between">
                   <Button variant="outline">Cancel</Button>

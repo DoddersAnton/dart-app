@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, timestamp, varchar,  real } from "drizzle-orm/pg-core";
+import { integer, pgTable, serial, timestamp, varchar,  real, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 
@@ -29,6 +29,8 @@ export const players = pgTable("players", {
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     status: varchar("status", { length: 50 }).default("Unpaid"),
+    paymentId: integer("payment_id").references(() => payments.id, { onDelete: "set null" }),
+    roundId: integer("round_id").references(() => rounds.id, { onDelete: "set null" }),
   });
 
   export const fixtures = pgTable("fixtures", {
@@ -53,6 +55,22 @@ export const players = pgTable("players", {
     homeTeamScore: integer("home_team_score").default(0).notNull(),
     awayTeamScore: integer("away_team_score").default(0).notNull(),
     gameType: varchar("game_type", { length: 255 }).notNull()
+  });
+
+  export const rounds = pgTable("rounds", {
+    id: serial("id").primaryKey(),
+    roundNumber: integer("round_number").default(1).notNull(),
+    gameId: integer("game_id").notNull().references(() => games.id, {
+      onDelete: "cascade"
+    }),
+    playerId: integer("player_id").notNull().references(() => players.id, {
+      onDelete: "cascade"
+    }),
+    homeScore: integer("home_score").default(0).notNull(),
+    awayScore: integer("away_score").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    fineAdded: boolean("fine_added").default(false).notNull(),
   });
 
   export const gamePlayers = pgTable("game_players", {

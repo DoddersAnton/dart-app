@@ -15,7 +15,7 @@ const actionClient = createSafeActionClient();
 export const createMulitplePlayerFines = actionClient
   .schema(createMulitplePlayerFineSchema)
   .action(
-    async ({ parsedInput: { playerIds, fineId, matchDate, notes } }) => {
+    async ({ parsedInput: { playerIds, fineId, matchDate, notes, quantity } }) => {
       try {
         const user = await currentUser();
 
@@ -34,22 +34,41 @@ export const createMulitplePlayerFines = actionClient
             if (!fine) return { error: "Fine not found" };
             }
 
-            await db
+            if(quantity > 1)
+            {
+              for(let i = 0; i < quantity; i++){
+                await db
+                  .insert(playerFines)
+                  .values({
+                    matchDate: matchDate ? new Date(matchDate) : undefined,
+                    playerId: playerId,
+                    fineId: fineId,
+                    notes: notes,
+                    issuedBy: user?.id,
+                  })
+                  .returning();
+                  
+              }
+             
+            }else {
+              await db
                 .insert(playerFines)
                 .values({
-                matchDate: matchDate ? new Date(matchDate) : undefined,
-                playerId: playerId,
-                fineId: fineId,
-                notes: notes,
-                issuedBy: user?.id,
+                  matchDate: matchDate ? new Date(matchDate) : undefined,
+                  playerId: playerId,
+                  fineId: fineId,
+                  notes: notes,
+                  issuedBy: user?.id,
                 })
                 .returning();
+              }
+           
         }
 
        
 
         revalidatePath("/fines/add-mulitple-fines");
-        return { success: `${playerIds.length} Fine(s) has been created` };
+        return { success: `${quantity} fines(s) created for ${playerIds.length} player(s).` };
       } catch (error) {
         console.error(error);
         return { error: JSON.stringify(error) };

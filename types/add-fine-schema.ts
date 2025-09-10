@@ -11,6 +11,7 @@ export const createPlayerFineSchema = z.object({
   matchDate: z
     .z.date(),
   notes: z.string().max(1000).optional(),
+  quantity: z.coerce.number(),
   //issuedBy: z.string().max(255).optional(),
 });
 

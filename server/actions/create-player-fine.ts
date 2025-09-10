@@ -12,7 +12,7 @@ const actionClient = createSafeActionClient();
 export const createPlayerFine = actionClient
   .schema(createPlayerFineSchema)
   .action(
-    async ({ parsedInput: { id, playerId, fineId, matchDate, notes } }) => {
+    async ({ parsedInput: { id, playerId, fineId, matchDate, notes, quantity } }) => {
       try {
         const user = await currentUser();
 
@@ -49,6 +49,23 @@ export const createPlayerFine = actionClient
 
           revalidatePath("/fines/add-fine");
           return { success: `Fine has been updated` };
+        }
+
+        if(quantity > 1){
+          for(let i = 0; i < quantity; i++){
+            await db
+              .insert(playerFines)
+              .values({
+                matchDate: matchDate ? new Date(matchDate) : undefined,
+                playerId: playerId,
+                fineId: fineId,
+                notes: notes,
+                issuedBy: user?.id,
+              })
+              .returning();
+          }
+          revalidatePath("/fines/add-fine");
+          return { success: `${quantity} Fines have been created` };
         }
 
         await db

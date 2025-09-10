@@ -1,5 +1,5 @@
 "use client";
-import { Calendar, HouseIcon, Trash } from "lucide-react";
+import { Calendar, HouseIcon, Rocket, Trash } from "lucide-react";
 import { Badge } from "../ui/badge";
 import {
   Card,
@@ -15,6 +15,7 @@ import { deleteGame } from "@/server/actions/delete-game";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
+import Link from "next/link";
 
 type Fixture = {
   id: number;
@@ -147,6 +148,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>{game.gameType}</span>
+                  <div className="flex gap-2 flex-row">
                   <Button
                     variant="ghost"
                     onClick={() => handleDeleteGame({ id: game.id })}
@@ -154,6 +156,16 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
                   >
                     <Trash className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant="default"
+                    
+                  >
+                    <Link href={`/games/${game.id}`} target="_blank" rel="noopener noreferrer">Open Tracker
+                    </Link>
+                    <Rocket className="h-4 w-4" />
+                  </Button>
+                  </div>
+
                 </CardTitle>
               </CardHeader>
               <CardContent>

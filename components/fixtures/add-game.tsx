@@ -104,10 +104,10 @@ export default function GameForm({ fixtureId, onGameAdded }: GameFormProps) {
         const id = parseInt(editMode);
         form.setValue("fixtureId", fixtureId);
         form.setValue("id", id);
-        form.setValue("gameType", data.success[0].gameType);
-        form.setValue("homeTeamScore", data.success[0].homeTeamScore);
-        form.setValue("awayTeamScore", data.success[0].awayTeamScore);
-        const playerIds = data.success[0].players.map((player) => player.id);
+        form.setValue("gameType", data.success.gameType);
+        form.setValue("homeTeamScore", data.success.homeTeamScore);
+        form.setValue("awayTeamScore", data.success.awayTeamScore);
+        const playerIds = data.success.players.map((player) => player.id);
         if (playerIds.length > 0) {
           form.setValue("playerList", playerIds as [number, ...number[]]);
         } else {

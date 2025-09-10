@@ -22,6 +22,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -50,6 +51,7 @@ import {
 import { Textarea } from "../ui/textarea";
 import { format } from "date-fns";
 import { MultiSelect } from "../ui/multi-select";
+import { Input } from "../ui/input";
 
 
 interface FormProps {
@@ -325,6 +327,32 @@ export default function MultipleFineForm({playersListData, finesListData}: FormP
                     </FormItem>
                   )}
                 />
+
+                 <FormField
+                      control={form.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormDescription>
+                            <Info className="inline-block mr-2" size={14} />
+                            You can add mulitple fines at once.
+                          </FormDescription>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="add a quantity"
+                              type="number"
+                              defaultValue={1}
+                              min={1}
+                              step={1}
+                             
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                 <CardFooter className="flex justify-between">
                   <Button variant="outline">Cancel</Button>
