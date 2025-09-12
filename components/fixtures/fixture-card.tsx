@@ -160,7 +160,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
                     variant="default"
                     
                   >
-                    <Link href={`/games/${game.id}`} target="_blank" rel="noopener noreferrer">Open Tracker
+                    <Link href={`/games/${game.id}`}>Open Tracker
                     </Link>
                     <Rocket className="h-4 w-4" />
                   </Button>
