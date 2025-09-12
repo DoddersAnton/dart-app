@@ -2,6 +2,8 @@
 export type GameWithPlayers = {
     id: number;
     homeTeamScore: number;
+    homeTeam: string;
+    awayTeam: string;
     awayTeamScore: number;
     fixtureId: number;
     gameType: string;

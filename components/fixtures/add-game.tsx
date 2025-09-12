@@ -34,17 +34,9 @@ import { getPlayers } from "@/server/actions/get-players";
 
 import { z } from "zod";
 
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "../ui/drawer";
 import MultipleSelector from "../ui/MultipleSelector";
+import { Dialog } from "@radix-ui/react-dialog";
+import { DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 
 type GameFormProps = {
   fixtureId: number;
@@ -174,19 +166,19 @@ export default function GameForm({ fixtureId, onGameAdded }: GameFormProps) {
   }
 
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen}>
-      <DrawerTrigger asChild>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
         <Button variant="outline">
           Add Game <Plus />
         </Button>
-      </DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>{editMode ? "Edit" : "Create"} Game</DrawerTitle>
-          <DrawerDescription>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{editMode ? "Edit" : "Create"} Game</DialogTitle>
+          <DialogDescription>
             {editMode ? "Edit" : "Create"} a match game.
-          </DrawerDescription>
-        </DrawerHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex items-center justify-center">
           {loading && (
@@ -196,7 +188,7 @@ export default function GameForm({ fixtureId, onGameAdded }: GameFormProps) {
           )}
 
           {!loading && (
-            <Card className=" w-[80%] mx-auto">
+            <Card className=" w-[80%] mx-auto overflow-y-auto">
               <CardHeader>
                 <div className="text-red-500">
                   {Object.entries(form.formState.errors).map(([key, error]) => (
@@ -207,7 +199,7 @@ export default function GameForm({ fixtureId, onGameAdded }: GameFormProps) {
                   ))}
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-y-auto max-h-[70vh]">
                 <Form {...form}>
                   <form
                     onSubmit={form.handleSubmit(onSubmit, (errors) =>
@@ -355,12 +347,12 @@ export default function GameForm({ fixtureId, onGameAdded }: GameFormProps) {
           )}
         </div>
 
-        <DrawerFooter>
-          <DrawerClose asChild>
+        <DialogFooter>
+          <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
-          </DrawerClose>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

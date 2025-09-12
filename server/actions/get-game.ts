@@ -23,6 +23,10 @@ export async function getGame(gameId: number) {
         where: (gamePlayer) => eq(gamePlayer.gameId, game.id),
       });
 
+      const fixture = await db.query.fixtures.findFirst({
+        where: (fixture) => eq(fixture.id, game.fixtureId),
+      });
+
       // Add array of player id, name, and nickname to game item
       const playerArray = gamePlayers.map(gp => {
         const player = players.find(p => p.id === gp.playerId);
@@ -35,6 +39,9 @@ export async function getGame(gameId: number) {
 
       const gameWithPlayers: GameWithPlayers = {
         ...game,
+        homeTeam: fixture?.homeTeam ?? "Home",
+        awayTeam: fixture?.awayTeam ?? "Away",
+       
         players: playerArray,
       };
 

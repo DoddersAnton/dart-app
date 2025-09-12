@@ -30,7 +30,9 @@ export const players = pgTable("players", {
     updatedAt: timestamp("updated_at").defaultNow(),
     status: varchar("status", { length: 50 }).default("Unpaid"),
     paymentId: integer("payment_id").references(() => payments.id, { onDelete: "set null" }),
-    roundId: integer("round_id").references(() => rounds.id, { onDelete: "set null" }),
+    gameId: integer("game_id").references(() => games.id, { onDelete: "set null" }),
+    roundNo: integer("round_no"),
+    roundLeg: integer("round_leg"),
   });
 
   export const fixtures = pgTable("fixtures", {
@@ -43,7 +45,6 @@ export const players = pgTable("players", {
     matchLocation: varchar("match_location", { length: 255 }).notNull(),
     league: varchar("league", { length: 255 }).notNull(),
     season: varchar("season", { length: 255 }).notNull(),
-  
     matchStatus: varchar("match_status", { length: 255 }).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
@@ -60,6 +61,7 @@ export const players = pgTable("players", {
   export const rounds = pgTable("rounds", {
     id: serial("id").primaryKey(),
     roundNumber: integer("round_number").default(1).notNull(),
+    leg: integer("leg").default(1).notNull(),
     gameId: integer("game_id").notNull().references(() => games.id, {
       onDelete: "cascade"
     }),

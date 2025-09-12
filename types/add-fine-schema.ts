@@ -16,3 +16,26 @@ export const createPlayerFineSchema = z.object({
 });
 
 export type zPlayerFineSchema = z.infer<typeof createPlayerFineSchema>
+
+
+export const createRoundFineSchema = z.object({
+  id: z.number().optional(),
+  playerId: z.number().int().positive({
+    message: "Player is required",
+  }),
+  fineId: z.number().int().positive({
+    message: "Fine is required",
+  }),
+  matchDate: z
+    .z.date(),
+  notes: z.string().max(1000).optional(),
+  quantity: z.coerce.number(),
+  gameId: z.number().int().positive({
+    message: "Game is required",
+  }),
+  roundNo: z.coerce.number(),
+  roundLeg: z.coerce.number(),
+  //issuedBy: z.string().max(255).optional(),
+});
+
+export type zRoundFineSchema = z.infer<typeof createRoundFineSchema>
