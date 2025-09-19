@@ -1,6 +1,5 @@
 import { db } from "@/server";
 import { FixtureSummary } from "./fixture-summary";
-import { CardDescription } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -19,13 +18,7 @@ export default async function Page() {
   }));
 
   return (
-    <div className="container mx-auto py-12 mt-22">
-      <div className="flex items-center gap-2 mb-6 flex-row">
-        ⚠️
-        <CardDescription>
-          Page under construction. Future match scores will be generated from games
-        </CardDescription>
-      </div>
+    <div className="container mx-auto py-12 mt-12 p-1">
       <div className="flex items-center justify-between mb-4">
         <Link href="/fixtures/add-fixture" className="flex justify-center">
           <Button size="sm" className="mb-0" variant="outline">

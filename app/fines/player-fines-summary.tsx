@@ -21,6 +21,10 @@ import { playerFinesColumns } from "./player-fines-columns";
 import { useState } from "react";
 import { FineChart } from "./fine-chart";
 import { FineTypeBarChart } from "./fine-chart-byfinetype";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { TextShimmer } from "@/components/motion-primitives/text-shimmer";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+
 
 export interface FineSummaryProps {
   playerFinesData: {
@@ -42,6 +46,12 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
       undefined
     );
     const [key, setKey] = useState(+new Date());
+    const [loading, setLoading] = useState(false)
+  
+    const handleClick = () => {
+        setLoading(true)
+        setTimeout(() => setLoading(false), 5000) // Simulate async action
+    }
 
     const dates = Array.from(
       new Set(
@@ -64,10 +74,8 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
             new Date(c.matchDate).toLocaleDateString("en-GB") ===
               (filterDate !== undefined
                 ? filterDate
-                : new Date(c.matchDate).toLocaleDateString("en-GB"))
-                   && (filterPlayer !== undefined
-                  ? c.player === filterPlayer
-                  : true)
+                : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
+            (filterPlayer !== undefined ? c.player === filterPlayer : true)
         )
         .reduce(
           (
@@ -113,49 +121,91 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
 
     return (
       <Tabs defaultValue="summary" className="w-full px-2 mx-auto">
-        <div className="flex items-center flex-row gap-2 mb-2">
-          <FilterIcon className="" />
-          <Select
-            key={key}
-            onValueChange={(value) => handleDateChange(value)}
-            value={filterDate}
-          >
-            <SelectTrigger className="w-[180px] mb-2">
-              <SelectValue placeholder="Select a match date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Match dates</SelectLabel>
-                {dates.map((date) => (
-                  <SelectItem key={date} value={date} defaultValue={date}>
-                    {date}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              <SelectSeparator />
-            </SelectContent>
-          </Select>
-          <Select
-            key={key}
-            onValueChange={(value) => handlePlayerChange(value)}
-            value={filterPlayer}
-          >
-            <SelectTrigger className="w-[180px] mb-2">
-              <SelectValue placeholder="Select a player" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Player</SelectLabel>
-                {players.map((player) => (
-                  <SelectItem key={player} value={player} defaultValue={player}>
-                    {player}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              <SelectSeparator />
-            </SelectContent>
-          </Select>
-          <div className="flex justify-between flex-row gap-2">
+         <div className=" flex flex-row gap-2">
+             <div className="flex flex-row gap-1">
+              {filterDate && (<span className="text-sm">
+                Filtered by date: <strong>{filterDate}</strong>
+              </span>)}
+              {filterPlayer && (<span className="text-sm">
+                Filtered by player: <strong>{filterPlayer}</strong>
+              </span>)}
+            </div>  
+            </div>
+        <div className="flex items-center max-w-vm flex-row gap-2 mb-2">
+         
+          <div className=" flex flex-row gap-1">
+            <div>
+             <Link href="/fines/add-fine" 
+             className="flex justify-center" 
+             onClick={handleClick}>
+              <Button size="sm" className="mb-0 text-sm" variant="outline">
+                 {loading ? <TextShimmer>Loading </TextShimmer> : "Add Fine"} {loading ? <LoadingSpinner /> : <Plus className="ml-2" size={16} />} 
+              </Button>
+            </Link>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline">
+                  {"Open"}
+                  <FilterIcon className="" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto">
+                <div className="flex flex-row items-center gap-2">
+                  <Select
+                    key={key}
+                    onValueChange={(value) => handleDateChange(value)}
+                    value={filterDate}
+                  >
+                    <SelectTrigger className="w-[180px] mb-2">
+                      <SelectValue placeholder="Select a match date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Match dates</SelectLabel>
+                        {dates.map((date) => (
+                          <SelectItem
+                            key={date}
+                            value={date}
+                            defaultValue={date}
+                          >
+                            {date}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectSeparator />
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    key={key}
+                    onValueChange={(value) => handlePlayerChange(value)}
+                    value={filterPlayer}
+                  >
+                    <SelectTrigger className="w-[180px] mb-2">
+                      <SelectValue placeholder="Select a player" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Player</SelectLabel>
+                        {players.map((player) => (
+                          <SelectItem
+                            key={player}
+                            value={player}
+                            defaultValue={player}
+                          >
+                            {player}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectSeparator />
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div>
             {filterDate !== undefined && (
               <Button
                 variant="outline"
@@ -168,14 +218,14 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
                   setFilterPlayer(undefined);
                 }}
               >
-                Clear Filter <EraserIcon className="ml-2" size={16} />
+                Clear <EraserIcon className="ml-2" size={16} />
               </Button>
             )}
-            <Link href="/fines/add-fine" className="flex justify-center">
-              <Button size="sm" className="mb-0" variant="outline">
-                Add Fine <Plus className="ml-2" size={16} />
-              </Button>
-            </Link>
+           
+           
+          </div>
+          <div>
+            
           </div>
         </div>
 
@@ -208,10 +258,10 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
                   new Date(c.matchDate).toLocaleDateString("en-GB") ===
                     (filterDate !== undefined
                       ? filterDate
-                      : new Date(c.matchDate).toLocaleDateString("en-GB"))
-                         && (filterPlayer !== undefined
-                  ? c.player === filterPlayer
-                  : true)
+                      : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
+                  (filterPlayer !== undefined
+                    ? c.player === filterPlayer
+                    : true)
               );
               const total = filtered.reduce(
                 (acc, item) => acc + item.amount,
@@ -242,10 +292,10 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
                   new Date(c.matchDate).toLocaleDateString("en-GB") ===
                     (filterDate !== undefined
                       ? filterDate
-                      : new Date(c.matchDate).toLocaleDateString("en-GB"))
-                         && (filterPlayer !== undefined
-                  ? c.player === filterPlayer
-                  : true)
+                      : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
+                  (filterPlayer !== undefined
+                    ? c.player === filterPlayer
+                    : true)
               )
               .reduce((acc, item) => acc + item.amount, 0)}
           />
