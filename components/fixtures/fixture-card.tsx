@@ -1,5 +1,13 @@
 "use client";
-import { Calendar, HouseIcon, Rocket, Trash } from "lucide-react";
+import {
+  Calendar,
+  ChevronDown,
+  HouseIcon,
+  Pencil,
+  Rocket,
+  Trash,
+  TrophyIcon,
+} from "lucide-react";
 import { Badge } from "../ui/badge";
 import {
   Card,
@@ -16,6 +24,28 @@ import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import Link from "next/link";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
+} from "../ui/item";
+import { Skeleton } from "../ui/skeleton";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../ui/empty";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 type Fixture = {
   id: number;
@@ -56,7 +86,9 @@ function useGamesByFixture(fixtureId: number) {
         setError(response.error);
       } else {
         const gamesData = response.success;
-        setGames(Array.isArray(gamesData) ? gamesData : gamesData ? [gamesData] : []);
+        setGames(
+          Array.isArray(gamesData) ? gamesData : gamesData ? [gamesData] : []
+        );
       }
     } catch (err) {
       setError(`Failed to fetch games. ${err}`);
@@ -73,7 +105,9 @@ function useGamesByFixture(fixtureId: number) {
 }
 
 export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
-  const { games, loading, error, fetchGames } = useGamesByFixture(fixtureData.id);
+  const { games, loading, error, fetchGames } = useGamesByFixture(
+    fixtureData.id
+  );
 
   const handleDeleteGame = async ({ id }: { id: number }) => {
     try {
@@ -133,68 +167,121 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
         <Card className="border-none shadow-none mb-4">
           <CardHeader>
             <CardTitle>Games</CardTitle>
-            <CardDescription>List of games played in this fixture</CardDescription>
+            <CardDescription>
+              List of games played in this fixture
+            </CardDescription>
             <GameForm fixtureId={fixtureData.id} onGameAdded={fetchGames} />
           </CardHeader>
         </Card>
-        <Separator />
+        <Separator className="mb-4" />
         {loading ? (
-          <div>Loading games...</div>
+          <>
+            <div className="flex items-center space-x-4">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+              </div>
+            </div>
+          </>
         ) : error ? (
           <div className="text-red-500">{error}</div>
         ) : games.length > 0 ? (
           games.map((game) => (
-            <Card key={game.id} className="mb-4">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{game.gameType}</span>
-                  <div className="flex gap-2 flex-row">
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleDeleteGame({ id: game.id })}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="default"
-                    
-                  >
-                    <Link href={`/games/${game.id}`}>Open Tracker
-                    </Link>
-                    <Rocket className="h-4 w-4" />
-                  </Button>
-                  </div>
-
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-               <div className="text-sm mb-2">
-                 🏆{" "}
-          {game.awayTeamScore > game.homeTeamScore
-            ? `${fixtureData.awayTeam} (${game.awayTeamScore})`
-            : `${fixtureData.homeTeam} (${game.homeTeamScore})`}{" "}
-          -{" "}
-          {game.awayTeamScore < game.homeTeamScore
-            ? `${fixtureData.awayTeam} (${game.awayTeamScore})`
-            : `${fixtureData.homeTeam} (${game.homeTeamScore})`}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {game.players.map((player) => (
-                    <Badge
-                      key={player.id}
-                      variant="outline"
-                      className="cursor-pointer min-w-[100px] text-left"
-                    >
-                      {player.name} {player.nickname ? `(${player.nickname})` : ""}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <>
+              <Item variant="outline" key={game.id} className="mb-4">
+                <ItemContent>
+                  <ItemTitle className="flex items-center justify-between">
+                    <span>{game.gameType}</span>
+                    <div className="flex gap-2 flex-row"></div>
+                  </ItemTitle>
+                  <ItemDescription className="mt-2">
+                    <div className="text-sm mb-2">
+                      🏆{" "}
+                      {game.awayTeamScore > game.homeTeamScore
+                        ? `${fixtureData.awayTeam} (${game.awayTeamScore})`
+                        : `${fixtureData.homeTeam} (${game.homeTeamScore})`}{" "}
+                      -{" "}
+                      {game.awayTeamScore < game.homeTeamScore
+                        ? `${fixtureData.awayTeam} (${game.awayTeamScore})`
+                        : `${fixtureData.homeTeam} (${game.homeTeamScore})`}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-1 mt-1">
+                      {game.players.map((player) => (
+                        <Badge
+                          key={player.id}
+                          variant="outline"
+                          className="cursor-pointer pb-2 text-left mb-2"
+                        >
+                          {player.name}{" "}
+                          {player.nickname ? `(${player.nickname})` : ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant={"ghost"}
+                        className=" flex items-center flex-row gap-1"
+                        title="Game Actions"
+                      >
+                        Actions <span></span>
+                        <ChevronDown className="h-8 w-8"/>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
+                        <Link
+                          href={`/game/edit-game?id=${game.id}`}
+                          className="flex items-center gap-2"
+                        >
+                          <Pencil className="h-4 w-4 hover:text-black" />
+                          Edit Game
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
+                        <Link
+                          href={`/games/${game.id}`}
+                          className="flex items-center gap-2"
+                        >
+                          <Rocket className="h-4 w-4 hover:text-black" />
+                          Open Dart Tracker
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteGame({ id: game.id })}
+                        className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer flex items-center gap-2"
+                      >
+                        <Trash className="h-4 w-4 hover:text-black" />
+                        Delete Game
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </ItemActions>
+              </Item>
+            </>
           ))
         ) : (
-          <div>No games found for this fixture.</div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <TrophyIcon />
+              </EmptyMedia>
+              <EmptyTitle>No games yet</EmptyTitle>
+              <EmptyDescription>
+                You haven&apos;t created any games yet. Get started by creating
+                your first game.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <div className="flex gap-2">
+                <GameForm fixtureId={fixtureData.id} onGameAdded={fetchGames} />
+              </div>
+            </EmptyContent>
+          </Empty>
         )}
       </CardContent>
     </Card>
