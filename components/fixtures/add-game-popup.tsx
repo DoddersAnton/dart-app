@@ -25,7 +25,7 @@ import {
 } from "../ui/select";
 import { Button } from "../ui/button";
 import { useAction } from "next-safe-action/hooks";
-import { Info } from "lucide-react";
+import { Info, Plus } from "lucide-react";
 import { addGameSchema, zGameSchema } from "@/types/add-game-schema";
 import { Input } from "../ui/input";
 import { getGame } from "@/server/actions/get-game";
@@ -35,15 +35,16 @@ import { getPlayers } from "@/server/actions/get-players";
 import { z } from "zod";
 
 import MultipleSelector from "../ui/MultipleSelector";
-
-
+import { Dialog } from "@radix-ui/react-dialog";
+import { DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 
 type GameFormProps = {
   fixtureId: number;
-  
+  onGameAdded?: () => void;
+  gameId?: number;
 };
 
-export default function GameForm({fixtureId}: GameFormProps) {
+export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFormProps) {
   const [playersListData, setPlayersListData] = useState<
     {
       id: number;
@@ -67,18 +68,10 @@ export default function GameForm({fixtureId}: GameFormProps) {
     fetchPlayers();
   }, []);
 
-  
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const editMode = searchParams.get("id");
-  const paramFixtureId = searchParams.get("fixtureId");
-
-
   const form = useForm<z.infer<typeof addGameSchema>>({
     resolver: zodResolver(addGameSchema),
     defaultValues: {
-      fixtureId: fixtureId ?? parseInt(paramFixtureId ?? "0"),
+      fixtureId: fixtureId ?? 0,
       homeTeamScore: 0,
       awayTeamScore: 0,
       gameType: "",
@@ -87,6 +80,10 @@ export default function GameForm({fixtureId}: GameFormProps) {
     },
     mode: "onChange",
   });
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editMode = searchParams.get("id") ?? gameId?.toString() ?? null;
 
   const checkGame = async (gameId: number) => {
     if (editMode) {
@@ -114,6 +111,7 @@ export default function GameForm({fixtureId}: GameFormProps) {
   };
 
   const [loading, setLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState<string[] | undefined>(
     undefined
   );
@@ -142,11 +140,12 @@ export default function GameForm({fixtureId}: GameFormProps) {
         toast.error(data.data.error);
         router.push(`/fixtures/${fixtureId}`);
         window.location.reload();
- 
+        onGameAdded?.();
+        setIsOpen(false);
         return;
       }
       if (data.data?.success) {
-        router.push("/games/" + editMode);
+        router.push("/fixtures/" + fixtureId);
         toast.success(data.data.success);
         window.location.reload();
       }
@@ -168,7 +167,19 @@ export default function GameForm({fixtureId}: GameFormProps) {
   }
 
   return (
-    <div>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          {editMode ? "Edit" : "Add"} Game <Plus />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{editMode ? "Edit" : "Create"} Game</DialogTitle>
+          <DialogDescription>
+            {editMode ? "Edit" : "Create"} a match game.
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex items-center justify-center">
           {loading && (
@@ -180,7 +191,6 @@ export default function GameForm({fixtureId}: GameFormProps) {
           {!loading && (
             <Card className=" w-[80%] mx-auto overflow-y-auto">
               <CardHeader>
-                 {editMode ? "Edit" : "Add"} Game 
                 <div className="text-red-500">
                   {Object.entries(form.formState.errors).map(([key, error]) => (
                     <div key={key} className="text-red-500">
@@ -338,7 +348,12 @@ export default function GameForm({fixtureId}: GameFormProps) {
           )}
         </div>
 
-        
-    </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

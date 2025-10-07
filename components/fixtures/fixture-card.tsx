@@ -22,7 +22,7 @@ import {
 } from "../ui/card";
 import { getGamesByFixture } from "@/server/actions/get-games-by-fixture";
 import React, { useEffect, useState } from "react";
-import GameForm from "./add-game";
+import GameForm from "./add-game-popup";
 import { deleteGame } from "@/server/actions/delete-game";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
@@ -50,6 +50,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import GameFormPopup from "./add-game-popup";
 
 type Fixture = {
   id: number;
@@ -182,7 +183,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
             <CardDescription>
               List of games played in this fixture
             </CardDescription>
-            <GameForm fixtureId={fixtureData.id} onGameAdded={fetchGames} />
+            <GameFormPopup fixtureId={fixtureData.id} onGameAdded={fetchGames} />
           </CardHeader>
         </Card>
         <Separator className="mb-4" />
@@ -257,7 +258,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
                       </DropdownMenuItem>
                       <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
                         <Link
-                          href={`/game/edit-game?id=${game.id}`}
+                          href={`/games/edit-game?id=${game.id}`}
                           className="flex items-center gap-2"
                         >
                           <Pencil className="h-4 w-4 hover:text-black" />
