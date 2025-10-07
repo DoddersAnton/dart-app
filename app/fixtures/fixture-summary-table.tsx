@@ -126,7 +126,7 @@ export function FixtureSummaryDataTable<TData, TValue>({
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={5}>Total Games ({total})</TableCell>
+                  <TableCell colSpan={6}>Total Games ({total})</TableCell>
                   <TableCell  colSpan={1}>{totalHomeScore}</TableCell>
                    <TableCell  colSpan={1}>{totalAwayScore}</TableCell>
                 </TableRow>

@@ -70,6 +70,14 @@ export default function FixtureForm() {
 
         form.setValue("id", id);
         form.setValue("matchDate", new Date(data.success.matchDate ?? ""));
+        form.setValue("matchLocation", data.success.matchLocation ?? "");
+        form.setValue("homeTeam", data.success.homeTeam ?? "");
+        form.setValue("awayTeam", data.success.awayTeam ?? "");
+        form.setValue("homeTeamScore", data.success.homeTeamScore ?? 0);
+        form.setValue("awayTeamScore", data.success.awayTeamScore ?? 0);
+        form.setValue("matchStatus", data.success.matchStatus ?? "scheduled");
+        form.setValue("league", data.success.league ?? "");
+        form.setValue("season", data.success.season ?? "");
       }
     }
   };

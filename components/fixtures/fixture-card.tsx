@@ -2,11 +2,15 @@
 import {
   Calendar,
   ChevronDown,
+  EyeIcon,
   HouseIcon,
   Pencil,
   Rocket,
   Trash,
   TrophyIcon,
+  UserIcon,
+  Users2Icon,
+  UsersIcon,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import {
@@ -109,6 +113,14 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
     fixtureData.id
   );
 
+  const gameTypeIcons: { [key: string]: React.ReactNode } = {
+    "Team Game": <Users2Icon />,
+    "Doubles": <UsersIcon />,
+    "Singles": <UserIcon />,
+    default: <TrophyIcon />,
+    
+  };
+
   const handleDeleteGame = async ({ id }: { id: number }) => {
     try {
       const response = await deleteGame({ id });
@@ -125,7 +137,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
   };
 
   return (
-    <Card>
+    <Card className="p-1 pt-2">
       <CardHeader>
         <CardTitle>
           🏆{" "}
@@ -137,7 +149,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
             ? `${fixtureData.awayTeam} (${fixtureData.awayTeamScore})`
             : `${fixtureData.homeTeam} (${fixtureData.homeTeamScore})`}
         </CardTitle>
-        <div className="flex flex-row items-center gap-6">
+        <div className="flex flex-col lg:flex-row items-start gap-2">
           <CardDescription>
             <Badge variant="secondary" className="min-w-[100px] text-left">
               Spring / Summer 25 - {fixtureData.league}
@@ -192,6 +204,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
               <Item variant="outline" key={game.id} className="mb-4">
                 <ItemContent>
                   <ItemTitle className="flex items-center justify-between">
+                    <span>{gameTypeIcons[game.gameType] || gameTypeIcons.default}</span>
                     <span>{game.gameType}</span>
                     <div className="flex gap-2 flex-row"></div>
                   </ItemTitle>
@@ -206,7 +219,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
                         ? `${fixtureData.awayTeam} (${game.awayTeamScore})`
                         : `${fixtureData.homeTeam} (${game.homeTeamScore})`}
                     </div>
-                    <div className="flex flex-wrap gap-2 mb-1 mt-1">
+                    <div className="flex flex-wrap gap-1 mb-1 mt-1">
                       {game.players.map((player) => (
                         <Badge
                           key={player.id}
@@ -233,6 +246,15 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                       <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
+                        <Link
+                          href={`/game/edit-game?id=${game.id}`}
+                          className="flex items-center gap-2"
+                        >
+                          <EyeIcon className="h-4 w-4 hover:text-black" />
+                          View Game
+                        </Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
                         <Link
                           href={`/game/edit-game?id=${game.id}`}

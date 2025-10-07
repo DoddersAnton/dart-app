@@ -110,7 +110,7 @@ export function Nav() {
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-white/30 dark:bg-black/30 backdrop-blur-md border-b shadow-sm">
+    <header className="fixed top-0 left-0 w-full z-50 bg-white/30 dark:bg-black/30 backdrop-blur-md border-b shadow-sm p-1">
       <div className="container mx-auto flex items-center justify-between p-4">
         {/* Left Section: Logo & Mobile Menu Button */}
         <div className="flex items-center gap-4">

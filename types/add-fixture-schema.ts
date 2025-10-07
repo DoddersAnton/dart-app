@@ -62,8 +62,8 @@ export const createFixtureSchema = z.object({
   }),
   matchDate: z.date(),
   id: z.number().optional(),
-  homeTeamScore: z.coerce.number().positive(),
-  awayTeamScore: z.coerce.number().positive(),
+  homeTeamScore: z.coerce.number(),
+  awayTeamScore: z.coerce.number(),
 });
 
 export type zFixtureSchema = z.infer<typeof createFixtureSchema>;
