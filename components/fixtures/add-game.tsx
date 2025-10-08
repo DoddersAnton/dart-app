@@ -37,13 +37,7 @@ import { z } from "zod";
 import MultipleSelector from "../ui/MultipleSelector";
 
 
-
-type GameFormProps = {
-  fixtureId: number;
-  
-};
-
-export default function GameForm({fixtureId}: GameFormProps) {
+export default function GameForm() {
   const [playersListData, setPlayersListData] = useState<
     {
       id: number;
@@ -63,22 +57,28 @@ export default function GameForm({fixtureId}: GameFormProps) {
     }
   }
 
-  useEffect(() => {
-    fetchPlayers();
-  }, []);
 
-  
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const editMode = searchParams.get("id");
   const paramFixtureId = searchParams.get("fixtureId");
 
+  useEffect(() => {
+    fetchPlayers();
+
+    if (editMode) {
+      setLoading(true);
+      checkGame(parseInt(editMode));
+      setLoading(false);
+    }
+  }, []);
+
 
   const form = useForm<z.infer<typeof addGameSchema>>({
     resolver: zodResolver(addGameSchema),
     defaultValues: {
-      fixtureId: fixtureId ?? parseInt(paramFixtureId ?? "0"),
+      fixtureId: parseInt(paramFixtureId ?? "0"),
       homeTeamScore: 0,
       awayTeamScore: 0,
       gameType: "",
@@ -98,14 +98,21 @@ export default function GameForm({fixtureId}: GameFormProps) {
       }
       if (data.success) {
         const id = parseInt(editMode);
-        form.setValue("fixtureId", fixtureId);
+        form.setValue("fixtureId", data.success.fixtureId);
         form.setValue("id", id);
         form.setValue("gameType", data.success.gameType);
         form.setValue("homeTeamScore", data.success.homeTeamScore);
         form.setValue("awayTeamScore", data.success.awayTeamScore);
+
         const playerIds = data.success.players.map((player) => player.id);
         if (playerIds.length > 0) {
           form.setValue("playerList", playerIds as [number, ...number[]]);
+          //setSelectedPlayers(playerIds.map((id) => id.toString()));
+
+          if(playersListData.length === 0){
+            fetchPlayers();
+          }
+
         } else {
           form.resetField("playerList");
         }
@@ -114,41 +121,19 @@ export default function GameForm({fixtureId}: GameFormProps) {
   };
 
   const [loading, setLoading] = useState(false);
-  const [selectedPlayers, setSelectedPlayers] = useState<string[] | undefined>(
-    undefined
-  );
-
-  useEffect(() => {
-    async function fetchPlayers() {
-      const result = await getPlayers();
-      if (Array.isArray(result)) {
-        setPlayersListData(result);
-      } else if ("error" in result) {
-        toast.error(result.error);
-      }
-    }
-    fetchPlayers();
-
-    if (editMode) {
-      setLoading(true);
-      checkGame(parseInt(editMode));
-      setLoading(false);
-    }
-  }, []);
+   
 
   const { execute, status } = useAction(createGame, {
     onSuccess: (data) => {
       if (data.data?.error) {
         toast.error(data.data.error);
-        router.push(`/fixtures/${fixtureId}`);
-        window.location.reload();
+        router.push(`/fixtures/${parseInt(paramFixtureId ?? "0")}`);
  
         return;
       }
       if (data.data?.success) {
-        router.push("/games/" + editMode);
+        router.push(`/fixtures/${parseInt(paramFixtureId ?? "0")}`);
         toast.success(data.data.success);
-        window.location.reload();
       }
     },
     onExecute: () => {
@@ -163,7 +148,6 @@ export default function GameForm({fixtureId}: GameFormProps) {
 
   async function onSubmit(values: zGameSchema) {
     console.log("form", values);
-    values.fixtureId = fixtureId;
     execute(values);
   }
 
@@ -203,8 +187,13 @@ export default function GameForm({fixtureId}: GameFormProps) {
                       name="playerList"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Player Names</FormLabel>
+                          <FormLabel>Player Names ({playersListData.length})</FormLabel>
                           <MultipleSelector
+                          options={playersListData.map((player) => ({
+                              value: player.id.toString(),
+                              label: player.name + " " + (player.nickname ? `(${player.nickname})` : ""),
+                            }))}
+                            
                             defaultOptions={playersListData.map((player) => ({
                               value: player.id.toString(),
                               label:
@@ -213,26 +202,21 @@ export default function GameForm({fixtureId}: GameFormProps) {
                                 (player.nickname ? `(${player.nickname})` : ""),
                             }))}
                             value={
-                              selectedPlayers
+                              field.value
                                 ? playersListData
                                     .filter((player) =>
-                                      selectedPlayers.includes(
-                                        player.id.toString()
-                                      )
+                                      field.value.includes(player.id)
                                     )
                                     .map((player) => ({
                                       value: player.id.toString(),
                                       label:
                                         player.name +
                                         " " +
-                                        (player.nickname
-                                          ? `(${player.nickname})`
-                                          : ""),
+                                        (player.nickname ? `(${player.nickname})` : ""),
                                     }))
-                                : undefined
+                                : []
                             }
                             placeholder="Select players"
-                            // You may need to use a supported callback like 'onChange' if available in MultipleSelectorProps
                             onChange={(
                               values: { value: string; label: string }[]
                             ) => {
@@ -240,9 +224,7 @@ export default function GameForm({fixtureId}: GameFormProps) {
                                 parseInt(option.value, 10)
                               );
                               field.onChange(playerIds);
-                              setSelectedPlayers(
-                                values.map((option) => option.value)
-                              );
+                              //setSelectedPlayers(values.map((option) => option.value));
                             }}
                           />
                           <FormMessage />

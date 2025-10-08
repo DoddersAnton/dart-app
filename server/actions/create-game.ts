@@ -4,7 +4,7 @@ import { createSafeActionClient } from "next-safe-action";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { fixtures, gamePlayers, games } from "../schema";
+import {  gamePlayers, games } from "../schema";
 import { addGameSchema } from "@/types/add-game-schema";
 
 const actionClient = createSafeActionClient();
@@ -32,7 +32,7 @@ export const createGame = actionClient
             gameType: gameType ?? existingGame.gameType,
             fixtureId: fixtureId ?? existingGame.fixtureId,
           })
-          .where(id ? eq(fixtures.id, id) : undefined)
+          .where(id ? eq(games.id, id) : undefined)
           .returning();
 
         // Update player list if provided
@@ -45,7 +45,7 @@ export const createGame = actionClient
             await db.insert(gamePlayers).values(playerValues);
         }
 
-        revalidatePath(`/fixtures/${fixtureId}`);
+        revalidatePath(`/games/${id}`);
         return { success: `Game has been updated` };
       }
 
@@ -68,7 +68,7 @@ export const createGame = actionClient
             await db.insert(gamePlayers).values(playerValues);
         }
 
-        revalidatePath(`/fixtures/${fixtureId}`);
+        revalidatePath(`/games/${id}`);
 
       // or each play create a subscription to the fixture
 

@@ -258,7 +258,7 @@ export default function FixtureCard({ fixtureData }: { fixtureData: Fixture }) {
                       </DropdownMenuItem>
                       <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
                         <Link
-                          href={`/games/edit-game?id=${game.id}`}
+                          href={`/games/edit-game?id=${game.id}&fixtureId=${fixtureData.id}`}
                           className="flex items-center gap-2"
                         >
                           <Pencil className="h-4 w-4 hover:text-black" />

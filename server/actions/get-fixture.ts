@@ -9,7 +9,7 @@ export async function getFixture(id: number) {
             where: (fixture) => eq(fixture.id, id),
         });
 
-        if (!fixture) throw new Error("Fixture fine not found")
+        if (!fixture) throw new Error(`Fixture not found ${id}`);
 
         return { success: fixture } 
       

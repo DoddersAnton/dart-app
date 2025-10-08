@@ -64,10 +64,6 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
     }
   }
 
-  useEffect(() => {
-    fetchPlayers();
-  }, []);
-
   const form = useForm<z.infer<typeof addGameSchema>>({
     resolver: zodResolver(addGameSchema),
     defaultValues: {
@@ -117,14 +113,7 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
   );
 
   useEffect(() => {
-    async function fetchPlayers() {
-      const result = await getPlayers();
-      if (Array.isArray(result)) {
-        setPlayersListData(result);
-      } else if ("error" in result) {
-        toast.error(result.error);
-      }
-    }
+   
     fetchPlayers();
 
     if (editMode) {
@@ -189,7 +178,7 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
           )}
 
           {!loading && (
-            <Card className=" w-[80%] mx-auto overflow-y-auto">
+            <Card className=" w-[90%] mx-auto overflow-y-auto">
               <CardHeader>
                 <div className="text-red-500">
                   {Object.entries(form.formState.errors).map(([key, error]) => (

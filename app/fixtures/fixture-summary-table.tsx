@@ -150,18 +150,29 @@ export function FixtureSummaryDataTable<TData, TValue>({
             </Table>
             </div>
             <div className="block md:hidden space-y-2 gap-2">
-              {table.getRowModel().rows.map((row) => (
-                <Card key={row.id} className="p-3">
-                  {row.getVisibleCells().map((cell) => (
-                    <div key={cell.id} className="flex justify-between items-center align-top border-b py-1 text-sm">
-                      <span className="font-medium">
-                        {cell.column.columnDef.header as string}
-                      </span>
-                      <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
-                    </div>
-                  ))}
-                </Card>
-              ))}
+              {table.getRowModel().rows.map((row) => {
+                // Find the cell values for Home Team and Away Team
+                const homeTeam = row.getValue("homeTeam") as string;
+                const awayTeam = row.getValue("awayTeam") as string;
+                const homeTeamScore = row.getValue("homeTeamScore") as number;
+                const awayTeamScore = row.getValue("awayTeamScore") as number;
+                const isDilfsWinner =
+                  (homeTeam && homeTeam.includes("DILFS") && homeTeamScore > awayTeamScore) ||
+                  (awayTeam && awayTeam.includes("DILFS") && awayTeamScore > homeTeamScore);
+
+                return (
+                  <Card key={row.id} className={`p-3 ${isDilfsWinner ? "bg-secondary" : ""}`} title={`${isDilfsWinner ? "DILFS Won!" : "DILFS Lost"}- ${homeTeam} ${homeTeamScore} : ${awayTeamScore} ${awayTeam}`}>
+                    {row.getVisibleCells().map((cell) => (
+                      <div key={cell.id} className="flex justify-between items-center align-top border-b py-1 text-sm">
+                        <span className="font-medium">
+                          {cell.column.columnDef.header as string}
+                        </span>
+                        <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
+                      </div>
+                    ))}
+                  </Card>
+                );
+              })}
             </div>
             
             <div className="flex items-center justify-end gap-4 pt-4">
