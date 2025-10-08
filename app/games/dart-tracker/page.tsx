@@ -1,9 +1,9 @@
 
 
-import GameCard from "@/components/games/game-card";
+import DartTracker from "@/components/games/dart-tracker";
 import { getGame } from "@/server/actions/get-game";
 
-export default async function Game({
+export default async function LaunchDartTracker({
   params,
 }: {
   params: Promise<{ id: number }>;
@@ -32,7 +32,7 @@ if (game.success) {
 
   return (
     <div className="w-full px-2 mx-auto lg:w-[80%] mt-24">
-      <GameCard gameData={game.success} />
+      <DartTracker gameData={game.success} />
     </div>
   );
 }

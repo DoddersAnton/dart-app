@@ -11,7 +11,8 @@ interface FixtureSummaryProps {
     homeTeam: string;
     awayTeam: string;
     homeTeamScore: number;
-    awayTeamscore: number;
+    awayTeamScore: number;
+    status: string;
     matchDate: string | null;
     createdAt: string | null;
   }[];
@@ -26,7 +27,7 @@ export function FixtureSummary({ fixtures }: FixtureSummaryProps) {
                     columns={fixtureSummaryColumns}
                     data={fixtures}
                     total={fixtures.length}
-                    totalAwayScore={fixtures.reduce((acc, fixture) => acc + fixture.awayTeamscore, 0)}
+                    totalAwayScore={fixtures.reduce((acc, fixture) => acc + fixture.awayTeamScore, 0)}
                     totalHomeScore={fixtures.reduce((acc, fixture) => acc + fixture.homeTeamScore, 0)}
                   />
 

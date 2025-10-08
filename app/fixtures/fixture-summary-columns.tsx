@@ -29,8 +29,9 @@ export type FixtureSummaryColumn = {
   homeTeam: string;
   awayTeam: string;
   homeTeamScore: number;
-  awayTeamscore: number;
+  awayTeamScore: number;
   matchDate: string | null;
+  status: string;
 };
 
 const ActionCell = ({ row }: { row: Row<FixtureSummaryColumn> }) => {
@@ -146,7 +147,7 @@ export const fixtureSummaryColumns: ColumnDef<FixtureSummaryColumn>[] = [
     cell: ({ row }) => {
       const team = row.getValue("homeTeam");
       const homeTeamScore = Number(row.getValue("homeTeamScore"));
-      const awayTeamScore = Number(row.getValue("awayTeamscore"));
+      const awayTeamScore = Number(row.getValue("awayTeamScore"));
       const isWinner = homeTeamScore > awayTeamScore;
       return (
         <div className="font-medium text-xs flex items-center gap-1">
@@ -166,7 +167,7 @@ export const fixtureSummaryColumns: ColumnDef<FixtureSummaryColumn>[] = [
     cell: ({ row }) => {
       const team = row.getValue("awayTeam");
       const homeTeamScore = Number(row.getValue("homeTeamScore"));
-      const awayTeamScore = Number(row.getValue("awayTeamscore"));
+      const awayTeamScore = Number(row.getValue("awayTeamScore"));
       const isWinner = awayTeamScore > homeTeamScore;
       return (
         <div className="font-medium text-xs flex items-center gap-1">
@@ -185,8 +186,12 @@ export const fixtureSummaryColumns: ColumnDef<FixtureSummaryColumn>[] = [
     header: "Home Team Score",
   },
   {
-    accessorKey: "awayTeamscore",
+    accessorKey: "awayTeamScore",
     header: "Away Team Score",
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
   },
   {
     id: "actions",

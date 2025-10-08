@@ -61,12 +61,12 @@ export function FixtureSummaryDataTable<TData, TValue>({
   return (
     <div className=" w-full mx-auto mt-2">
       <Card>
-        <CardContent className="mb-2 mp-2">
+        <CardContent className="mb-1 mp-2">
           <div>
           <div className="w-full mx-auto flex items-center justify-center lg:w-[80%] mb-4">
                 <h2 className="text-lg lg:text-2xl font-bold">Match Summary ({total})</h2>
             </div>
-            <div>
+            <div className="mb-2">
               <Input
                 placeholder="Filter location name..."
                 value={
@@ -77,7 +77,10 @@ export function FixtureSummaryDataTable<TData, TValue>({
                 }
               />
             </div>
-            <Table>
+            <div className="hidden md:block w-full overflow-x-auto">
+            <Table 
+                  className="relative w-full caption-bottom text-sm">
+
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
@@ -96,23 +99,36 @@ export function FixtureSummaryDataTable<TData, TValue>({
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody>
+                <TableBody>
                 {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
+                  table.getRowModel().rows.map((row) => {
+                  // Find the cell values for Home Team and Away Team
+                  const homeTeam = row.getValue("homeTeam") as string;
+                  const awayTeam = row.getValue("awayTeam") as string;
+                  const homeTeamScore = row.getValue("homeTeamScore") as number;
+                  const awayTeamScore = row.getValue("awayTeamScore") as number;
+                  const isDilfsWinner =
+                    (homeTeam && homeTeam.includes("DILFS") && homeTeamScore > awayTeamScore) ||
+                    (awayTeam && awayTeam.includes("DILFS") && awayTeamScore > homeTeamScore);
+
+                  return (
                     <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className={isDilfsWinner ? "bg-secondary" : ""}
+                    title={`${isDilfsWinner ? "DILFS Won!" : "DILFS Lost"}- ${homeTeam} ${homeTeamScore} : ${awayTeamScore} ${awayTeam}`}
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                      </TableCell>
+                    ))}
                     </TableRow>
-                  ))
+                  );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell
@@ -128,10 +144,26 @@ export function FixtureSummaryDataTable<TData, TValue>({
                 <TableRow>
                   <TableCell colSpan={6}>Total Games ({total})</TableCell>
                   <TableCell  colSpan={1}>{totalHomeScore}</TableCell>
-                   <TableCell  colSpan={1}>{totalAwayScore}</TableCell>
+                   <TableCell  colSpan={2}>{totalAwayScore}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
+            </div>
+            <div className="block md:hidden space-y-2 gap-2">
+              {table.getRowModel().rows.map((row) => (
+                <Card key={row.id} className="p-3">
+                  {row.getVisibleCells().map((cell) => (
+                    <div key={cell.id} className="flex justify-between items-center align-top border-b py-1 text-sm">
+                      <span className="font-medium">
+                        {cell.column.columnDef.header as string}
+                      </span>
+                      <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
+                    </div>
+                  ))}
+                </Card>
+              ))}
+            </div>
+            
             <div className="flex items-center justify-end gap-4 pt-4">
               <Button
                 disabled={!table.getCanPreviousPage()}

@@ -6,20 +6,27 @@ import { Plus } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const fixtures = (await db.query.fixtures.findMany()).map((fixture) => ({
+  const fixtures = ((await db.query.fixtures.findMany())).map((fixture) => ({
     id: fixture.id,
     location: fixture.matchLocation,
     homeTeam: fixture.homeTeam,
     awayTeam: fixture.awayTeam,
     homeTeamScore: fixture.homeTeamScore,
-    awayTeamscore: fixture.awayTeamScore,
+    awayTeamScore: fixture.awayTeamScore,
     matchDate: fixture.matchDate ? fixture.matchDate.toISOString() : null,
     createdAt: fixture.createdAt ? fixture.createdAt.toISOString() : null,
-  }));
+    status: fixture.matchStatus,
+  })).sort((a, b) => {
+    const dateA = a.matchDate ? Date.parse(a.matchDate) : 0;
+    const dateB = b.matchDate ? Date.parse(b.matchDate) : 0;
+    return dateB - dateA;
+  }); // Sort by matchDate in descending order
+
+ 
 
   return (
     <div className="container mx-auto py-12 mt-12 p-1">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <Link href="/fixtures/add-fixture" className="flex justify-center">
           <Button size="sm" className="mb-0" variant="outline">
             Add Match <Plus className="ml-2" size={16} />
