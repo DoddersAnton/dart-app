@@ -192,6 +192,20 @@ export const fixtureSummaryColumns: ColumnDef<FixtureSummaryColumn>[] = [
   {
     accessorKey: "status",
     header: "Status",
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string;
+      let statusColor: "default" | "outline" | "destructive" | "secondary" |  undefined = "default";
+      if (status === "scheduled") {
+        statusColor = "outline";
+      } else if (status === "cancelled") {
+        statusColor = "outline";
+      } else if (status === "completed") {
+        statusColor = "default";
+      }
+      return <Badge variant={statusColor} className="min-w-[100px] text-left">
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+             </Badge>;
+    },
   },
   {
     id: "actions",
