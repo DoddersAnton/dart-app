@@ -20,6 +20,10 @@ import { SubscriptionDataTable } from "@/app/subscriptions/subscriptions-table";
 import { playerSubscriptionColumns } from "./player-subscriptions-columns";
 import { getFinesByPlayer } from "@/server/actions/get-fines-by-player";
 
+import { Item } from "../ui/item";
+import { GamesSummary, getGamesSummaryBySeason } from "@/server/actions/get-player-games-summary";
+import PlayerGamesCard from "./player-games-card";
+
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
 
@@ -80,6 +84,7 @@ type Fine = {
   createdAt: string | null;
 };
 
+
 function usePlayerData(playerId: number, playerName?: string) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [subs, setSubscriptions] = useState<Subscription[]>([]);
@@ -90,6 +95,8 @@ function usePlayerData(playerId: number, playerName?: string) {
   const [paidSubsTotal, setPaidSubsTotal] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  //const [playerGames, setPlayerGames] = useState<PlayerGameDetails[]>([]);
+  const [playerSummary, setPlayerGames] = useState<GamesSummary[]>([]);
 
   useEffect(() => {
     if (!playerId) return;
@@ -189,8 +196,26 @@ function usePlayerData(playerId: number, playerName?: string) {
             .reduce((sum, fine) => sum + fine.amount, 0)
         );
       })
-      .catch((err) => setError(err.message || "Error fetching fines"))
+      .catch((err) => setError(err.message || "Error fetching fines"));
+     /* 
+      getGamesByPlayer(playerId)
+      .then((data) => {
+        setPlayerGames(data.success || []);
+      })
+      .catch((err) => setError(err.message || "Error fetching games"))
       .finally(() => setLoading(false));
+
+      */
+
+      getGamesSummaryBySeason()
+      .then((data) => {
+        setPlayerGames(data.success || []);
+      })
+      .catch((err) => setError(err.message || "Error fetching games summary"))
+      .finally(() => setLoading(false));
+
+
+
   }, [playerId]);
 
   return {
@@ -201,8 +226,9 @@ function usePlayerData(playerId: number, playerName?: string) {
     error,
     unpaidFinesTotal,
     paidFinesTotal,
-    unpaidSubsTotal,
+    playerSummary,
     paidSubsTotal,
+    unpaidSubsTotal
   };
 }
 
@@ -219,6 +245,7 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
     paidFinesTotal,
     unpaidSubsTotal,
     paidSubsTotal,
+    playerSummary
   } = usePlayerData(playerData.id, playerData.name);
 
   const unpaidFines = fines.filter((fine) => fine.status === "Unpaid");
@@ -440,10 +467,72 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
           <TabsContent value="games">
             <Card>
               <CardHeader>
-                <CardTitle>Games</CardTitle>
-                <CardDescription> No Data</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6"></CardContent>
+                <CardTitle>
+                  Games (
+                    {playerSummary.filter((summary) => summary.playerId == playerData.id).reduce((acc, curr) => acc + (curr.gamesPlayed || 0), 0)}
+                  )
+                </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6">
+                {playerSummary.length > 0 ? (
+                  <>
+                  <PlayerGamesCard playerData={playerData} />
+                    <div className="text-sm text-muted-foreground">
+                      {`Total Games: ${playerSummary.length}`}
+                    </div> 
+                    <div className="grid gap-4 mt-4">
+                        {playerSummary.map((game) => (
+                        <Item key={game.season} className="p-4 border rounded-lg shadow-sm">
+                          <div className="flex flex-col gap-1">
+                          <div className="font-semibold">
+                            Season: {game.season ?? "Season N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Games Played: {game.gamesPlayed ?? "N/A"} of {game.totalGames ?? "N/A"}
+                          </div>
+                           <div className="text-xs text-muted-foreground">
+                             player: {game.playerName ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Fixtures Played: {game.matchesPlayed ?? "N/A"} or {game.totalMatches ?? "N/A"}  
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Wins: {game.wins ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Loses: {game.loses ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Singles Wines: {game.singlesLoses ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Singles Loses: {game.singlesLoses ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Team Wins: {game.teamWins ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Team Loses: {game.teamLoses ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Doubles Wins: {game.doublesWins ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Doubles Loses: {game.doublesLoses ?? "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Rank Value: {game.rankValue ?? "N/A"}
+                          
+                          </div>
+                          </div>
+                        </Item>
+                        ))}
+                    </div>
+                  </>
+                ) : (
+                  <CardDescription>No games found for this player.</CardDescription>
+                )}
+             </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="attendances">
