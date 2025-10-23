@@ -5,24 +5,24 @@ import { db } from "..";
 import { console } from "inspector";
 
 export type GamesSummary = {
+  season: string;
+  totalGames: number;
+  totalMatches: number;
+  gameTypesSummaries?: GameTypeSummary[];
+};
+
+export type GameTypeSummary = {
+  gameType: "Singles" | "Doubles" | "Team Game" | "Overall";
+  matchesPlayed?: number;
+  gamesPlayed?: number;
   playerId?: number;
   playerName?: string;
   nickname?: string | null;
-  season: string; //summary of games in this fixture
-  totalGames: number;
-  totalMatches: number;
-  matchesPlayed?: number;   
-  gamesPlayed?: number;
   wins: number;
   loses: number;
-  singlesWins: number;
-  singlesLoses: number;
-  doublesWins: number;
-  doublesLoses: number;
-  teamWins: number;
-  teamLoses: number;
   rankValue?: number;
 };
+
 
 export async function getGamesSummaryBySeason() {
   try {
@@ -43,8 +43,16 @@ export async function getGamesSummaryBySeason() {
 
       const seasonPlayerGames = gamePlayers.filter(pg => seasonGameIds.includes(pg.gameId));
 
+      const gameTypesSummaries: GameTypeSummary[] = [];
+
       for (const player of players) {
         const playerGames = seasonPlayerGames.filter(pg => pg.playerId === player.id);
+        const uniqueMatchesPlayed = new Set(
+          playerGames
+            .map(pg => seasonGames.find(g => g.id === pg.gameId)?.fixtureId)
+            .filter(id => id !== undefined)
+        ).size;
+
         const playerGameDetails = playerGames.map(pg => {
           const game = seasonGames.find(g => g.id === pg.gameId);
           const fixture = fixtures.find(f => f.id === game?.fixtureId);
@@ -61,51 +69,54 @@ export async function getGamesSummaryBySeason() {
             (isDilfsAway && (game?.awayTeamScore ?? 0) < (game?.homeTeamScore ?? 0));
 
           return {
-            gameType: game?.gameType,
-            fixtureId: fixture?.id,
+            gameType: game?.gameType as "Singles" | "Doubles" | "Team Game",
             isDilfsWin,
             isDilfsLoss,
           };
         });
 
-        // Get unique fixture appearances (how many matches the player played in)
-        const uniqueFixturesPlayed = new Set(playerGameDetails.map(g => g.fixtureId)).size;
+        const buildSummary = (type: "Singles" | "Doubles" | "Team Game") => {
+          const wins = playerGameDetails.filter(g => g.gameType === type && g.isDilfsWin).length;
+          const loses = playerGameDetails.filter(g => g.gameType === type && g.isDilfsLoss).length;
+          return {
+            gameType: type,
+            playerId: player.id,
+            playerName: player.name,
+            nickname: player.nickname ?? null,
+            matchesPlayed: uniqueMatchesPlayed,
+            gamesPlayed: playerGameDetails.filter(g => g.gameType === type).length,
+            wins,
+            loses,
+            rankValue: wins - loses,
+          } as GameTypeSummary;
+        };
 
-        // Totals
-        const singlesWins = playerGameDetails.filter(g => g.gameType === "Singles" && g.isDilfsWin).length;
-        const singlesLoses = playerGameDetails.filter(g => g.gameType === "Singles" && g.isDilfsLoss).length;
-        const doublesWins = playerGameDetails.filter(g => g.gameType === "Doubles" && g.isDilfsWin).length;
-        const doublesLoses = playerGameDetails.filter(g => g.gameType === "Doubles" && g.isDilfsLoss).length;
-        const teamWins = playerGameDetails.filter(g => g.gameType === "Team Game" && g.isDilfsWin).length;
-        const teamLoses = playerGameDetails.filter(g => g.gameType === "Team Game" && g.isDilfsLoss).length;
+        const singles = buildSummary("Singles");
+        const doubles = buildSummary("Doubles");
+        const team = buildSummary("Team Game");
 
-        const wins = singlesWins + doublesWins + teamWins;
-        const loses = singlesLoses + doublesLoses + teamLoses;
-        const rankValue = wins - loses;
-
-        summaries.push({
+        const overall: GameTypeSummary = {
+          gameType: "Overall",
           playerId: player.id,
           playerName: player.name,
           nickname: player.nickname ?? null,
-          season,
-          totalGames: seasonGames.length,
-          totalMatches: seasonFixtures.length,
-          matchesPlayed: uniqueFixturesPlayed,
+          matchesPlayed: uniqueMatchesPlayed,
           gamesPlayed: playerGameDetails.length,
-          wins,
-          loses,
-          singlesWins,
-          singlesLoses,
-          doublesWins,
-          doublesLoses,
-          teamWins,
-          teamLoses,
-          rankValue,
-        });
-      }
-    }
+          wins: singles.wins + doubles.wins + team.wins,
+          loses: singles.loses + doubles.loses + team.loses,
+          rankValue: (singles.wins + doubles.wins + team.wins) - (singles.loses + doubles.loses + team.loses),
+        };
 
-    // Optional: sort each group by season and assign ranks per category (if needed)
+        gameTypesSummaries.push(singles, doubles, team, overall);
+      }
+
+      summaries.push({
+        season,
+        totalGames: seasonGames.length,
+        totalMatches: seasonFixtures.length,
+        gameTypesSummaries,
+      });
+    }
 
     return { success: summaries };
   } catch (error) {

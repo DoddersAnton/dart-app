@@ -20,9 +20,20 @@ import { SubscriptionDataTable } from "@/app/subscriptions/subscriptions-table";
 import { playerSubscriptionColumns } from "./player-subscriptions-columns";
 import { getFinesByPlayer } from "@/server/actions/get-fines-by-player";
 
-import { Item } from "../ui/item";
-import { GamesSummary, getGamesSummaryBySeason } from "@/server/actions/get-player-games-summary";
-import PlayerGamesCard from "./player-games-card";
+//import { Item } from "../ui/item";
+import {
+  GamesSummary,
+  getGamesSummaryBySeason,
+} from "@/server/actions/get-player-games-summary";
+//import PlayerGamesCard from "./player-games-card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
 
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
@@ -83,7 +94,6 @@ type Fine = {
   amount: number;
   createdAt: string | null;
 };
-
 
 function usePlayerData(playerId: number, playerName?: string) {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -197,7 +207,7 @@ function usePlayerData(playerId: number, playerName?: string) {
         );
       })
       .catch((err) => setError(err.message || "Error fetching fines"));
-     /* 
+    /* 
       getGamesByPlayer(playerId)
       .then((data) => {
         setPlayerGames(data.success || []);
@@ -207,15 +217,12 @@ function usePlayerData(playerId: number, playerName?: string) {
 
       */
 
-      getGamesSummaryBySeason()
+    getGamesSummaryBySeason()
       .then((data) => {
         setPlayerGames(data.success || []);
       })
       .catch((err) => setError(err.message || "Error fetching games summary"))
       .finally(() => setLoading(false));
-
-
-
   }, [playerId]);
 
   return {
@@ -228,7 +235,7 @@ function usePlayerData(playerId: number, playerName?: string) {
     paidFinesTotal,
     playerSummary,
     paidSubsTotal,
-    unpaidSubsTotal
+    unpaidSubsTotal,
   };
 }
 
@@ -245,7 +252,7 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
     paidFinesTotal,
     unpaidSubsTotal,
     paidSubsTotal,
-    playerSummary
+    playerSummary,
   } = usePlayerData(playerData.id, playerData.name);
 
   const unpaidFines = fines.filter((fine) => fine.status === "Unpaid");
@@ -468,71 +475,148 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  Games (
-                    {playerSummary.filter((summary) => summary.playerId == playerData.id).reduce((acc, curr) => acc + (curr.gamesPlayed || 0), 0)}
-                  )
+                  Games 
                 </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-6">
+              </CardHeader>
+              <CardContent className="grid gap-6">
                 {playerSummary.length > 0 ? (
                   <>
-                  <PlayerGamesCard playerData={playerData} />
-                    <div className="text-sm text-muted-foreground">
-                      {`Total Games: ${playerSummary.length}`}
-                    </div> 
-                    <div className="grid gap-4 mt-4">
-                        {playerSummary.map((game) => (
-                        <Item key={game.season} className="p-4 border rounded-lg shadow-sm">
-                          <div className="flex flex-col gap-1">
-                          <div className="font-semibold">
-                            Season: {game.season ?? "Season N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Games Played: {game.gamesPlayed ?? "N/A"} of {game.totalGames ?? "N/A"}
-                          </div>
-                           <div className="text-xs text-muted-foreground">
-                             player: {game.playerName ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Fixtures Played: {game.matchesPlayed ?? "N/A"} or {game.totalMatches ?? "N/A"}  
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Wins: {game.wins ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Loses: {game.loses ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Singles Wines: {game.singlesLoses ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Singles Loses: {game.singlesLoses ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Team Wins: {game.teamWins ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Team Loses: {game.teamLoses ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Doubles Wins: {game.doublesWins ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Doubles Loses: {game.doublesLoses ?? "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Rank Value: {game.rankValue ?? "N/A"}
-                          
-                          </div>
-                          </div>
-                        </Item>
-                        ))}
+                    <div className="space-y-6">
+                      {playerSummary.map((data) => {
+                        return (
+                          <Card key={data.season} className="shadow-lg">
+                            <CardHeader>
+                              <CardTitle className="text-xl font-bold">
+                                Season {data.season}
+                              </CardTitle>
+                              <CardTitle className="text-lg semibold">
+                                <div>
+                                    Total matches: {data.totalMatches} 
+                                </div>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                              {/** Overall table first */}
+                              <div key={"_overall"}>
+                                <h3 className="font-semibold mb-2">Overall</h3>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Player</TableHead>
+                                      <TableHead>Total</TableHead>
+                                      <TableHead>Wins</TableHead>
+                                      <TableHead>Losses</TableHead>
+                                      <TableHead>Rank</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                    <TableBody key={"_overall_"}>
+                                      {data.gameTypesSummaries &&
+                                      data.gameTypesSummaries.length > 0 &&
+                                      data.gameTypesSummaries
+                                        .filter(
+                                      (summary) =>
+                                        summary.gameType === "Overall"
+                                    ).sort((a, b) => (b.rankValue ?? 0) - (a.rankValue ?? 0))
+                                    .map((summary) => (
+                                      
+                                        <TableRow
+                                          key={summary.playerId + "_overall"}
+                                          className={
+                                            summary.playerId === playerData.id
+                                              ? "bg-yellow-200"
+                                              : ""
+                                          }
+                                        >
+                                          <TableCell>
+                                            {summary.playerName}
+                                          </TableCell>
+                                          <TableCell>
+                                            {summary.wins + summary.loses}
+                                          </TableCell>
+                                          <TableCell>
+                                            {summary.wins}
+                                          </TableCell>
+                                          <TableCell>
+                                            {summary.loses}
+                                          </TableCell>
+                                          <TableCell>
+                                            {summary.rankValue}
+                                          </TableCell>
+                                        </TableRow>
+                                      
+                                    ))}
+                                    </TableBody>
+                                </Table>
+                              </div>
+                              {data.gameTypesSummaries &&
+                                data.gameTypesSummaries.length > 0 &&
+                                ["Singles", "Doubles", "Team Game"].map(
+                                  (type) => {
+                                    const gameTypeRows =
+                                      data.gameTypesSummaries?.sort((a, b) => (b.rankValue ?? 0) - (a.rankValue ?? 0)).filter(
+                                        (summary) => summary.gameType === type
+                                      );
+                                    return (
+                                      <div key={type} className="mt-6">
+                                        <h3 className="text-lg font-semibold mb-2">
+                                          {type}
+                                        </h3>
+
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead>Player</TableHead>
+                                              <TableHead>Total</TableHead>
+                                              <TableHead>Wins</TableHead>
+                                              <TableHead>Loses</TableHead>
+                                              <TableHead>Rank</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+
+                                          <TableBody>
+                                            {gameTypeRows?.filter((summary) => summary.gameType === type).map((summary) => (
+                                              <TableRow
+                                                key={summary.playerId}
+                                                className={
+                                                  summary.playerId ===
+                                                  playerData.id
+                                                    ? "bg-yellow-200"
+                                                    : ""
+                                                }
+                                              >
+                                                <TableCell>
+                                                  {summary.playerName}
+                                                </TableCell>
+                                                <TableCell>
+                                                  {summary.wins + summary.loses}
+                                                </TableCell>
+                                                <TableCell>
+                                                  {summary.wins}
+                                                </TableCell>
+                                                <TableCell>
+                                                  {summary.loses}
+                                                </TableCell>
+                                                <TableCell>
+                                                  {summary.rankValue}
+                                                </TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    );
+                                  }
+                                )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </>
                 ) : (
-                  <CardDescription>No games found for this player.</CardDescription>
+                  <div>No game summary data found for this player.</div>
                 )}
-             </CardContent>
+              </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="attendances">
