@@ -68,7 +68,7 @@ export default function Payment({
     console.log("Creating payment intent with amount:", amount);
 
     const data = await createPaymentIntent({
-      amount: amount * 100, // Convert to cents
+      amount: Math.round(amount * 100), // Convert to cents
       currency: "gbp",
     });
 

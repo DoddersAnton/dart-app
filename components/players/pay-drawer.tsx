@@ -64,7 +64,7 @@ export default function PaymentDrawer({
               }}
             >
               <PaymentForm
-                amount={Math.round(amount * 100)}
+                amount={Number(amount.toFixed(2))}
                 playerId={playerId}
                 fineList={fineList}
                 sublist={sublist}
