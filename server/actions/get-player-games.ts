@@ -5,6 +5,7 @@ import { db } from ".."
 
 
 
+
 export type PlayerGameDetails = {
     playerId: number;                   //player details
     playerName: string;
@@ -60,6 +61,7 @@ export async function getGamesByPlayer(playerId: number) {
             awayTeam: fixture?.awayTeam ?? null,
             homeTeamScore: fixture?.homeTeamScore ?? null,
             awayTeamScore: fixture?.awayTeamScore ?? null,
+            isDilfsWin: (fixture?.awayTeam == "DILFS" && (game?.awayTeamScore ?? 0) > (game?.homeTeamScore ?? 0) || fixture?.homeTeam == "DILFS" && (game?.homeTeamScore ?? 0) > (game?.awayTeamScore ?? 0)),
             games: [{
                 gameId: game?.id ?? 0,
                 gameType: game?.gameType ?? null,
