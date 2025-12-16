@@ -138,7 +138,8 @@ export default function SubscriptionForm() {
                               <SelectValue placeholder="Select season" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="scheduled">Spring/Summer 25</SelectItem>
+                              <SelectItem value="Spring/Summer 25">Spring/Summer 25</SelectItem>
+                              <SelectItem value="Autumn/Winter 25/26">Autumn/Winter 25/26</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>

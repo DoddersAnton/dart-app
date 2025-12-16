@@ -59,12 +59,12 @@ export default function PaymentDrawer({
               options={{
                 mode: "payment",
                 currency: "gbp",
-                amount: Number((Math.round(amount * 100)).toFixed(0)),
+                amount: Math.round(amount * 100),
                 appearance: { theme: theme === "dark" ? "night" : "flat" },
               }}
             >
               <PaymentForm
-                amount={Number((Math.round(amount * 100)).toFixed(0))}
+                amount={Number(amount.toFixed(2))}
                 playerId={playerId}
                 fineList={fineList}
                 sublist={sublist}

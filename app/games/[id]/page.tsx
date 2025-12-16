@@ -20,7 +20,7 @@ export default async function Game({
   if (!game) {
     return (
       <div className="container mx-auto py-12 mt-22">
-        <h1 className="text-2xl font-bold">Match not found</h1>
+        <h1 className="text-2xl font-bold">Match not found, please try again</h1>
       </div>
     );
   }

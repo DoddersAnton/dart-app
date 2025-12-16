@@ -216,6 +216,7 @@ export default function FixtureForm() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Spring/Summer 25">Spring/Summer 25</SelectItem>
+                              <SelectItem value="Autumn/Winter 25/26">Autumn/Winter 25/26</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>

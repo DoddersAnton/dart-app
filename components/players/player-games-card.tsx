@@ -3,7 +3,7 @@ import { Player } from "./player-card";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@radix-ui/react-dialog";
 import { DialogTrigger } from "../ui/dialog";
-import { Item } from "../ui/item";
+import { PlayerGamesDetailCard } from "../games/game-games-detail-card";
 
 
 
@@ -27,6 +27,11 @@ export default function PlayerGamesCard({playerData}: PlayerGamesCardProps) {
         }
     }, [playerData, open]);
 
+    
+
+
+    
+
     return (
         <div>
             <Dialog open={open} onOpenChange={setOpen}>
@@ -36,16 +41,7 @@ export default function PlayerGamesCard({playerData}: PlayerGamesCardProps) {
                 <DialogContent className="max-w-3xl">
                     <h2 className="text-2xl font-bold mb-4">Games for {playerData.name}</h2>
                     {games.map((game) => (
-                        <Item key={game.fixtureId}>
-                            <div className="font-medium">Fixture ID: {game.fixtureId}</div>
-                            <div>Season: {game.season}</div>
-                            <div>Match Date: {game.matchDate ? new Date(game.matchDate).toLocaleDateString("en-GB") : "N/A"}</div>
-                            <div>Home Team: {game.homeTeam}</div>
-                            <div>Away Team: {game.awayTeam}</div>
-                            <div>Home Team Score: {game.homeTeamScore ?? "N/A"}</div>
-                            <div>Away Team Score: {game.awayTeamScore ?? "N/A"}</div>
-                           
-                            </Item>
+                        <PlayerGamesDetailCard key={game.fixtureId} {...game} />
                     ))}     
           
                 {loading && <div>Loading...</div>}  

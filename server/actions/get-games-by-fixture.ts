@@ -11,9 +11,19 @@ export async function getGamesByFixture(fixtureId: number) {
             where: (game) => eq(game.fixtureId, fixtureId),
         });
 
+        const fixture = await db.query.fixtures.findFirst({
+            where: (f) => eq(f.id, fixtureId),
+        });
+
+        if (!fixture) {
+            return { error: "Fixture not found" };
+        }
+
         const players = await db.query.players.findMany(); 
 
-      type GameWithPlayers = typeof games[number] & { players: { id: number; name: string; nickname: string }[] };
+      type GameWithPlayers = typeof games[number] & 
+        { players: { id: number; name: string; nickname: string }[] } 
+        & {matchDate: string; homeTeam: string; awayTeam: string; isDilfWin: boolean};
 
       const gamesWithPlayers: GameWithPlayers[] = [];
 
@@ -32,8 +42,17 @@ export async function getGamesByFixture(fixtureId: number) {
             };
         });
 
+        const date = new Date(fixture.matchDate);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
         gamesWithPlayers.push({
           ...game,
+          matchDate: `${day}/${month}/${year}`,
+          homeTeam: fixture.homeTeam,
+          awayTeam: fixture.awayTeam,
+          isDilfWin: (fixture.awayTeam == "DILFS" && game.awayTeamScore > game.homeTeamScore || fixture.homeTeam == "DILFS" && game.homeTeamScore > game.awayTeamScore),
           players: playerArray,
         });
       }
