@@ -29,7 +29,7 @@ export const createRoundFineSchema = z.object({
   matchDate: z
     .z.date(),
   notes: z.string().max(1000).optional(),
-  quantity: z.coerce.number(),
+  quantity: z.number().min(1),
   gameId: z.number().int().positive({
     message: "Game is required",
   }),

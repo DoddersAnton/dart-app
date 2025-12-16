@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, InfoIcon, UserIcon, UsersIcon } from "lucide-react";
+import { BarChart as  Calendar, InfoIcon, PoundSterling, Trophy, UserIcon, UsersIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -34,6 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
@@ -295,8 +297,8 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
       <CardContent className="overflow-auto">
         <Tabs defaultValue="finSum" className="overflow-auto">
           <TabsList>
-            <TabsTrigger value="finSum">Financial Summary</TabsTrigger>
-            <TabsTrigger value="games">Games</TabsTrigger>
+            <TabsTrigger value="finSum">Financial Summary <PoundSterling/></TabsTrigger>
+            <TabsTrigger value="games">Games <Trophy/></TabsTrigger>
             <TabsTrigger value="fines">
               Fines (£
               {(paidFinesTotal + unpaidFinesTotal)?.toFixed(2) ?? "0.00"})
@@ -472,18 +474,19 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
             </Card>
           </TabsContent>
           <TabsContent value="games">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Games 
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-6">
-                {playerSummary.length > 0 ? (
-                  <>
-                    <div className="space-y-6">
-                      {playerSummary.map((data) => {
-                        return (
+            <div>
+              <Tabs defaultValue="rankings" className="overflow-auto">
+                  <TabsList>
+                    <TabsTrigger value="rankings">Rankings</TabsTrigger>
+                    <TabsTrigger value="stats">Stats</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="rankings">
+                  {playerSummary.length > 0 ? (
+                    <>
+                      <div className="space-y-6">
+                        {playerSummary.map((data) => {
+                          return (
+                                      
                           <Card key={data.season} className="shadow-lg">
                             <CardHeader>
                               <CardTitle className="text-xl font-bold">
@@ -609,15 +612,146 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
                                 )}
                             </CardContent>
                           </Card>
+
+                     
                         );
-                      })}
-                    </div>
-                  </>
+                                 })}
+                                     
+                      </div>
+                    </>
+                
+                   
                 ) : (
                   <div>No game summary data found for this player.</div>
                 )}
-              </CardContent>
-            </Card>
+             </TabsContent>
+             <TabsContent value="stats">
+                <TabsContent value="stats">
+  {playerSummary.length > 0 ? (
+    <div className="space-y-10">
+      {playerSummary.map((season) => {
+        const categories = ["Overall", "Singles", "Doubles", "Team Game"];
+
+        return (
+          <Card key={season.season} className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold">
+                Season {season.season}
+              </CardTitle>
+            </CardHeader>   
+            <CardContent className="space-y-10">
+              {categories.map((cat) => {
+                // Get all players for this category
+                const rows = season.gameTypesSummaries
+                  ?.filter((g) => g.gameType === cat && (g.wins + g.loses > 0))
+                  .map((r) => ({
+                  player: r.playerName + (r.nickname ? ` (${r.nickname})` : ""),
+                  wins: r.wins,
+                  losses: r.loses,
+                  total: r.wins + r.loses,
+                  winPercent: r.wins + r.loses > 0 
+                    ? `${r.wins + r.loses} (${((r.wins / (r.wins + r.loses)) * 100).toFixed(1)}%)`
+                    : `${r.wins + r.loses} (0.0%)`,
+                  
+                  })) ?? [];
+
+                return (
+                  <div key={cat}>
+                    <h3 className="text-lg font-semibold mb-4">{cat}</h3>
+
+                    <ChartContainer
+                      config={{
+                        wins: { label: "Wins", color: "hsl(var(--chart-1))" },
+                        losses: { label: "Losses", color: "hsl(var(--chart-2))" },
+                      }}
+                    >
+                      <BarChart
+                        data={rows}
+                        layout="vertical"
+                        margin={{ right: 80 }}
+                      >
+
+
+                        <CartesianGrid horizontal={false} />
+
+                        <YAxis
+                          dataKey="player"
+                          type="category"
+                          width={140}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+
+                        <XAxis type="number" hide />
+
+                        <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent indicator="dot" />}
+                        />
+
+                      
+
+                        {/* Wins */}
+                        <Bar
+                          dataKey="wins"
+                          stackId="a"
+                          fill="#388E3C"
+                          radius={[4, 0, 0, 4]}
+                        >
+                          <LabelList
+                            dataKey="wins"
+                            position="inside"
+                            className="fill-white"
+                            fontSize={12}
+                          />
+
+                    
+
+                        </Bar>
+
+                        {/* Losses */}
+                        <Bar
+                          dataKey="losses"
+                          stackId="a"
+                          fill="#A5D6A7"
+                          radius={[0, 4, 4, 0]}
+                        >
+                          <LabelList
+                            dataKey="losses"
+                            position="inside"
+                            className="fill-foreground"
+                            fontSize={12}
+                          />
+
+                            {/* Total Matches */}
+                          <LabelList
+                            dataKey="winPercent"
+                            position="right"
+                            className="fill-black"
+                            fontSize={12}
+                          />
+
+                        </Bar>
+                      
+                      </BarChart>
+                    </ChartContainer>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  ) : (
+    <div>No stats found for this player.</div>
+  )}
+</TabsContent>
+
+             </TabsContent>
+             </Tabs>
+                
+            </div>
           </TabsContent>
           <TabsContent value="attendances">
             <Card>

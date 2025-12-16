@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+
+:root {
+  --color-wins: hsl(140, 70%, 45%);
+  --color-losses: hsl(0, 70%, 55%);
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -51,6 +51,8 @@ export default function CreateRoundFine({
             roundLeg: PopupProps.roundLeg ?? undefined,
             roundNo: PopupProps.roundNo ?? undefined,
             playerId: PopupProps.playerId ?? undefined,
+            fineId: PopupProps.fineId ?? undefined,
+            quantity:  1,
           },
           mode: "onChange",
         });
@@ -68,6 +70,7 @@ export default function CreateRoundFine({
               }
             },
             onExecute: () => {
+
                 toast.info("Creating fine...");
             },
           });
@@ -322,8 +325,10 @@ export default function CreateRoundFine({
                               placeholder="add a quantity"
                               type="number"
                               defaultValue={1}
+                              value={field.value}
                               min={1}
                               step={1}
+                              //disabled={!!editMode} 
                             />
                           </FormControl>
                           <FormMessage />

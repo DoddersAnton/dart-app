@@ -17,16 +17,23 @@ export default async function Page() {
   });
 
 
-  const data = dataTable.map((item) => ({
-    id: item.id,
-    player: players.find((c) => c.id === item.playerId)?.name ?? "unknown", // Explicitly cast to Player
-    fine: fines.find((c) => c.id === item.fineId)?.title ?? "unknown", // Explicitly cast to Fine
-    matchDate: item.matchDate ? item.matchDate.toISOString() : null,
-    notes: item.notes,
-    amount: fines.find((c) => c.id === item.fineId)?.amount ?? 0,
-    createdAt: item.createdAt ? item.createdAt.toISOString() : null,
-    status: item.status ?? "Pending",
-  }));
+  const data = dataTable.map((item) => {
+    const player = players.find((c) => c.id === item.playerId);
+    const playerName = player?.name ?? "";
+    const nickname = player?.nickname;
+    const displayName = nickname ? `${playerName} (${nickname})` : playerName;
+    
+    return {
+      id: item.id,
+      player: displayName,
+      fine: fines.find((c) => c.id === item.fineId)?.title ?? "unknown",
+      matchDate: item.matchDate ? item.matchDate.toISOString() : null,
+      notes: item.notes,
+      amount: fines.find((c) => c.id === item.fineId)?.amount ?? 0,
+      createdAt: item.createdAt ? item.createdAt.toISOString() : null,
+      status: item.status ?? "Pending",
+    };
+  });
 
   return (
     <div className="w-full mt-22 lg:w-[80%] px-2 mx-auto">

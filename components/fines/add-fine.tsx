@@ -79,6 +79,7 @@ interface FormProps {
     resolver: zodResolver(createPlayerFineSchema),
     defaultValues: {
       notes: "",
+      quantity: 1,
     },
     mode: "onChange",
   });
@@ -115,13 +116,14 @@ interface FormProps {
   const [selectedFine, setSelectedFine] = useState<number | null>(null);
 
   useEffect(() => {
-    if (editMode) {
-      setLoading(true);
-      checkPlayerFine(parseInt(editMode));
-      setLoading(false);
-    }
+    if (!editMode) return;
 
-  }, []);
+    (async () => {
+      setLoading(true);
+      await checkPlayerFine(parseInt(editMode));
+      setLoading(false);
+    })();
+  }, [editMode]);
 
   const { execute, status } = useAction(createPlayerFine, {
     onSuccess: (data) => {
@@ -146,8 +148,37 @@ interface FormProps {
   });
 
   async function onSubmit(values: zPlayerFineSchema) {
-    console.log("form", values);
-    execute(values);
+    // Coerce potentially-string inputs to numbers and guard against NaN
+    const playerId = Number(values.playerId);
+    const fineId = Number(values.fineId);
+    const id =
+      values.id === undefined || values.id === null ? undefined : Number(values.id);
+
+    let quantity = Number(values.quantity ?? 1);
+
+    if (Number.isNaN(playerId) || Number.isNaN(fineId)) {
+      toast.error("Please select a valid player and fine.");
+      return;
+    }
+
+    if (id !== undefined && Number.isNaN(id)) {
+      toast.error("Invalid fine id.");
+      return;
+    }
+
+    if (!Number.isFinite(quantity) || Number.isNaN(quantity) || quantity < 1) {
+      quantity = 1;
+    } else {
+      quantity = Math.trunc(quantity);
+    }
+
+    execute({
+      ...values,
+      playerId,
+      fineId,
+      id,
+      quantity,
+    });
   }
 
   return (
@@ -224,16 +255,20 @@ interface FormProps {
                       <FormLabel>Player Name</FormLabel>
                       <Select
                         onValueChange={(value) => {
-                          field.onChange(Number(value));
-                          setSelectedPlayer(Number(value));
+                          const next = Number(value);
+                          const safeNext = Number.isNaN(next) ? undefined : next;
+                          field.onChange(safeNext);
+                          setSelectedPlayer(safeNext ?? null);
                         }}
-                        value={selectedPlayer?.toString() ?? ""}
+                        value={
+                          field.value === undefined || field.value === null
+                            ? ""
+                            : String(field.value)
+                        }
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder="Select a player to fine"
-                            />
+                            <SelectValue placeholder="Select a player to fine" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -260,16 +295,20 @@ interface FormProps {
                       <FormLabel>Fine</FormLabel>
                       <Select
                         onValueChange={(value) => {
-                          field.onChange(Number(value));
-                          setSelectedFine(Number(value));
+                          const next = Number(value);
+                          const safeNext = Number.isNaN(next) ? undefined : next;
+                          field.onChange(safeNext);
+                          setSelectedFine(safeNext ?? null);
                         }}
-                         value={selectedFine?.toString() ?? ""}
+                        value={
+                          field.value === undefined || field.value === null
+                            ? ""
+                            : String(field.value)
+                        }
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder="Select a fine"
-                            />
+                            <SelectValue placeholder="Select a fine" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -393,7 +432,11 @@ interface FormProps {
                               {...field}
                               placeholder="add a quantity"
                               type="number"
-                              defaultValue={1}
+                              value={field.value ?? 1}
+                              onChange={(e) => {
+                                const next = e.currentTarget.valueAsNumber;
+                                field.onChange(Number.isNaN(next) ? 1 : next);
+                              }}
                               min={1}
                               step={1}
                               disabled={!!editMode} 
