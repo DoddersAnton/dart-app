@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Nav } from "@/components/nav/nav";
 import Toaster from "@/components/ui/toaster";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,13 +36,22 @@ export default function RootLayout({
     >
       <ClerkProvider>
         <html lang="en" suppressHydrationWarning>
+          
           <body
             className={`${geistSans.variable} ${geistMono.variable} antialiased`}
           >
+             <SidebarProvider>
             <Nav />
             <Toaster />
+            
+             {/* This is critical */}
+          <main className="flex-1">
             {children}
+          </main>
+          </SidebarProvider>
+           
           </body>
+        
         </html>
       </ClerkProvider>
     </ThemeProvider>

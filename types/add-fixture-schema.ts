@@ -42,21 +42,15 @@ export const createFixtureSchema = z.object({
 */
 
 export const createFixtureSchema = z.object({
-   homeTeam: z.string().max(250, {
-    message: "Home team is required",
-  }),
-  awayTeam: z.string().max(250, {
-    message: "Away team is required",
-  }),
-  matchLocation: z.string().max(255, {
-    message: "Match location is required",
-  }),
+  
+
+  homeTeamId: z.number(),
+  awayTeamId: z.number(),
+  matchLocationId: z.number(),
   league: z.string().max(255, {
     message: "League is required",
   }),
-  season: z.string().max(255, {
-    message: "Season is required",
-  }),
+  seasonId: z.number(),
   matchStatus: z.string().max(255, {
     message: "Match status is required",
   }),

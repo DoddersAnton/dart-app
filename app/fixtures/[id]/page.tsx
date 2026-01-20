@@ -26,8 +26,11 @@ export default async function Fixture({
 if (match.success) {
   const matchDetails = {
     ...match.success,
-    createdAt: match.success.createdAt ? match.success.createdAt.toLocaleDateString("en-GB"): null,
-    matchDate: match.success.matchDate ? match.success.matchDate.toLocaleDateString("en-GB") : null,
+    // ensure dates and optional string fields are actual strings to match the Fixture type
+    createdAt: match.success.createdAt ? match.success.createdAt.toLocaleDateString("en-GB") : "",
+    matchDate: match.success.matchDate ? match.success.matchDate.toLocaleDateString("en-GB") : "",
+    season: match.success.season ?? "",
+    location: match.success.location ?? "",
   };
 
   return (

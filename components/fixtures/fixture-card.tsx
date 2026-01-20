@@ -41,6 +41,7 @@ type Fixture = {
   createdAt: string | null;
   league: string;
   season: string;
+  isAppTeamWin: boolean;
 };
 
 

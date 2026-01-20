@@ -4,17 +4,67 @@ import { createSafeActionClient } from "next-safe-action";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { fixtures } from "../schema";
+import { fixtures, locations, seasons, team } from "../schema";
 import { createFixtureSchema } from "@/types/add-fixture-schema";
 
 const actionClient = createSafeActionClient();
 
 export const createFixture = actionClient
 .schema(createFixtureSchema)
-.action(async ({ parsedInput: { id, homeTeam, homeTeamScore, awayTeam, awayTeamScore, matchDate, matchLocation, matchStatus, 
-season, league
+.action(async ({ parsedInput: { id, homeTeamId, 
+  homeTeamScore, awayTeamId, awayTeamScore, matchDate, matchLocationId, matchStatus, 
+seasonId, league
  } }) => {
     try {
+
+      if(!homeTeamId && !awayTeamId) {
+        return { error: "At least one of Home Team or Away Team must be selected from the team list" };
+      }
+
+
+      const awayTeam = await db.query.team.findFirst({
+        where: eq(team.id, awayTeamId ?? 0),
+      });
+
+      if(!awayTeam) {
+        return { error: "Away Team not found" };
+      }
+
+      const homeTeam = await db.query.team.findFirst({
+        where: eq(team.id, homeTeamId ?? 0),
+      }); 
+
+      if(!homeTeam) {
+        return { error: "Home Team not found" };
+      }
+
+      const isSameTeam = homeTeam.id === awayTeam.id;
+
+      if(isSameTeam) {
+        return { error: "Home Team and Away Team cannot be the same" };
+      }
+
+      const isAppTeamWin = 
+        (awayTeam.isAppTeam && awayTeamScore > homeTeamScore) ||
+        (homeTeam.isAppTeam && homeTeamScore > awayTeamScore);
+
+      const location = await db.query.locations.findFirst({
+        where: eq(locations.id, matchLocationId ?? 0),
+      })
+
+      if(!location)
+      {
+        return { error: "Match location required"}
+      }
+
+      const season = await db.query.seasons.findFirst({
+        where: eq(seasons.id, seasonId),
+      })
+
+      if(!season)
+      {
+        return { error: "Season required"}
+      }
       
 
     if(id) {
@@ -28,16 +78,21 @@ season, league
         await db
           .update(fixtures)
           .set({
-           homeTeam: homeTeam ?? existingFiture.homeTeam,
-           awayTeam: awayTeam ?? existingFiture.awayTeam,
+           homeTeam: homeTeam.name ?? existingFiture.homeTeam,
+           homeTeamId: homeTeamId ?? existingFiture.homeTeamId,
+           awayTeamId: awayTeamId ?? existingFiture.awayTeamId,
+           awayTeam: awayTeam.name ?? existingFiture.awayTeam,
             homeTeamScore: homeTeamScore ?? 0,
             awayTeamScore: awayTeamScore ?? 0,
-            matchLocation: matchLocation ?? existingFiture.matchLocation,
+            matchLocation: location.name ?? existingFiture.matchLocation,
+            matchLocationId: location.id ?? existingFiture.matchLocationId,
             matchStatus: matchStatus ?? existingFiture.matchStatus,
             matchDate: matchDate ?? existingFiture.matchDate,
             league: league ?? existingFiture.league,
-            season: season ?? existingFiture.season,
+            season: season.name ?? existingFiture.season,
+            seasonsId: season.id ?? existingFiture.seasonsId,
             updatedAt: new Date(),
+            isAppTeamWin: isAppTeamWin,
           })
           .where(id ? eq(fixtures.id, id) : undefined)
           .returning();
@@ -45,30 +100,35 @@ season, league
           
 
         revalidatePath("/fixtures/add-fixture");
-        return { success: `Fixture at ${matchLocation} on ${matchDate} has been updated` };
+        return { success: `Fixture at ${location.name} on ${matchDate.getDay()}/${matchDate.getMonth()}/${matchDate.getFullYear()} has been updated` };
       }
 
       await db
       .insert(fixtures)
       .values({
-        homeTeam: homeTeam ?? undefined,
-        awayTeam: awayTeam ?? undefined,
+        homeTeam: homeTeam.name ?? undefined,
+        awayTeam: awayTeam.name ?? undefined,
         homeTeamScore: homeTeamScore ?? 0,
         awayTeamScore: awayTeamScore ?? 0,
-        matchLocation: matchLocation ?? undefined,
+        matchLocation: location.name ?? undefined,
+        matchLocationId: location.id ?? undefined,
         matchStatus: matchStatus ?? undefined,
         matchDate: matchDate,
         createdAt: new Date(),
         updatedAt: new Date(),
-        league: league, // Provide appropriate value or get from input
-        season: season, // Provide appropriate value or get from input
+        league: league, 
+        season: season.name, 
+        seasonsId: seasonId,
+        homeTeamId: homeTeamId ?? undefined,
+        awayTeamId: awayTeamId ?? undefined,
+        isAppTeamWin: isAppTeamWin,
       })
       .returning();
       revalidatePath("/fixtures/add-fixture");
 
       // or each play create a subscription to the fixture
 
-     return { success: `Fixture at ${matchLocation} on ${matchDate} has been created` };
+     return { success: `Fixture at ${location.name} on ${matchDate.getDay()}/${matchDate.getMonth()}/${matchDate.getFullYear()} has been created` };
     } catch (error) {
       console.error(error);
       return { error: JSON.stringify(error) };

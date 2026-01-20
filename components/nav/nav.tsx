@@ -96,6 +96,38 @@ const navLinks: {
     subLinks: [
     ],
   },
+  {
+    titleEng: "Settings",
+    titleWal: "Gosodiadau",
+    img: "/dart-img.png",
+    navDescriptionEng: "Manage application settings",
+    navDescriptionWal: "Rheoli gosodiadau'r ap",
+    href: "/settings",
+    icon: "TbHeartHandshake",
+    subLinks: [
+      {
+        titleEng: "Locations",
+        titleWal: "Gosodiadau Lleoliadau",
+        descriptionEng: "Manage match locations",
+        descriptionWal: "Rheoli lleoliadau gemau",
+        href: "/settings/locations",
+      },
+      {
+        titleEng: "Teams",
+        titleWal: "Gosodiadau Tîm",
+        descriptionEng: "Manage teams",
+        descriptionWal: "Rheoli timau",
+        href: "/settings/teams",
+      },
+      {
+        titleEng: "Seasons",
+        titleWal: "Gosodiadau Tymor",
+        descriptionEng: "Manage seasons",
+        descriptionWal: "Rheoli tymhorau",
+        href: "/settings/seasons",
+      },      
+    ],
+  }
   
 ];
 
