@@ -17,6 +17,10 @@ seasonId, league
  } }) => {
     try {
 
+      console.log("Creating fixture with data:", { id, homeTeamId, 
+        homeTeamScore, awayTeamId, awayTeamScore, matchDate, matchLocationId, matchStatus, 
+      seasonId, league });
+
       if(!homeTeamId && !awayTeamId) {
         return { error: "At least one of Home Team or Away Team must be selected from the team list" };
       }
@@ -49,12 +53,13 @@ seasonId, league
         (homeTeam.isAppTeam && homeTeamScore > awayTeamScore);
 
       const location = await db.query.locations.findFirst({
-        where: eq(locations.id, matchLocationId ?? 0),
+        where: eq(locations.id, matchLocationId ?? homeTeam.defaultLocationId),
       })
 
       if(!location)
       {
-        return { error: "Match location required"}
+        return { error: "Location required"}
+        
       }
 
       const season = await db.query.seasons.findFirst({

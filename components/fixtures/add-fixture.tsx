@@ -61,7 +61,7 @@ import { Input } from "../ui/input";
 type FixtureTeam = {
   id: number;
   name: string;
-  locationid: number | null;
+  defaultLocationId: number | null;
 };
 
 type FixtureLocation = {
@@ -110,7 +110,7 @@ export default function FixtureForm() {
           teamsRes.success.map((t) => ({
             id: t.id,
             name: t.name,
-            locationid: t.defaultLocationId,
+            defaultLocationId: t.defaultLocationId,
           }))
         );
       }
@@ -170,8 +170,8 @@ export default function FixtureForm() {
     if (!homeTeamId || teams.length === 0) return;
 
     const team = teams.find((t) => t.id === Number(homeTeamId));
-    if (team?.locationid) {
-      form.setValue("matchLocationId", team.locationid, {
+    if (team?.defaultLocationId) {
+      form.setValue("matchLocationId", team.defaultLocationId, {
         shouldDirty: true,
         shouldValidate: true,
       });
@@ -181,23 +181,41 @@ export default function FixtureForm() {
   // ---------------------------
   // Submit
   // ---------------------------
-  const { execute, status } = useAction(createFixture, {
-    onSuccess: (data) => {
-      if (data.data?.error) {
-        toast.error(data.data.error);
-        return;
-      }
-      if (data.data?.success) {
-        toast.success(data.data.success);
-        router.push("/fixtures");
-      }
-    },
-    onExecute: () => {
-      toast.info(editMode ? "Editing match..." : "Creating match...");
-    },
-  });
+const { execute, status } = useAction(createFixture, {
+  onSuccess: (data) => {
+    if (data.data?.error) {
+      toast.error(data.data.error);
+      router.push(`/fixtures/`);
+      return;
+    }
+    if (data.data?.success) {
+      router.push(`/fixtures`);
+      toast.success(data.data.success);
+    }
+  },
+  onExecute: () => {
+    toast.info(editMode ? "Editing match..." : "Creating match...");
+  },
+  onError: (err: unknown) => {
+    // Safely derive a user-friendly message from the error shape we might receive
+     const errorJson = JSON.stringify(err, Object.getOwnPropertyNames(err));
+    console.error("Error creating match:", err);
+    const msg = "There was an error creating the match. details: " + errorJson;
+    toast.error(msg);
+  },
+});
 
   async function onSubmit(values: zFixtureSchema) {
+
+     if(values.matchLocationId === undefined || values.matchLocationId === null) {
+      const defaultId = teams.find(t => t.id === values.homeTeamId)?.defaultLocationId ?? null;
+      if(defaultId !== null) {
+        values.matchLocationId = defaultId;
+     }
+    }
+   
+        console.log("form", values);
+       
     execute(values);
   }
 
@@ -220,6 +238,14 @@ export default function FixtureForm() {
               {editMode ? "Edit" : "Create"} a match to track the details of the
               game.
             </CardDescription>
+            <div className="text-red-500">
+              {Object.entries(form.formState.errors).map(([key, error]) => (
+                <div key={key} className="text-red-500">
+                  Field {key}
+                  {error.message}
+                </div>
+              ))}
+            </div>
           </CardHeader>
 
           <CardContent>
