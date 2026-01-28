@@ -275,6 +275,7 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
           {props.kpis &&
             props.kpis
               .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
+              //.sort((a, b) => b..localeCompare(a.season))
               .map((fixtureKpi) => (
                 <div
                   key={fixtureKpi.season}
@@ -287,6 +288,19 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
         <TabsContent value="details">
           {props.data
             .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
+            .sort((a, b) => {
+              const dateA = a.matchDate
+                ? Date.parse(
+                    a.matchDate.split("/").reverse().join("-")
+                  )
+                : 0;
+              const dateB = b.matchDate
+                ? Date.parse(
+                    b.matchDate.split("/").reverse().join("-")
+                  )
+                : 0;
+              return dateB - dateA;
+            }) // Sort by matchDate in descending order
             .map((fixture) => (
               <div key={fixture.id} className="mb-4 mx-auto">
                 {fixtureItem({ fixtureData: fixture, key: fixture.id })}
