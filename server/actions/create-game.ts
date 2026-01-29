@@ -4,7 +4,7 @@ import { createSafeActionClient } from "next-safe-action";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import {  gamePlayers, games } from "../schema";
+import {  gamePlayers, games, team } from "../schema";
 import { addGameSchema } from "@/types/add-game-schema";
 
 const actionClient = createSafeActionClient();
@@ -14,6 +14,33 @@ export const createGame = actionClient
 .action(async ({ parsedInput: { id, homeTeamScore, awayTeamScore, gameType, playerList, fixtureId
  } }) => {
     try {
+
+       const fixture = await db.query.fixtures.findFirst({
+            where: eq(games.fixtureId, fixtureId ?? 0),
+          });
+    
+          if (!fixture) {
+            return { error: "Fixture not found for the game" };
+          }
+    
+          const awayTeamId = fixture.awayTeamId;
+          const homeTeamId = fixture.homeTeamId;  
+
+         const awayTeam = await db.query.team.findFirst({
+                where: eq(team.id, awayTeamId ?? 0),
+              });
+        
+              if(!awayTeam) {
+                return { error: "Away Team not found" };
+              }
+        
+              const homeTeam = await db.query.team.findFirst({
+                where: eq(team.id, homeTeamId ?? 0),
+              }); 
+        
+              if(!homeTeam) {
+                return { error: "Home Team not found" };
+              }
       
 
     if(id) {
@@ -24,6 +51,8 @@ export const createGame = actionClient
 
         if (!existingGame) return { error: "Game not found" };
 
+       
+
         await db
           .update(games)
           .set({
@@ -31,6 +60,11 @@ export const createGame = actionClient
             awayTeamScore: awayTeamScore ?? 0,
             gameType: gameType ?? existingGame.gameType,
             fixtureId: fixtureId ?? existingGame.fixtureId,
+            isAppTeamWin: 
+                (awayTeam.isAppTeam && awayTeamScore! > homeTeamScore!) ||
+                (homeTeam.isAppTeam && homeTeamScore! > awayTeamScore!),
+            createdAt: existingGame.createdAt ?? new Date(),
+            
           })
           .where(id ? eq(games.id, id) : undefined)
           .returning();
@@ -56,6 +90,10 @@ export const createGame = actionClient
         awayTeamScore: awayTeamScore ?? 0,
         gameType: gameType ?? "(unknown)", // Default to Friendly if not provided
         fixtureId: fixtureId as number, // Ensure fixtureId is a number and not undefined
+         isAppTeamWin: 
+                (awayTeam.isAppTeam && awayTeamScore! > homeTeamScore!) ||
+                (homeTeam.isAppTeam && homeTeamScore! > awayTeamScore!),
+        createdAt: new Date(),
       })
       .returning();
 
