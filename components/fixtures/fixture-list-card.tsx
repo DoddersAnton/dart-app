@@ -95,19 +95,19 @@ function seasonKpiItem({
             <br />
           </p>
           <p>
-            wins ({fixtureKpi.totalGamesWins}) losses (
+            Wins ({fixtureKpi.totalGamesWins}) Losses (
             {fixtureKpi.totalGamesLosses})
           </p>
           <p>
-            team ({fixtureKpi.totalTeamGameWins}) vs losses: (
+            Team Wins ({fixtureKpi.totalTeamGameWins}) vs Losses: (
             {fixtureKpi.totalteamGameLosses})
           </p>
           <p>
-            doubles ({fixtureKpi.totalDoublesGameWins}) vs losses: (
+            Doubles Wins ({fixtureKpi.totalDoublesGameWins}) vs Losses: (
             {fixtureKpi.totalDoublesGameLosses})
           </p>
           <p>
-            singles ({fixtureKpi.totalSinglesGameWins}) vs losses: (
+            Singles Wins ({fixtureKpi.totalSinglesGameWins}) vs Losses: (
             {fixtureKpi.totalSinglesGameLosses})
           </p>
         </div>
@@ -224,9 +224,9 @@ function fixtureItem({
                     View Match
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
+                <DropdownMenuItem className="dark:focus:bg-yellow-100 focus:bg-yellow-100 cursor-pointer">
                   <Link
-                    href={`/fixture/edit-fixture?id=${fixtureData.id}`}
+                    href={`/fixture/edit-fixtures?id=${fixtureData.id}`}
                     className="flex items-center gap-2"
                   >
                     <Pencil className="h-4 w-4 hover:text-black" />
