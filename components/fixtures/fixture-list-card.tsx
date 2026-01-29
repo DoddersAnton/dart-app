@@ -217,7 +217,7 @@ function fixtureItem({
               <DropdownMenuContent>
                 <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
                   <Link
-                    href={`/fixture/${fixtureData.id}`}
+                    href={`/fixtures/${fixtureData.id}`}
                     className="flex items-center gap-2"
                   >
                     <EyeIcon className="h-4 w-4 hover:text-black" />

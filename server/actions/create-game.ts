@@ -4,7 +4,7 @@ import { createSafeActionClient } from "next-safe-action";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import {  gamePlayers, games, team } from "../schema";
+import {  fixtures, gamePlayers, games, team } from "../schema";
 import { addGameSchema } from "@/types/add-game-schema";
 
 const actionClient = createSafeActionClient();
@@ -15,9 +15,9 @@ export const createGame = actionClient
  } }) => {
     try {
 
-       const fixture = await db.query.fixtures.findFirst({
-            where: eq(games.fixtureId, fixtureId ?? 0),
-          });
+        const fixture = await db.query.fixtures.findFirst({
+                 where: eq(fixtures.id, id ?? 0 ),
+               });
     
           if (!fixture) {
             return { error: "Fixture not found for the game" };
