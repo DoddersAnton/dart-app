@@ -16,7 +16,7 @@ export const createGame = actionClient
     try {
 
         const fixture = await db.query.fixtures.findFirst({
-                 where: eq(fixtures.id, id ?? 0 ),
+                 where: eq(fixtures.id, fixtureId ?? 0 ),
                });
     
           if (!fixture) {
