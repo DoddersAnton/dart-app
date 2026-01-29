@@ -16,6 +16,8 @@ export async function  getFixtureList() {
  try {
         const fixtures = await db.query.fixtures.findMany();
 
+        const games = await db.query.games.findMany();
+
       
 
         const fixtureList: FixtureListSummary[] = fixtures.map((f) => ({
@@ -23,6 +25,23 @@ export async function  getFixtureList() {
             matchDate: formatDate(f.matchDate),
             createdAt: formatDate(f.createdAt),
             updatedAt: formatDate(f.updatedAt),
+            teamGameResult: (() => {
+                const teamGame = games.find(g => g.fixtureId === f.id && g.gameType === "Team Game");
+                if (!teamGame) return "N/A";
+                return teamGame.isAppTeamWin ? "Win" : "Loss";
+            })(),
+            doublesGameResult: (() => {
+                //needs to expressed as: 1/2 (total of two games)
+                const doublesGame = games.filter(g => g.fixtureId === f.id && g.gameType === "Doubles");
+                if (!doublesGame || doublesGame.length === 0) return "N/A";
+                return  `Won ${doublesGame.filter(c=>c.isAppTeamWin).length} out of 2`;
+            })(),
+            singlesGameResult: (() => {
+                 //needs to expressed as: 1/4 (total of two games)
+                const singlesGame = games.filter(g => g.fixtureId === f.id && g.gameType === "Singles");
+                if (!singlesGame || singlesGame.length === 0) return "N/A";
+                return `Won ${singlesGame.filter(c=>c.isAppTeamWin).length} out of 4`;
+            })(),
         }));
 
         return { success: fixtureList };

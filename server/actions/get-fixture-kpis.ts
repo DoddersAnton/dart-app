@@ -35,6 +35,9 @@ export async function getFixtureKpis() {
             
             const fixtureKpi: FixtureKpiSummary = {
                 season: s.name,
+                seasonId: s.id,
+                seasonStartDate: s.startDate,
+                seasonEndDate: s.endDate,
                 totalFixtures: totalSeasonFixtures.length,
                 totalFixtureWins: totalSeasonWins.length,
                 totalFixtureLosses: totalSeasonFixtures.length - totalSeasonWins.length,

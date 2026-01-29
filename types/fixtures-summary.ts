@@ -15,6 +15,9 @@ export type FixtureListSummary = {
     homeTeamScore: number;
     awayTeamScore: number;
     matchStatus: string;
+    teamGameResult: string;
+    doublesGameResult: string;
+    singlesGameResult: string;
     league: string;
     createdAt: string;
     updatedAt: string;
@@ -24,6 +27,9 @@ export type FixtureListSummary = {
 
 export type FixtureKpiSummary = {
     season: string;
+    seasonId: number;
+    seasonStartDate: Date | null;
+    seasonEndDate: Date | null;
     totalFixtures: number;
     totalFixtureWins: number;
     totalFixturePercentWin: number;

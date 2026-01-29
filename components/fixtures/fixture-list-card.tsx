@@ -19,6 +19,7 @@ import {
   Pencil,
   Plus,
   Trash,
+  Trophy,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
@@ -105,7 +106,7 @@ function seasonKpiItem({
             doubles ({fixtureKpi.totalDoublesGameWins}) vs losses: (
             {fixtureKpi.totalDoublesGameLosses})
           </p>
-           <p>
+          <p>
             singles ({fixtureKpi.totalSinglesGameWins}) vs losses: (
             {fixtureKpi.totalSinglesGameLosses})
           </p>
@@ -134,14 +135,32 @@ function fixtureItem({
     <Card className="p-1 pt-2" key={key}>
       <CardHeader>
         <CardTitle>
-          🏆{" "}
-          {fixtureData.homeTeamScore < fixtureData.awayTeamScore
-            ? `${fixtureData.awayTeam} (${fixtureData.awayTeamScore})`
-            : `${fixtureData.homeTeam} (${fixtureData.homeTeamScore})`}{" "}
-          -{" "}
-          {fixtureData.awayTeamScore < fixtureData.homeTeamScore
-            ? `${fixtureData.awayTeam} (${fixtureData.awayTeamScore})`
-            : `${fixtureData.homeTeam} (${fixtureData.homeTeamScore})`}
+          <div className="flex justify-between items-center">
+            <div>
+              🏆{" "}
+              {fixtureData.homeTeamScore < fixtureData.awayTeamScore
+                ? `${fixtureData.awayTeam} (${fixtureData.awayTeamScore})`
+                : `${fixtureData.homeTeam} (${fixtureData.homeTeamScore})`}{" "}
+              -{" "}
+              {fixtureData.awayTeamScore < fixtureData.homeTeamScore
+                ? `${fixtureData.awayTeam} (${fixtureData.awayTeamScore})`
+                : `${fixtureData.homeTeam} (${fixtureData.homeTeamScore})`}{" "}
+            </div>
+            <div>
+              <Badge
+                variant={
+                  fixtureData.matchStatus === "completed"
+                    ? "default"
+                    : fixtureData.matchStatus === "cancelled"
+                    ? "secondary"
+                    : "default"
+                }
+                className="ml-2"
+              >
+                {fixtureData.matchStatus}
+              </Badge>
+            </div>
+          </div>
         </CardTitle>
         <div className="flex flex-col lg:flex-row items-start gap-2">
           <CardDescription>
@@ -166,6 +185,21 @@ function fixtureItem({
             <div className="flex items-center gap-2">
               <Calendar size={12} />
               <div>{fixtureData.matchDate}</div>
+            </div>
+            <div>
+              <Separator className="my-2" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Trophy size={12} />
+              <div>Team game: {fixtureData.teamGameResult}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Trophy size={12} />
+              <div>Doubles: {fixtureData.doublesGameResult}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Trophy size={12} />
+              <div>Singles: {fixtureData.singlesGameResult}</div>
             </div>
           </div>
           <div>
@@ -201,7 +235,7 @@ function fixtureItem({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                disabled={true}
+                  disabled={true}
                   //onClick={() => handleDeleteMatch({ id: fixtureData.id })}
                   className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer flex items-center gap-2"
                 >
@@ -221,7 +255,7 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
   const [seasonFilter, setSeasonFilter] = React.useState<string | null>(null);
 
   return (
-    <div>
+    <div className="w-full lg:w-[50%] mx-auto">
       <h1 className="text-3xl font-bold mb-6">Fixtures</h1>
       <div className="flex justify-between items-center gap-2">
         <div>
@@ -263,7 +297,7 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full lg:w-[50%] mx-auto mt-2">
+      <Tabs defaultValue="overview" className="w-full mt-2">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
@@ -290,14 +324,10 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
             .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
             .sort((a, b) => {
               const dateA = a.matchDate
-                ? Date.parse(
-                    a.matchDate.split("/").reverse().join("-")
-                  )
+                ? Date.parse(a.matchDate.split("/").reverse().join("-"))
                 : 0;
               const dateB = b.matchDate
-                ? Date.parse(
-                    b.matchDate.split("/").reverse().join("-")
-                  )
+                ? Date.parse(b.matchDate.split("/").reverse().join("-"))
                 : 0;
               return dateB - dateA;
             }) // Sort by matchDate in descending order

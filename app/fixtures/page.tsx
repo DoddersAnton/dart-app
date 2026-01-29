@@ -2,6 +2,7 @@
 import EnhancedFixtureCard from "@/components/fixtures/fixture-list-card";
 import { getFixtureKpis } from "@/server/actions/get-fixture-kpis";
 import { getFixtureList } from "@/server/actions/get-fixture-list";
+export const dynamic = "force-dynamic";
 
 
 
