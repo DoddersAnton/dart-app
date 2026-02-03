@@ -41,10 +41,112 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import {
+  GamesSummary,
+} from "@/server/actions/get-player-games-summary";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 interface EnhancedFixtureCardProps {
   data: FixtureListSummary[];
   kpis: FixtureKpiSummary[];
+  playerGameSummary: GamesSummary[];
+}
+
+function seasonPlayerListItem({
+  data,
+  key,
+}: {
+  data: GamesSummary;
+  key?: string | number;
+}) {
+  return (
+    <Card key={key} className="shadow-lg">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold">
+          Season {data.season}
+        </CardTitle>
+        <CardTitle className="text-lg semibold">
+          <div>Total matches: {data.totalMatches}</div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/** Overall table first */}
+        <div key={"_overall"}>
+          <h3 className="font-semibold mb-2">Overall</h3>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Player</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Wins</TableHead>
+                <TableHead>Losses</TableHead>
+                <TableHead>Rank</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody key={"_overall_"}>
+              {data.gameTypesSummaries &&
+                data.gameTypesSummaries.length > 0 &&
+                data.gameTypesSummaries
+                  .filter((summary) => summary.gameType === "Overall" && summary.wins + summary.loses > 0)
+                  .sort((a, b) => (b.rankValue ?? 0) - (a.rankValue ?? 0))
+                  .map((summary) => (
+                    <TableRow
+                      key={summary.playerId + "_overall"}
+                      
+                    >
+                         <TableCell>{summary.playerName}{summary.nickname ? ` (${summary.nickname})` : null}</TableCell>
+                      <TableCell>{summary.wins + summary.loses}</TableCell>
+                      <TableCell>{summary.wins}</TableCell>
+                      <TableCell>{summary.loses}</TableCell>
+                      <TableCell>{summary.rankValue}</TableCell>
+                    </TableRow>
+                  ))}
+            </TableBody>
+          </Table>
+        </div>
+        {data.gameTypesSummaries &&
+          data.gameTypesSummaries.length > 0 &&
+          ["Singles", "Doubles", "Team Game"].map((type) => {
+            const gameTypeRows = data.gameTypesSummaries
+              ?.sort((a, b) => (b.rankValue ?? 0) - (a.rankValue ?? 0))
+              .filter((summary) => summary.gameType === type && summary.wins + summary.loses > 0);
+            return (
+              <div key={type} className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">{type}</h3>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Player</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Wins</TableHead>
+                      <TableHead>Loses</TableHead>
+                      <TableHead>Rank</TableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {gameTypeRows
+                      ?.filter((summary) => summary.gameType === type)
+                      .map((summary) => (
+                        <TableRow
+                          key={summary.playerId}
+                        >
+                        <TableCell>{summary.playerName}{summary.nickname ? ` (${summary.nickname})` : null}</TableCell>
+                          <TableCell>{summary.wins + summary.loses}</TableCell>
+                          <TableCell>{summary.wins}</TableCell>
+                          <TableCell>{summary.loses}</TableCell>
+                          <TableCell>{summary.rankValue}</TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })}
+      </CardContent>
+    </Card>
+  );
 }
 
 function seasonKpiItem({
@@ -63,6 +165,7 @@ function seasonKpiItem({
             Matches: {fixtureKpi.totalFixtures}
             {"  "}
             <br />
+            <p className="mt-1 text-lg">Points {fixtureKpi.totalPoints}</p>
           </p>
           <p>
             wins ({fixtureKpi.totalFixtureWins}) losses (
@@ -301,6 +404,7 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
+           <TabsTrigger value="stats">Player Stats</TabsTrigger>
           {/** <TabsTrigger value="stats">Stats</TabsTrigger>
           <TabsTrigger value="charts">Charts</TabsTrigger>
           */}
@@ -337,7 +441,26 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
               </div>
             ))}
         </TabsContent>
-        <TabsContent value="stats"></TabsContent>
+        <TabsContent value="stats">
+            {props.playerGameSummary && props.playerGameSummary
+              .filter((f) =>
+                seasonFilter ? f.season === seasonFilter : true
+              )
+              .map((playerSummary) => (
+                <div
+                  key={playerSummary.season}
+                  className="mb-4 mx-auto flex-col gap-2"
+                >
+                  {seasonPlayerListItem({
+                    data: playerSummary,
+                    key: playerSummary.season,
+                  })}
+                </div>
+              ))}
+
+
+
+        </TabsContent>
         <TabsContent value="charts"></TabsContent>
       </Tabs>
     </div>

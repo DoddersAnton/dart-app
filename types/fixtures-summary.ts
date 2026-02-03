@@ -34,6 +34,7 @@ export type FixtureKpiSummary = {
     totalFixtureWins: number;
     totalFixturePercentWin: number;
     totalFixtureLosses: number;
+    totalPoints: number;
     totalHomeWins: number;
     totalHomeLosses: number;
     totalAwayWins: number;

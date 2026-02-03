@@ -32,6 +32,8 @@ export async function getFixtureKpis() {
                 totalSeasonFixtures.some(f => f.id === g.fixtureId)
             );
             const totalSeasonWins = totalSeasonFixtures.filter(f => f.isAppTeamWin);
+            //points are the total games won per match
+           
             
             const fixtureKpi: FixtureKpiSummary = {
                 season: s.name,
@@ -41,6 +43,13 @@ export async function getFixtureKpis() {
                 totalFixtures: totalSeasonFixtures.length,
                 totalFixtureWins: totalSeasonWins.length,
                 totalFixtureLosses: totalSeasonFixtures.length - totalSeasonWins.length,
+                totalPoints: totalSeasonFixtures
+                    .filter(f => f.homeTeamId === appTeam?.id)
+                    .reduce((acc, f) => acc + (f.homeTeamScore ?? 0), 0)
+                    +
+                    totalSeasonFixtures
+                    .filter(f => f.awayTeamId === appTeam?.id)
+                    .reduce((acc, f) => acc + (f.awayTeamScore ?? 0), 0),
                 totalFixturePercentWin: totalSeasonFixtures.length > 0 ? (totalSeasonWins.length / totalSeasonFixtures.length) * 100 : 0,
                 totalHomeWins: totalSeasonFixtures.filter(f => f.homeTeamId === appTeam?.id && f.isAppTeamWin && f.matchLocationId === homeLocation?.id).length,
                 totalHomeLosses: totalSeasonFixtures.filter(f => f.homeTeamId === appTeam?.id && !f.isAppTeamWin  && f.matchLocationId === homeLocation?.id).length,
@@ -56,9 +65,7 @@ export async function getFixtureKpis() {
                 totalDoublesGameLosses: seasonGames.filter(g => !g.isAppTeamWin && g.gameType === "Doubles").length,
                 totalSinglesGameWins: seasonGames.filter(g => g.isAppTeamWin && g.gameType === "Singles").length,
                 totalSinglesGameLosses: seasonGames.filter(g => !g.isAppTeamWin && g.gameType === "Singles").length,
-            };
-
-            list.push(fixtureKpi);
+            };   list.push(fixtureKpi);
         } 
        
 

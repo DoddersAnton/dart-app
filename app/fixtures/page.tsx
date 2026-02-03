@@ -2,6 +2,7 @@
 import EnhancedFixtureCard from "@/components/fixtures/fixture-list-card";
 import { getFixtureKpis } from "@/server/actions/get-fixture-kpis";
 import { getFixtureList } from "@/server/actions/get-fixture-list";
+import { getGamesSummaryBySeason } from "@/server/actions/get-player-games-summary";
 export const dynamic = "force-dynamic";
 
 
@@ -35,6 +36,20 @@ export default async function FixturesPage() {
         );
     }
 
+    const playerList = await getGamesSummaryBySeason();
+
+     if( playerList.error) {
+        return <div className="mt-22">{playerList.error}</div>;
+    }
+
+    if (!playerList.success) {
+        return (
+            <div className="container mx-auto py-12 mt-22">
+                <h1 className="text-2xl font-bold">No Season player list found</h1>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full px-2 mx-auto lg:w-[80%] mt-24">
           
@@ -42,7 +57,8 @@ export default async function FixturesPage() {
 
             <EnhancedFixtureCard 
                 data={fixtureList.success}
-                kpis={fixtureKpis.success!} />
+                kpis={fixtureKpis.success!}
+                playerGameSummary={playerList.success} />
         </div>
     );
 }
