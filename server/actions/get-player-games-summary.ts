@@ -2,7 +2,6 @@
 
 
 import { db } from "..";
-import { console } from "inspector";
 
 export type GamesSummary = {
   season: string;

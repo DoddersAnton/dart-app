@@ -240,12 +240,10 @@ interface FormProps {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit, (errors) =>
-                  console.log("Form errors:", errors)
-                )}
-                className="space-y-4"
-              >
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
                 <div className="grid w-full items-center gap-4"></div>
                 <FormField
                   control={form.control}
