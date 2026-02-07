@@ -62,8 +62,50 @@ function recalculateSummaryValues(summary: GameTypeSummary): GameTypeSummary {
     ...summary,
     variance: legsFor - legsAgainst,
     points: (summary.wins * 2) + summary.loses,
-    rankValue: (summary.wins * 2) + (legsFor - legsAgainst),
+    rankValue: 0,
   };
+}
+
+
+function assignRankValues(summaries: GameTypeSummary[]): GameTypeSummary[] {
+  const ranked = [...summaries];
+  const gameTypes: GameTypeSummary["gameType"][] = ["Singles", "Doubles", "Team Game", "Overall"];
+
+  for (const gameType of gameTypes) {
+    const group = ranked
+      .filter(summary => summary.gameType === gameType)
+      .sort((a, b) => {
+        const winsLossesVarianceA = a.wins - a.loses;
+        const winsLossesVarianceB = b.wins - b.loses;
+
+        if (winsLossesVarianceB !== winsLossesVarianceA) {
+          return winsLossesVarianceB - winsLossesVarianceA;
+        }
+
+        if (b.wins !== a.wins) {
+          return b.wins - a.wins;
+        }
+
+        return (b.variance ?? 0) - (a.variance ?? 0);
+      });
+
+    let rank = 0;
+    let previousKey = "";
+
+    for (let index = 0; index < group.length; index++) {
+      const current = group[index];
+      const currentKey = `${current.wins - current.loses}|${current.wins}|${current.variance ?? 0}`;
+
+      if (currentKey !== previousKey) {
+        rank = index + 1;
+        previousKey = currentKey;
+      }
+
+      current.rankValue = rank;
+    }
+  }
+
+  return ranked;
 }
 
 export async function getGamesSummaryBySeason() {
@@ -162,11 +204,13 @@ export async function getGamesSummaryBySeason() {
         );
       }
 
+      const rankedGameTypesSummaries = assignRankValues(gameTypesSummaries);
+
       summaries.push({
         season,
         totalGames: seasonGames.length,
         totalMatches: seasonFixtures.length,
-        gameTypesSummaries,
+        gameTypesSummaries: rankedGameTypesSummaries,
       });
     }
 
