@@ -77,10 +77,13 @@ function seasonPlayerListItem({
             <TableHeader>
               <TableRow>
                 <TableHead>Player</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Wins</TableHead>
-                <TableHead>Losses</TableHead>
-                <TableHead>Rank</TableHead>
+                <TableHead>P</TableHead>
+                <TableHead>W</TableHead>
+                <TableHead>L</TableHead>
+                <TableHead>F</TableHead>
+                <TableHead>A</TableHead>
+                <TableHead>R</TableHead>
+                <TableHead>RK</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody key={"_overall_"}>
@@ -88,16 +91,19 @@ function seasonPlayerListItem({
                 data.gameTypesSummaries.length > 0 &&
                 data.gameTypesSummaries
                   .filter((summary) => summary.gameType === "Overall" && summary.wins + summary.loses > 0)
-                  .sort((a, b) => (b.rankValue ?? 0) - (a.rankValue ?? 0))
+                  .sort((a, b) => (a.rankValue ?? Number.MAX_SAFE_INTEGER) - (b.rankValue ?? Number.MAX_SAFE_INTEGER))
                   .map((summary) => (
                     <TableRow
                       key={summary.playerId + "_overall"}
                       
                     >
                          <TableCell>{summary.playerName}{summary.nickname ? ` (${summary.nickname})` : null}</TableCell>
-                      <TableCell>{summary.wins + summary.loses}</TableCell>
+                      <TableCell>{summary.gamesPlayed ?? (summary.wins + summary.loses)}</TableCell>
                       <TableCell>{summary.wins}</TableCell>
                       <TableCell>{summary.loses}</TableCell>
+                      <TableCell>{summary.legsFor ?? 0}</TableCell>
+                      <TableCell>{summary.legsAgainst ?? 0}</TableCell>
+                      <TableCell>{summary.variance ?? 0}</TableCell>
                       <TableCell>{summary.rankValue}</TableCell>
                     </TableRow>
                   ))}
@@ -108,7 +114,7 @@ function seasonPlayerListItem({
           data.gameTypesSummaries.length > 0 &&
           ["Singles", "Doubles", "Team Game"].map((type) => {
             const gameTypeRows = data.gameTypesSummaries
-              ?.sort((a, b) => (b.rankValue ?? 0) - (a.rankValue ?? 0))
+              ?.sort((a, b) => (a.rankValue ?? Number.MAX_SAFE_INTEGER) - (b.rankValue ?? Number.MAX_SAFE_INTEGER))
               .filter((summary) => summary.gameType === type && summary.wins + summary.loses > 0);
             return (
               <div key={type} className="mt-6">
@@ -118,10 +124,13 @@ function seasonPlayerListItem({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Player</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Wins</TableHead>
-                      <TableHead>Loses</TableHead>
-                      <TableHead>Rank</TableHead>
+                      <TableHead>P</TableHead>
+                      <TableHead>W</TableHead>
+                      <TableHead>L</TableHead>
+                      <TableHead>F</TableHead>
+                      <TableHead>A</TableHead>
+                      <TableHead>R</TableHead>
+                      <TableHead>RK</TableHead>
                     </TableRow>
                   </TableHeader>
 
@@ -133,9 +142,12 @@ function seasonPlayerListItem({
                           key={summary.playerId}
                         >
                         <TableCell>{summary.playerName}{summary.nickname ? ` (${summary.nickname})` : null}</TableCell>
-                          <TableCell>{summary.wins + summary.loses}</TableCell>
+                          <TableCell>{summary.gamesPlayed ?? (summary.wins + summary.loses)}</TableCell>
                           <TableCell>{summary.wins}</TableCell>
                           <TableCell>{summary.loses}</TableCell>
+                          <TableCell>{summary.legsFor ?? 0}</TableCell>
+                          <TableCell>{summary.legsAgainst ?? 0}</TableCell>
+                          <TableCell>{summary.variance ?? 0}</TableCell>
                           <TableCell>{summary.rankValue}</TableCell>
                         </TableRow>
                       ))}
