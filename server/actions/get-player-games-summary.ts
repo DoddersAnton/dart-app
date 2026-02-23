@@ -196,11 +196,16 @@ export async function getGamesSummaryBySeason() {
           playerSummaries.set(key, recalculateSummaryValues(summary));
         }
 
+        const overallSummary = playerSummaries.get("Overall");
+        if ((overallSummary?.gamesPlayed ?? 0) === 0) {
+          continue;
+        }
+
         gameTypesSummaries.push(
           playerSummaries.get("Singles")!,
           playerSummaries.get("Doubles")!,
           playerSummaries.get("Team Game")!,
-          playerSummaries.get("Overall")!,
+          overallSummary,
         );
       }
 
