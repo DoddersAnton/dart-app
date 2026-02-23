@@ -197,7 +197,7 @@ export async function getGamesSummaryBySeason() {
         }
 
         const overallSummary = playerSummaries.get("Overall");
-        if ((overallSummary?.gamesPlayed ?? 0) === 0) {
+        if (!overallSummary || (overallSummary.gamesPlayed ?? 0) === 0) {
           continue;
         }
 
