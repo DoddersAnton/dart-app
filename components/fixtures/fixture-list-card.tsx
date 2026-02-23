@@ -82,8 +82,8 @@ function seasonPlayerListItem({
                 <TableHead>L</TableHead>
                 <TableHead>F</TableHead>
                 <TableHead>A</TableHead>
-                <TableHead>V</TableHead>
                 <TableHead>R</TableHead>
+                <TableHead>RK</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody key={"_overall_"}>
@@ -129,8 +129,8 @@ function seasonPlayerListItem({
                       <TableHead>L</TableHead>
                       <TableHead>F</TableHead>
                       <TableHead>A</TableHead>
-                      <TableHead>V</TableHead>
                       <TableHead>R</TableHead>
+                      <TableHead>RK</TableHead>
                     </TableRow>
                   </TableHeader>
 

@@ -60,8 +60,8 @@ function recalculateSummaryValues(summary: GameTypeSummary): GameTypeSummary {
 
   return {
     ...summary,
-    variance: legsFor - legsAgainst,
-    points: (summary.wins * 2) + summary.loses,
+    variance: summary.wins - summary.loses,
+    points: summary.wins,
     rankValue: 0,
   };
 }
