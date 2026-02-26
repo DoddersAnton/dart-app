@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart as  Calendar, InfoIcon, PoundSterling, Trophy, UserIcon, UsersIcon } from "lucide-react";
+import { BarChart as  Calendar, Camera, ImageUp, InfoIcon, PoundSterling, Trophy, UserIcon, UsersIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -10,8 +10,10 @@ import {
   CardTitle,
 } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import PayFinesForm from "./pay-fines";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { getPaymentsByPlayer } from "@/server/actions/get-payments-by-player";
 import { Badge } from "../ui/badge";
 import PaymentDrawer from "./pay-drawer";
@@ -19,6 +21,7 @@ import { getPlayerSubscriptions } from "@/server/actions/get-player-subscription
 import { SubscriptionDataTable } from "@/app/subscriptions/subscriptions-table";
 import { playerSubscriptionColumns } from "./player-subscriptions-columns";
 import { getFinesByPlayer } from "@/server/actions/get-fines-by-player";
+import { UploadThingImageUploader } from "./uploadthing-image-uploader";
 
 //import { Item } from "../ui/item";
 import {
@@ -83,6 +86,14 @@ type Subscription = {
   endDate: Date | null;
   createdAt: Date | null;
 };
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 type Fine = {
   id: number;
@@ -244,6 +255,7 @@ function usePlayerData(playerId: number, playerName?: string) {
 export default function PlayerCard({ playerData }: { playerData: Player }) {
   //<PayFinesForm playerFinesData={playerData.playerFinesData}  />
   const [open, setOpen] = useState(false);
+  const [avatar, setAvatar] = useState<string>("");
   const {
     payments,
     subs,
@@ -257,6 +269,25 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
     playerSummary,
   } = usePlayerData(playerData.id, playerData.name);
 
+
+  useEffect(() => {
+    const avatars = window.localStorage.getItem("players-avatars");
+    if (!avatars) return;
+
+    const map = JSON.parse(avatars) as Record<number, string>;
+    if (map[playerData.id]) {
+      setAvatar(map[playerData.id]);
+    }
+  }, [playerData.id]);
+
+  const updatePlayerAvatar = (playerId: number, imageUrl: string) => {
+    setAvatar(imageUrl);
+    const avatars = window.localStorage.getItem("players-avatars");
+    const map = avatars ? (JSON.parse(avatars) as Record<number, string>) : {};
+    const next = { ...map, [playerId]: imageUrl };
+    window.localStorage.setItem("players-avatars", JSON.stringify(next));
+  };
+
   const unpaidFines = fines.filter((fine) => fine.status === "Unpaid");
 
   const unpaidSubs = subs.filter(
@@ -266,7 +297,44 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{playerData.name}</CardTitle>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {avatar ? (
+              <Image
+                src={avatar}
+                alt={`${playerData.name} avatar`}
+                width={48}
+                height={48}
+                unoptimized
+                className="h-12 w-12 rounded-full object-cover border"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full border flex items-center justify-center bg-muted text-sm font-semibold">
+                {getInitials(playerData.name)}
+              </div>
+            )}
+            <CardTitle>{playerData.name}</CardTitle>
+          </div>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground" aria-label="Upload image">
+                <Camera className="h-4 w-4" />
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><ImageUp className="h-4 w-4" /> Upload your image</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">Upload your image for {playerData.name}.</p>
+              <UploadThingImageUploader
+                playerId={playerData.id}
+                onUploadComplete={updatePlayerAvatar}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+
         <div className="flex flex-row items-center gap-6">
           <CardDescription>
             <div className="flex items-center gap-2">

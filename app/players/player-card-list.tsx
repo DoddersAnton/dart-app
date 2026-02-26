@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Camera } from "lucide-react";
+import { Camera, ImageUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -111,10 +111,10 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>Add image (UploadThing-style)</DialogTitle>
+                          <DialogTitle className="flex items-center gap-2"><ImageUp className="h-4 w-4" /> Upload your image</DialogTitle>
                         </DialogHeader>
                         <p className="text-sm text-muted-foreground">
-                          Upload a profile image for {player.name}. This is stored in your local browser for now.
+                          Upload your image for {player.name}. This is stored in your local browser for now.
                         </p>
                         <UploadThingImageUploader
                           playerId={player.id}
