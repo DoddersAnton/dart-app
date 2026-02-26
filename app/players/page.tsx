@@ -8,9 +8,8 @@ import {
 } from "@/components/ui/card";
 import { db } from "@/server";
 import Link from "next/link";
-import { PlayerDataTable } from "./player-table";
-import { playerColumns } from "./player-columns";
 import { Plus } from "lucide-react";
+import { PlayerCardList } from "./player-card-list";
 export const dynamic = "force-dynamic";
 
 export default async function GetFineTypePage() {
@@ -41,11 +40,7 @@ export default async function GetFineTypePage() {
           <CardDescription>List of all {total} players</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 overflow-auto">
-          <PlayerDataTable
-            columns={playerColumns}
-            data={players}
-            total={total}
-          />
+          <PlayerCardList players={players} />
         </CardContent>
       </Card>
     </div>
