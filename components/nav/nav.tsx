@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { ChevronDown, Menu, X } from "lucide-react";
+
 import { cn } from "@/lib/utils";
-
-
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -13,251 +15,77 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-} from "@clerk/nextjs";
-import {  Menu, X } from "lucide-react";
-import Image from "next/image";
 import Logo from "./logo";
 import { ModeToggle } from "./mode-toggle";
 
-const navLinks: {
-  titleEng: string;
-  titleWal: string;
-  img: string;
-  navDescriptionEng: string;
-  navDescriptionWal: string;
-  href: string;
-  icon: string;
-  subLinks: {
-    titleEng: string;
-    titleWal: string;
-    href: string;
-    descriptionEng: string;
-    descriptionWal: string;
-  }[];
-}[] = [
+const navLinks = [
   {
     titleEng: "Fines",
-    titleWal: "Codi Arian",
     img: "/dart-img.png",
     navDescriptionEng: "player fines",
-    navDescriptionWal: "Pob ffordd rydym yn codi arian ar gyfer yr ysgol",
     href: "/fines",
-    icon: "TbHeartHandshake",
     subLinks: [
-      {
-        titleEng: "Player Fines",
-        titleWal: "Gweithgareddau a Ariannwyd",
-        descriptionEng: "Get player fines statement",
-        descriptionWal: "Darganfod beth rydym wedi'i ariannu",
-        href: "/fines",
-      },
-      {
-        titleEng: "Add Fine",
-        titleWal: "Partyware i'w llogi",
-        descriptionEng: "Create a new player fine",
-        descriptionWal: "Mae gennym amrywiaeth o offer parti ar gael i'w llogi",
-        href: "/fines/add-fine",
-      },
-      {
-        titleEng: "Fine Types",
-        titleWal: "Clwb 50:50",
-        descriptionEng: "Manage fine types",
-        descriptionWal: "Ymunwch â'n tynnu misol",
-        href: "/fines/fine-types",
-      },
+      { titleEng: "Player Fines", descriptionEng: "Get player fines statement", href: "/fines" },
+      { titleEng: "Add Fine", descriptionEng: "Create a new player fine", href: "/fines/add-fine" },
+      { titleEng: "Fine Types", descriptionEng: "Manage fine types", href: "/fines/fine-types" },
     ],
   },
-  {
-    titleEng: "Players",
-    titleWal: "Amdanom ni",
-    img: "/backtoschool-nobg.png",
-    navDescriptionEng: "Player information",
-    navDescriptionWal: "Holl wybodaeth hanfodol am y CRhA",
-    href: "/players",
-    icon: "MdInfo",
-    subLinks: [
-    ],
-  },
-   {
-    titleEng: "Matches",
-    titleWal: "Gemau",
-    img: "/backtoschool-nobg.png",
-    navDescriptionEng: "Fixtures and results",
-    navDescriptionWal: "Gwybodaeth am gemau a chanlyniadau",
-    href: "/fixtures",
-    icon: "MdInfo",
-    subLinks: [
-    ],
-  },
+  { titleEng: "Players", img: "/dart-img.png", navDescriptionEng: "Player information", href: "/players", subLinks: [] },
+  { titleEng: "Matches", img: "/dart-img.png", navDescriptionEng: "Fixtures and results", href: "/fixtures", subLinks: [] },
   {
     titleEng: "Settings",
-    titleWal: "Gosodiadau",
     img: "/dart-img.png",
     navDescriptionEng: "Manage application settings",
-    navDescriptionWal: "Rheoli gosodiadau'r ap",
     href: "/settings",
-    icon: "TbHeartHandshake",
     subLinks: [
-      {
-        titleEng: "Locations",
-        titleWal: "Gosodiadau Lleoliadau",
-        descriptionEng: "Manage match locations",
-        descriptionWal: "Rheoli lleoliadau gemau",
-        href: "/settings/locations",
-      },
-      {
-        titleEng: "Teams",
-        titleWal: "Gosodiadau Tîm",
-        descriptionEng: "Manage teams",
-        descriptionWal: "Rheoli timau",
-        href: "/settings/teams",
-      },
-      {
-        titleEng: "Seasons",
-        titleWal: "Gosodiadau Tymor",
-        descriptionEng: "Manage seasons",
-        descriptionWal: "Rheoli tymhorau",
-        href: "/settings/seasons",
-      },      
+      { titleEng: "Locations", descriptionEng: "Manage match locations", href: "/settings/locations" },
+      { titleEng: "Teams", descriptionEng: "Manage teams", href: "/settings/teams" },
+      { titleEng: "Seasons", descriptionEng: "Manage seasons", href: "/settings/seasons" },
     ],
-  }
-  
-];
+  },
+] as const;
 
 export function Nav() {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
-  const [submenuOpen, setSubmenuOpen] = React.useState<{
-    [key: string]: boolean;
-  }>({});
+  const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
 
   const toggleSubmenu = (key: string) => {
     setSubmenuOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-white/30 dark:bg-black/30 backdrop-blur-md border-b shadow-sm p-1">
+    <header className="fixed top-0 left-0 z-50 w-full border-b bg-background/70 backdrop-blur-md">
       <div className="container mx-auto flex items-center justify-between p-4">
-        {/* Left Section: Logo & Mobile Menu Button */}
-        <div className="flex items-center gap-4">
-          <Link href={"/"}>
-            <Logo />
-          </Link>
-        </div>
+        <Link href="/">
+          <Logo />
+        </Link>
 
-        {/* Mobile Dropdown Menu */}
-        <AnimatePresence>
-          {isMobileOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute top-full left-0 w-full bg-white dark:bg-black shadow-lg rounded-lg p-4 flex flex-col gap-2 md:hidden"
-            >
-              {navLinks.map((link) => (
-                <div key={link.titleEng} className="relative group">
-                  {link.subLinks.length > 0 ? (
-                    <div>
-                      <button
-                        onClick={() => toggleSubmenu(link.titleEng)}
-                        className="w-full text-left text-sm font-medium hover:text-primary flex items-center"
-                      >
-                        {link.titleEng}
-                        <motion.span
-                          animate={{
-                            rotate: submenuOpen[link.titleEng] ? 180 : 0,
-                          }}
-                          transition={{ duration: 0.3 }}
-                          className="ml-2 text-[8px]"
-                        >
-                          ▼
-                        </motion.span>
-                      </button>
-                      <AnimatePresence>
-                        {submenuOpen[link.titleEng] && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3, delay: 0.1 }}
-                            className="ml-4 mt-2 flex flex-col gap-2"
-                          >
-                            {link.subLinks.map((subLink) => (
-                              <Link
-                                key={subLink.titleEng}
-                                href={subLink.href}
-                                className="block text-sm font-medium hover:text-primary"
-                              >
-                                {subLink.titleEng}
-                              </Link>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  ) : (
-                    <Link
-                      href={link.href}
-                      className="block text-sm font-medium hover:text-primary"
-                    >
-                      {link.titleEng}
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Desktop Navigation (Hidden on Mobile) */}
         <NavigationMenu className="hidden md:flex">
-          <NavigationMenuList className="flex text-[14px]">
+          <NavigationMenuList className="flex gap-1 text-sm">
             {navLinks.map((link) => (
-              <NavigationMenuItem
-                key={link.titleEng}
-                className="relative group"
-              >
-                {link.subLinks.length > 0 ? (
+              <NavigationMenuItem key={link.titleEng} className="relative">
+                {link.subLinks.length ? (
                   <>
-                    <NavigationMenuTrigger className="text-[12.5px] bg-none">
-                      {link.titleEng}
+                    <NavigationMenuTrigger className="group bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent">
+                      <span className="relative px-2 py-1">
+                        {link.titleEng}
+                        <span className="absolute -bottom-0.5 left-2 h-0.5 w-[calc(100%-1rem)] origin-left scale-x-0 bg-primary transition-transform duration-200 group-hover:scale-x-100 group-data-[state=open]:scale-x-100" />
+                      </span>
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
-                      <ul className="grid gap-1 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
+                      <ul className="grid gap-1 p-4 md:w-[420px] lg:w-[520px] lg:grid-cols-[.8fr_1fr]">
                         <li className="row-span-3">
                           <NavigationMenuLink asChild>
-                            <Link
-                              href={link.href}
-                              className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-white to-green-50 p-6 no-underline outline-none focus:shadow-md"
-                            >
-                              <Image
-                                src={link.img}
-                                width={100}
-                                height={100}
-                                className="h-full w-full"
-                                alt={link.img}
-                              />
-                              <div className="mb-2 mt-4 text-lg font-medium dark:text-black text-primary">
-                                {link.titleEng}
-                              </div>
-                              <p className="text-sm leading-tight text-muted-foreground">
-                                {link.navDescriptionEng}
-                              </p>
+                            <Link href={link.href} className="flex h-full w-full flex-col justify-end rounded-md bg-muted p-4">
+                              <Image src={link.img} width={80} height={80} alt={link.titleEng} className="h-20 w-20" />
+                              <div className="mb-1 mt-4 text-base font-semibold">{link.titleEng}</div>
+                              <p className="text-sm text-muted-foreground">{link.navDescriptionEng}</p>
                             </Link>
                           </NavigationMenuLink>
                         </li>
                         {link.subLinks.map((subLink) => (
-                          <ListItem
-                            key={subLink.titleEng}
-                            title={subLink.titleEng}
-                            href={subLink.href}
-                          >
+                          <ListItem key={subLink.titleEng} title={subLink.titleEng} href={subLink.href}>
                             {subLink.descriptionEng}
                           </ListItem>
                         ))}
@@ -266,11 +94,11 @@ export function Nav() {
                   </>
                 ) : (
                   <NavigationMenuLink asChild>
-                    <Link
-                      href={link.href}
-                      className={`${navigationMenuTriggerStyle()} text-[12.5px]`}
-                    >
-                      {link.titleEng}
+                    <Link href={link.href} className="group inline-flex items-center px-3 py-2">
+                      <span className="relative">
+                        {link.titleEng}
+                        <span className="absolute -bottom-1 left-0 h-0.5 w-full origin-left scale-x-0 bg-primary transition-transform duration-200 group-hover:scale-x-100" />
+                      </span>
                     </Link>
                   </NavigationMenuLink>
                 )}
@@ -279,31 +107,101 @@ export function Nav() {
           </NavigationMenuList>
         </NavigationMenu>
 
-        {/* Auth and Theme Toggle */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <SignedOut>
-            <div className="hover:text-primary text-[12.5px]">
+            <div className="text-sm">
               <SignInButton />
             </div>
           </SignedOut>
-            <SignedIn>
-            <UserButton
-            />
-            </SignedIn>
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
           <ModeToggle />
-          {/* Mobile Menu Toggle Button (Hidden on md+) */}
-          <button
-            className="md:hidden"
-            onClick={() => setIsMobileOpen(!isMobileOpen)}
-          >
-            {isMobileOpen ? (
-              <X className="h-6 w-6 p-0" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
+          <button className="md:hidden" onClick={() => setIsMobileOpen((v) => !v)} aria-label="Toggle menu">
+            {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isMobileOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-40 bg-black/50 md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileOpen(false)}
+            />
+            <motion.aside
+              className="fixed inset-y-0 right-0 z-50 w-full bg-background p-6 md:hidden"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+              <div className="mb-6 flex items-center justify-between">
+                <Logo />
+                <button onClick={() => setIsMobileOpen(false)} aria-label="Close menu">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {navLinks.map((link) => (
+                  <div key={link.titleEng} className="rounded-md border p-3">
+                    {link.subLinks.length > 0 ? (
+                      <>
+                        <button
+                          onClick={() => toggleSubmenu(link.titleEng)}
+                          className="flex w-full items-center justify-between text-left text-base font-medium"
+                        >
+                          {link.titleEng}
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 transition-transform",
+                              submenuOpen[link.titleEng] && "rotate-180",
+                            )}
+                          />
+                        </button>
+                        <AnimatePresence>
+                          {submenuOpen[link.titleEng] && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="mt-2 space-y-2 overflow-hidden"
+                            >
+                              {link.subLinks.map((subLink) => (
+                                <Link
+                                  key={subLink.titleEng}
+                                  href={subLink.href}
+                                  onClick={() => setIsMobileOpen(false)}
+                                  className="block rounded-md px-2 py-1 text-sm text-muted-foreground"
+                                >
+                                  {subLink.titleEng}
+                                </Link>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className="text-base font-medium"
+                      >
+                        {link.titleEng}
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
@@ -318,15 +216,13 @@ const ListItem = React.forwardRef<
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            className
+            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted",
+            className,
           )}
           {...props}
         >
           <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-            {children}
-          </p>
+          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">{children}</p>
         </a>
       </NavigationMenuLink>
     </li>
