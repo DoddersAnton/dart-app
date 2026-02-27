@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { ChevronDown, Menu, X } from "lucide-react";
@@ -46,13 +46,17 @@ const navLinks = [
   },
 ] as const;
 
+function NavText({ title }: { title: string }) {
+  return (
+    <span className="relative inline-block after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-primary after:transition-transform after:duration-200 group-hover:after:scale-x-100">
+      {title}
+    </span>
+  );
+}
+
 export function Nav() {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
-
-  const toggleSubmenu = (key: string) => {
-    setSubmenuOpen((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full border-b bg-background/70 backdrop-blur-md">
@@ -68,10 +72,7 @@ export function Nav() {
                 {link.subLinks.length ? (
                   <>
                     <NavigationMenuTrigger className="group bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent">
-                      <span className="relative px-2 py-1">
-                        {link.titleEng}
-                        <span className="absolute -bottom-0.5 left-2 h-0.5 w-[calc(100%-1rem)] origin-left scale-x-0 bg-primary transition-transform duration-200 group-hover:scale-x-100 group-data-[state=open]:scale-x-100" />
-                      </span>
+                      <NavText title={link.titleEng} />
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
                       <ul className="grid gap-1 p-4 md:w-[420px] lg:w-[520px] lg:grid-cols-[.8fr_1fr]">
@@ -94,11 +95,8 @@ export function Nav() {
                   </>
                 ) : (
                   <NavigationMenuLink asChild>
-                    <Link href={link.href} className="group inline-flex items-center px-3 py-2">
-                      <span className="relative">
-                        {link.titleEng}
-                        <span className="absolute -bottom-1 left-0 h-0.5 w-full origin-left scale-x-0 bg-primary transition-transform duration-200 group-hover:scale-x-100" />
-                      </span>
+                    <Link href={link.href} className="group inline-flex items-center px-3 py-2 hover:bg-transparent">
+                      <NavText title={link.titleEng} />
                     </Link>
                   </NavigationMenuLink>
                 )}
@@ -153,7 +151,9 @@ export function Nav() {
                     {link.subLinks.length > 0 ? (
                       <>
                         <button
-                          onClick={() => toggleSubmenu(link.titleEng)}
+                          onClick={() =>
+                            setSubmenuOpen((prev) => ({ ...prev, [link.titleEng]: !prev[link.titleEng] }))
+                          }
                           className="flex w-full items-center justify-between text-left text-base font-medium"
                         >
                           {link.titleEng}
