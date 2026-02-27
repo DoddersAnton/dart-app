@@ -66,13 +66,20 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
 
   const totals = useMemo(() => {
     const total = filteredFines.reduce((acc, fine) => acc + fine.amount, 0);
-    const paid = filteredFines
-      .filter((fine) => fine.status === "Paid")
-      .reduce((acc, fine) => acc + fine.amount, 0);
-    const unpaid = filteredFines
-      .filter((fine) => fine.status !== "Paid")
-      .reduce((acc, fine) => acc + fine.amount, 0);
-    return { total, paid, unpaid };
+    const paidFines = filteredFines.filter((fine) => fine.status === "Paid");
+    const unpaidFines = filteredFines.filter((fine) => fine.status !== "Paid");
+
+    const paid = paidFines.reduce((acc, fine) => acc + fine.amount, 0);
+    const unpaid = unpaidFines.reduce((acc, fine) => acc + fine.amount, 0);
+
+    return {
+      total,
+      paid,
+      unpaid,
+      totalCount: filteredFines.length,
+      paidCount: paidFines.length,
+      unpaidCount: unpaidFines.length,
+    };
   }, [filteredFines]);
 
   const finesSummary = useMemo(
@@ -123,18 +130,21 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
           <CardHeader className="pb-2">
             <CardDescription>Total Fines</CardDescription>
             <CardTitle>£{totals.total.toFixed(2)}</CardTitle>
+            <CardDescription>{totals.totalCount} fines</CardDescription>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Paid</CardDescription>
             <CardTitle className="text-emerald-600">£{totals.paid.toFixed(2)}</CardTitle>
+            <CardDescription>{totals.paidCount} fines</CardDescription>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Unpaid</CardDescription>
             <CardTitle className="text-amber-600">£{totals.unpaid.toFixed(2)}</CardTitle>
+            <CardDescription>{totals.unpaidCount} fines</CardDescription>
           </CardHeader>
         </Card>
       </div>
