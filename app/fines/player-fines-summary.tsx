@@ -1,30 +1,21 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Plus, FilterIcon, EraserIcon, LayoutDashboard, Table2, ChartColumn } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { EraserIcon, FilterIcon, Plus } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { PlayerFinesSummaryDataTable } from "./player-summary-table";
 import { PlayerFinesDataTable } from "./playerfines-data-table";
 import { summaryColumns } from "./player-summary-columns";
 import { playerFinesColumns } from "./player-fines-columns";
-import { useState } from "react";
 import { FineChart } from "./fine-chart";
 import { FineTypeBarChart } from "./fine-chart-byfinetype";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { TextShimmer } from "@/components/motion-primitives/text-shimmer";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
 
 export interface FineSummaryProps {
   playerFinesData: {
@@ -40,427 +31,213 @@ export interface FineSummaryProps {
 }
 
 export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
-  {
-    const [filterDate, setFilterDate] = useState<string | undefined>(undefined);
-    const [filterPlayer, setFilterPlayer] = useState<string | undefined>(
-      undefined
-    );
-    const [key, setKey] = useState(+new Date());
-    const [loading, setLoading] = useState(false)
-  
-    const handleClick = () => {
-        setLoading(true)
-        setTimeout(() => setLoading(false), 5000) // Simulate async action
-    }
+  const [filterDate, setFilterDate] = useState<string>("all");
+  const [filterPlayer, setFilterPlayer] = useState<string>("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-    const dates = Array.from(
-      new Set(
-        playerFinesData
-          .map((item) => item.matchDate)
-          .filter((date): date is string => date !== null)
-          .map((date) => new Date(date).toLocaleDateString("en-GB"))
-      )
-    );
+  const dates = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          playerFinesData
+            .map((item) => item.matchDate)
+            .filter((date): date is string => Boolean(date))
+            .map((date) => new Date(date).toLocaleDateString("en-GB")),
+        ),
+      ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime()),
+    [playerFinesData],
+  );
 
-    const players = Array.from(
-      new Set(playerFinesData.map((item) => item.player))
-    );
+  const players = useMemo(
+    () => Array.from(new Set(playerFinesData.map((item) => item.player))).sort(),
+    [playerFinesData],
+  );
 
-    const finesSummary = Object.values(
-      playerFinesData
-        .filter(
-          (c) =>
-            c.matchDate &&
-            new Date(c.matchDate).toLocaleDateString("en-GB") ===
-              (filterDate !== undefined
-                ? filterDate
-                : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
-            (filterPlayer !== undefined ? c.player === filterPlayer : true)
-        )
-        .reduce(
+  const filteredFines = useMemo(() => {
+    return playerFinesData.filter((item) => {
+      if (!item.matchDate) return false;
+
+      const date = new Date(item.matchDate).toLocaleDateString("en-GB");
+      const matchesDate = filterDate === "all" || date === filterDate;
+      const matchesPlayer = filterPlayer === "all" || item.player === filterPlayer;
+      return matchesDate && matchesPlayer;
+    });
+  }, [filterDate, filterPlayer, playerFinesData]);
+
+  const totals = useMemo(() => {
+    const total = filteredFines.reduce((acc, fine) => acc + fine.amount, 0);
+    const paidFines = filteredFines.filter((fine) => fine.status === "Paid");
+    const unpaidFines = filteredFines.filter((fine) => fine.status !== "Paid");
+
+    const paid = paidFines.reduce((acc, fine) => acc + fine.amount, 0);
+    const unpaid = unpaidFines.reduce((acc, fine) => acc + fine.amount, 0);
+
+    return {
+      total,
+      paid,
+      unpaid,
+      totalCount: filteredFines.length,
+      paidCount: paidFines.length,
+      unpaidCount: unpaidFines.length,
+    };
+  }, [filteredFines]);
+
+  const finesSummary = useMemo(
+    () =>
+      Object.values(
+        filteredFines.reduce(
           (
-            acc: Record<
-              string,
-              { player: string; total: number; count: number; games: number }
-            >,
-            fine
+            acc: Record<string, { player: string; total: number; count: number; games: number }>,
+            fine,
           ) => {
-            const player = fine.player;
-            if (!acc[player]) {
-              acc[player] = {
-                player: player,
-                total: 0,
-                count: 0,
-                games: 0,
-              };
+            if (!acc[fine.player]) {
+              acc[fine.player] = { player: fine.player, total: 0, count: 0, games: 0 };
             }
-            acc[player].total += fine.amount;
-            acc[player].count += 1;
-            acc[player].games = new Set(
-              playerFinesData
-                .filter((f) => f.player === player && f.matchDate)
-                .map((f) => new Date(f.matchDate!).toLocaleDateString("en-GB"))
+
+            acc[fine.player].total += fine.amount;
+            acc[fine.player].count += 1;
+            acc[fine.player].games = new Set(
+              filteredFines
+                .filter((f) => f.player === fine.player && f.matchDate)
+                .map((f) => new Date(f.matchDate!).toLocaleDateString("en-GB")),
             ).size;
 
             return acc;
           },
-          {} as Record<
-            string,
-            { player: string; total: number; count: number; games: number }
-          >
-        )
-    );
+          {},
+        ),
+      ).sort((a, b) => b.total - a.total),
+    [filteredFines],
+  );
 
-    const handleDateChange = (value: string) => {
-      setFilterDate(value);
-    };
+  const averagePerMatch = useMemo(() => {
+    const games = new Set(filteredFines.map((item) => item.matchDate)).size;
+    return games > 0 ? totals.total / games : 0;
+  }, [filteredFines, totals.total]);
 
-    const handlePlayerChange = (value: string) => {
-      setFilterPlayer(value);
-    };
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Link href="/fines/add-fine" className="block">
+          <Button variant="outline">
+            Add Fine <Plus className="ml-2 h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
 
-    return (
-      <Tabs defaultValue="summary" className="w-full px-2 mx-auto">
-         <div className=" flex flex-row gap-2">
-             <div className="flex flex-row gap-1">
-              {filterDate && (<span className="text-sm">
-                Filtered by date: <strong>{filterDate}</strong>
-              </span>)}
-              {filterPlayer && (<span className="text-sm">
-                Filtered by player: <strong>{filterPlayer}</strong>
-              </span>)}
-            </div>  
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Fines</CardDescription>
+            <CardTitle>£{totals.total.toFixed(2)}</CardTitle>
+            <CardDescription>{totals.totalCount} fines</CardDescription>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Paid</CardDescription>
+            <CardTitle className="text-emerald-600">£{totals.paid.toFixed(2)}</CardTitle>
+            <CardDescription>{totals.paidCount} fines</CardDescription>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Unpaid</CardDescription>
+            <CardTitle className="text-amber-600">£{totals.unpaid.toFixed(2)}</CardTitle>
+            <CardDescription>{totals.unpaidCount} fines</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FilterIcon className="h-4 w-4" /> Filters
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setFiltersOpen((v) => !v)}>
+              {filtersOpen ? "Hide" : "Show"} Filters
+            </Button>
+          </div>
+        </CardHeader>
+        {filtersOpen && (
+          <CardContent className="space-y-3">
+            <Select value={filterDate} onValueChange={setFilterDate}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filter by match date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All dates</SelectItem>
+                {dates.map((date) => (
+                  <SelectItem key={date} value={date}>
+                    {date}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterPlayer} onValueChange={setFilterPlayer}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filter by player" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All players</SelectItem>
+                {players.map((player) => (
+                  <SelectItem key={player} value={player}>
+                    {player}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">Rows: {filteredFines.length}</Badge>
+              {filterDate !== "all" && <Badge>Date: {filterDate}</Badge>}
+              {filterPlayer !== "all" && <Badge>Player: {filterPlayer}</Badge>}
             </div>
-        <div className="flex items-center max-w-vm flex-row gap-2 mb-2">
-         
-          <div className=" flex flex-row gap-1">
-            <div>
-             <Link href="/fines/add-fine" 
-             className="flex justify-center" 
-             onClick={handleClick}>
-              <Button size="sm" className="mb-0 text-sm" variant="outline">
-                 {loading ? <TextShimmer>Loading </TextShimmer> : "Add Fine"} {loading ? <LoadingSpinner /> : <Plus className="ml-2" size={16} />} 
-              </Button>
-            </Link>
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline">
-                  {"Open"}
-                  <FilterIcon className="" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto">
-                <div className="flex flex-row items-center gap-2">
-                  <Select
-                    key={key}
-                    onValueChange={(value) => handleDateChange(value)}
-                    value={filterDate}
-                  >
-                    <SelectTrigger className="w-[180px] mb-2">
-                      <SelectValue placeholder="Select a match date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>Match dates</SelectLabel>
-                        {dates.map((date) => (
-                          <SelectItem
-                            key={date}
-                            value={date}
-                            defaultValue={date}
-                          >
-                            {date}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                      <SelectSeparator />
-                    </SelectContent>
-                  </Select>
 
-                  <Select
-                    key={key}
-                    onValueChange={(value) => handlePlayerChange(value)}
-                    value={filterPlayer}
-                  >
-                    <SelectTrigger className="w-[180px] mb-2">
-                      <SelectValue placeholder="Select a player" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>Player</SelectLabel>
-                        {players.map((player) => (
-                          <SelectItem
-                            key={player}
-                            value={player}
-                            defaultValue={player}
-                          >
-                            {player}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                      <SelectSeparator />
-                    </SelectContent>
-                  </Select>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div>
-            {filterDate !== undefined && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mb-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFilterDate(undefined);
-                  setKey(+new Date());
-                  setFilterPlayer(undefined);
-                }}
-              >
-                Clear <EraserIcon className="ml-2" size={16} />
-              </Button>
-            )}
-           
-           
-          </div>
-          <div>
-            
-          </div>
-        </div>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setFilterDate("all");
+                setFilterPlayer("all");
+              }}
+            >
+              Clear Filters <EraserIcon className="ml-2 h-4 w-4" />
+            </Button>
+          </CardContent>
+        )}
+      </Card>
 
+      <Tabs defaultValue="summary" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="summary" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Summary</TabsTrigger>
+          <TabsTrigger value="details" className="gap-2"><Table2 className="h-4 w-4" /> Details</TabsTrigger>
+          <TabsTrigger value="charts" className="gap-2"><ChartColumn className="h-4 w-4" /> Charts</TabsTrigger>
         </TabsList>
         <TabsContent value="summary">
           <PlayerFinesSummaryDataTable
             columns={summaryColumns}
-            data={[...finesSummary].sort((a, b) => b.count - a.count)}
-            total={playerFinesData
-              .filter(
-                (c) =>
-                  c.matchDate &&
-                  new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                    (filterDate !== undefined
-                      ? filterDate
-                      : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
-                  (filterPlayer !== undefined
-                    ? c.player === filterPlayer
-                    : true)
-              )
-              .reduce((acc, item) => acc + item.amount, 0)}
-            average={(() => {
-              const filtered = playerFinesData.filter(
-                (c) =>
-                  c.matchDate &&
-                  new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                    (filterDate !== undefined
-                      ? filterDate
-                      : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
-                  (filterPlayer !== undefined
-                    ? c.player === filterPlayer
-                    : true)
-              );
-              const total = filtered.reduce(
-                (acc, item) => acc + item.amount,
-                0
-              );
-              const games = new Set(filtered.map((item) => item.matchDate))
-                .size;
-              return games > 0 ? total / games : 0;
-            })()}
+            data={finesSummary}
+            total={totals.total}
+            average={averagePerMatch}
           />
         </TabsContent>
         <TabsContent value="details">
           <PlayerFinesDataTable
             columns={playerFinesColumns}
-            data={playerFinesData.filter(
-              (c) =>
-                c.matchDate &&
-                new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                  (filterDate !== undefined
-                    ? filterDate
-                    : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
-                (filterPlayer !== undefined ? c.player === filterPlayer : true)
-            )}
-            total={playerFinesData
-              .filter(
-                (c) =>
-                  c.matchDate &&
-                  new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                    (filterDate !== undefined
-                      ? filterDate
-                      : new Date(c.matchDate).toLocaleDateString("en-GB")) &&
-                  (filterPlayer !== undefined
-                    ? c.player === filterPlayer
-                    : true)
-              )
-              .reduce((acc, item) => acc + item.amount, 0)}
+            data={filteredFines}
+            total={totals.total}
           />
         </TabsContent>
-        <TabsContent value="dashboard">
-          <div className="flex justify-center items-center h-full">
-            <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-4 w-full max-w-4xl">
-              <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-                <span className="text-sm text-gray-500 mb-2">Total Fines</span>
-                <span className="text-2xl font-bold">
-                  £
-                  {playerFinesData
-                    .filter(
-                      (c) =>
-                        c.matchDate &&
-                        new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                          (filterDate !== undefined
-                            ? filterDate
-                            : new Date(c.matchDate).toLocaleDateString(
-                                "en-GB"
-                              )) &&
-                        (filterPlayer !== undefined
-                          ? c.player === filterPlayer
-                          : true)
-                    )
-                    .reduce((acc, item) => acc + item.amount, 0)
-                    .toFixed(2)}
-                </span>
-                <span className="text-sm text-gray-500 mt-2">
-                  Avg. cost: £
-                  {(() => {
-                    const filtered = playerFinesData.filter(
-                      (c) =>
-                        c.matchDate &&
-                        new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                          (filterDate !== undefined
-                            ? filterDate
-                            : new Date(c.matchDate).toLocaleDateString(
-                                "en-GB"
-                              )) &&
-                        (filterPlayer !== undefined
-                          ? c.player === filterPlayer
-                          : true)
-                    );
-                    const matchDates = Array.from(
-                      new Set(filtered.map((item) => item.matchDate))
-                    );
-                    const totalFines = filtered.reduce(
-                      (acc, item) => acc + item.amount,
-                      0
-                    );
-                    return matchDates.length > 0
-                      ? (totalFines / matchDates.length).toFixed(2)
-                      : "0.00";
-                  })()}
-                </span>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-                <span className="text-sm text-gray-500 mb-2">
-                  Top 3 Players Fined
-                </span>
-                <span className=" font-bold">
-                  {[...finesSummary]
-                    .sort((a, b) => b.total - a.total)
-                    .slice(0, 3)
-                    .map((player, idx) => {
-                      const medals = ["🥇", "🥈", "🥉"];
-                      return (
-                        <div
-                          key={player.player}
-                          className="flex items-center gap-2 mb-1"
-                        >
-                          <span className={`text-[${idx * 50}px]`}>
-                            {medals[idx]}
-                          </span>
-                          <span className="font-medium">{player.player}</span>
-                          <span className="ml-2 text-[10px] text-gray-500">
-                            £{player.total.toFixed(2)} ({player.count})
-                          </span>
-                        </div>
-                      );
-                    })}
-                </span>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-                <span className="text-sm text-gray-500 mb-2">
-                  Total Fines Issued
-                </span>
-                <span className="text-2xl font-bold">
-                  {
-                    playerFinesData.filter(
-                      (c) =>
-                        c.matchDate &&
-                        new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                          (filterDate !== undefined
-                            ? filterDate
-                            : new Date(c.matchDate).toLocaleDateString(
-                                "en-GB"
-                              )) &&
-                        (filterPlayer !== undefined
-                          ? c.player === filterPlayer
-                          : true)
-                    ).length
-                  }
-                </span>
-                <span className="text-sm text-gray-500 mt-2">
-                  Avg. number :
-                  {(() => {
-                    const filtered = playerFinesData.filter(
-                      (c) =>
-                        c.matchDate &&
-                        new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                          (filterDate !== undefined
-                            ? filterDate
-                            : new Date(c.matchDate).toLocaleDateString("en-GB"))
-                    );
-                    const matchDates = Array.from(
-                      new Set(filtered.map((item) => item.matchDate))
-                    );
-                    const totalFines = filtered.length;
-                    return matchDates.length > 0
-                      ? totalFines / matchDates.length
-                      : "0";
-                  })()}
-                </span>
-              </div>
-
-              <div className="col-span-1 lg:col-span-3">
-                <div className="flex flex-col gap-2">
-                  <FineChart
-                    playerFinesData={playerFinesData.filter(
-                      (c) =>
-                        c.matchDate &&
-                        new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                          (filterDate !== undefined
-                            ? filterDate
-                            : new Date(c.matchDate).toLocaleDateString(
-                                "en-GB"
-                              )) &&
-                        (filterPlayer !== undefined
-                          ? c.player === filterPlayer
-                          : true)
-                    )}
-                  />
-                  <FineTypeBarChart
-                    playerFinesData={playerFinesData.filter(
-                      (c) =>
-                        c.matchDate &&
-                        new Date(c.matchDate).toLocaleDateString("en-GB") ===
-                          (filterDate !== undefined
-                            ? filterDate
-                            : new Date(c.matchDate).toLocaleDateString(
-                                "en-GB"
-                              )) &&
-                        (filterPlayer !== undefined
-                          ? c.player === filterPlayer
-                          : true)
-                    )}
-                  />{" "}
-                </div>
-              </div>
-            </div>
+        <TabsContent value="charts">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <FineChart playerFinesData={filteredFines} />
+            <FineTypeBarChart playerFinesData={filteredFines} />
           </div>
         </TabsContent>
       </Tabs>
-    );
-  }
+    </div>
+  );
 }

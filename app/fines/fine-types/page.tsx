@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { FineTypeTable } from "./fine-type-table";
-import { fineTypeColumns } from "./fine-types-columns";
 import { db } from "@/server";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +8,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FineTypeCardList } from "./fine-type-card-list";
+
 export const dynamic = "force-dynamic";
-    
 
 export default async function GetFineTypePage() {
   const fines = (await db.query.fines.findMany()).map((fine) => ({
@@ -20,11 +19,7 @@ export default async function GetFineTypePage() {
     createdAt: fine.createdAt ? fine.createdAt.toISOString() : null,
   }));
 
-
-  
   return (
- 
-    
     <div className="px-2 w-full mx-auto lg:w-[80%] mt-12">
       <Link
         href="/fines/fine-types/add-fine-type"
@@ -40,7 +35,7 @@ export default async function GetFineTypePage() {
           <CardDescription>List of all fines</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          <FineTypeTable columns={fineTypeColumns} data={fines} />
+          <FineTypeCardList fines={fines} />
         </CardContent>
       </Card>
     </div>
