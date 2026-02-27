@@ -48,7 +48,7 @@ const navLinks = [
 
 function NavText({ title }: { title: string }) {
   return (
-    <span className="relative inline-block after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-primary after:transition-transform after:duration-200 group-hover:after:scale-x-100">
+    <span className="relative inline-block after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-primary after:transition-transform after:duration-200 hover:after:scale-x-100">
       {title}
     </span>
   );
@@ -71,7 +71,7 @@ export function Nav() {
               <NavigationMenuItem key={link.titleEng} className="relative">
                 {link.subLinks.length ? (
                   <>
-                    <NavigationMenuTrigger className="group bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent">
+                    <NavigationMenuTrigger className="bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent">
                       <NavText title={link.titleEng} />
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
@@ -95,7 +95,7 @@ export function Nav() {
                   </>
                 ) : (
                   <NavigationMenuLink asChild>
-                    <Link href={link.href} className="group inline-flex items-center px-3 py-2 hover:bg-transparent">
+                    <Link href={link.href} className="inline-flex items-center px-3 py-2 hover:bg-transparent">
                       <NavText title={link.titleEng} />
                     </Link>
                   </NavigationMenuLink>
@@ -132,7 +132,7 @@ export function Nav() {
               onClick={() => setIsMobileOpen(false)}
             />
             <motion.aside
-              className="fixed inset-y-0 right-0 z-50 w-full bg-background p-6 md:hidden"
+              className="fixed inset-y-0 right-0 z-50 w-full bg-white p-6 dark:bg-black md:hidden"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
