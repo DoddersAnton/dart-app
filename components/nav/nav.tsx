@@ -59,7 +59,12 @@ export function Nav() {
   const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
 
   return (
-    <header className="fixed top-0 left-0 z-50 w-full border-b bg-background/70 backdrop-blur-md">
+    <header
+      className={cn(
+        "fixed top-0 left-0 z-50 w-full border-b md:backdrop-blur-md",
+        isMobileOpen ? "bg-white dark:bg-black" : "bg-background/70",
+      )}
+    >
       <div className="container mx-auto flex items-center justify-between p-4">
         <Link href="/">
           <Logo />
@@ -132,7 +137,7 @@ export function Nav() {
               onClick={() => setIsMobileOpen(false)}
             />
             <motion.aside
-              className="fixed inset-y-0 right-0 z-50 w-full bg-white p-6 dark:bg-black md:hidden"
+              className="fixed inset-y-0 right-0 z-50 w-full bg-white p-6 opacity-100 dark:bg-black md:hidden"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
