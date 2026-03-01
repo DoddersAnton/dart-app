@@ -1,0 +1,1 @@
+ALTER TABLE "players" ADD COLUMN "img_url" varchar(500);

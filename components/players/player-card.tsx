@@ -39,6 +39,7 @@ import {
 } from "../ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
+import { updatePlayerImageUrl } from "@/server/actions/update-player-img";
 
 //import { PlayerFinesSummary } from "@/app/fines/player-fines-summary";
 //import PayFinesForm from "./pay-fines";
@@ -49,6 +50,7 @@ export type Player = {
   nickname: string | null;
   team: string | null;
   createdAt: string | null;
+  url: string | null;
   //totalFines: number | null;
   /*playerFinesData: {
     id: number;
@@ -255,7 +257,7 @@ function usePlayerData(playerId: number, playerName?: string) {
 export default function PlayerCard({ playerData }: { playerData: Player }) {
   //<PayFinesForm playerFinesData={playerData.playerFinesData}  />
   const [open, setOpen] = useState(false);
-  const [avatar, setAvatar] = useState<string>("");
+  const [avatar, setAvatar] = useState<string>(playerData.url || "");
   const {
     payments,
     subs,
@@ -270,22 +272,11 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
   } = usePlayerData(playerData.id, playerData.name);
 
 
-  useEffect(() => {
-    const avatars = window.localStorage.getItem("players-avatars");
-    if (!avatars) return;
 
-    const map = JSON.parse(avatars) as Record<number, string>;
-    if (map[playerData.id]) {
-      setAvatar(map[playerData.id]);
-    }
-  }, [playerData.id]);
 
-  const updatePlayerAvatar = (playerId: number, imageUrl: string) => {
-    setAvatar(imageUrl);
-    const avatars = window.localStorage.getItem("players-avatars");
-    const map = avatars ? (JSON.parse(avatars) as Record<number, string>) : {};
-    const next = { ...map, [playerId]: imageUrl };
-    window.localStorage.setItem("players-avatars", JSON.stringify(next));
+  const updatePlayerAvatar = async (playerId: number, imageUrl: string) => {
+     await updatePlayerImageUrl({url: imageUrl, id: playerId});
+     setAvatar(imageUrl);
   };
 
   const unpaidFines = fines.filter((fine) => fine.status === "Unpaid");

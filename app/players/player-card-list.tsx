@@ -7,19 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Camera, ImageUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { UploadThingImageUploader } from "@/components/players/uploadthing-image-uploader";
 
 interface Player {
   id: number;
@@ -60,14 +51,6 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
     return players.filter((player) => player.name.toLowerCase().includes(term));
   }, [players, search]);
 
-  const updatePlayerAvatar = (playerId: number, dataUrl: string) => {
-    setAvatarMap((prev) => {
-      const next = { ...prev, [playerId]: dataUrl };
-      window.localStorage.setItem("players-avatars", JSON.stringify(next));
-      return next;
-    });
-  };
-
   return (
     <div className="space-y-4">
       <Input
@@ -102,26 +85,6 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
                       )}
                       <CardTitle className="text-lg">{player.name}</CardTitle>
                     </div>
-
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="icon" variant="outline" aria-label="Add image">
-                          <Camera className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2"><ImageUp className="h-4 w-4" /> Upload your image</DialogTitle>
-                        </DialogHeader>
-                        <p className="text-sm text-muted-foreground">
-                          Upload your image for {player.name}. This is stored in your local browser for now.
-                        </p>
-                        <UploadThingImageUploader
-                          playerId={player.id}
-                          onUploadComplete={updatePlayerAvatar}
-                        />
-                      </DialogContent>
-                    </Dialog>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">

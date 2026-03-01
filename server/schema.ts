@@ -9,6 +9,7 @@ export const players = pgTable("players", {
     team: varchar("team", { length: 255 }),
     //teamId: integer("team_id").references(() => team.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow(),
+    imgUrl: varchar("img_url", { length: 500 }),
   });
 
   export const fines = pgTable("fines", {
