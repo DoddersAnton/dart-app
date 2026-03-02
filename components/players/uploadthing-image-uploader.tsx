@@ -1,31 +1,42 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { ChangeEvent } from "react";
+import { useState } from "react";
 
-interface UploadThingImageUploaderProps {
-  playerId: number;
-  onUploadComplete: (playerId: number, imageUrl: string) => void;
-}
+import { UploadDropzone } from "@/app/api/uploadthing/upload";
 
-export function UploadThingImageUploader({
-  playerId,
-  onUploadComplete,
-}: UploadThingImageUploaderProps) {
-  const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+type UploadThingImageUploaderProps = {
+  onUploadComplete: (imageUrl: string) => Promise<void> | void;
+};
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onUploadComplete(playerId, reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
+export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageUploaderProps) {
+  const [imgUploading, setImgUploading] = useState(false);
 
-  return <Input type="file" accept="image/*" onChange={onFileChange} />;
+  return (
+    <UploadDropzone
+      className="scale-95 ut-button:ring-primary ut-button:bg-primary/75 hover:ut-button:bg-primary/100 ut-button:transition-all ut-button:duration-500 ut-label:hidden ut-allowed-content:hidden"
+      endpoint="imgUploader"
+      onUploadBegin={() => {
+        setImgUploading(true);
+      }}
+      onUploadError={() => {
+        setImgUploading(false);
+      }}
+      onClientUploadComplete={async (res) => {
+        const first = res?.[0];
+        const uploadedUrl = first?.ufsUrl || first?.url;
+
+        if (uploadedUrl) {
+          await onUploadComplete(uploadedUrl);
+        }
+
+        setImgUploading(false);
+      }}
+      content={{
+        button() {
+          if (imgUploading) return <div>Uploading...</div>;
+          return <div>Upload avatar</div>;
+        },
+      }}
+    />
+  );
 }

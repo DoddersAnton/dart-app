@@ -274,8 +274,8 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
 
 
 
-  const updatePlayerAvatar = async (playerId: number, imageUrl: string) => {
-     await updatePlayerImageUrl({url: imageUrl, id: playerId});
+  const updatePlayerAvatar = async (imageUrl: string) => {
+     await updatePlayerImageUrl({url: imageUrl, id: playerData.id});
      setAvatar(imageUrl);
   };
 
@@ -318,10 +318,7 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
                 <DialogTitle className="flex items-center gap-2"><ImageUp className="h-4 w-4" /> Upload your image</DialogTitle>
               </DialogHeader>
               <p className="text-sm text-muted-foreground">Upload your image for {playerData.name}.</p>
-              <UploadThingImageUploader
-                playerId={playerData.id}
-                onUploadComplete={updatePlayerAvatar}
-              />
+              <UploadThingImageUploader onUploadComplete={updatePlayerAvatar} />
             </DialogContent>
           </Dialog>
         </div>
