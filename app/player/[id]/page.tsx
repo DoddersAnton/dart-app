@@ -3,6 +3,13 @@ import { notFound } from "next/navigation";
 import { getPlayerDashboardData } from "./_lib/player-dashboard-data";
 import { PlayerOverviewClient } from "./player-overview-client";
 
+function calcPct(wins: number, losses: number) {
+  const total = wins + losses;
+  if (total === 0) return 0;
+
+  return Math.round((wins / total) * 100);
+}
+
 export default async function PlayerOverviewPage({
   params,
 }: {
@@ -16,6 +23,22 @@ export default async function PlayerOverviewPage({
     notFound();
   }
 
+  const currentPlayerRows = data.seasonSummaries.flatMap((season) =>
+    season.allRows.filter((row) => row.playerId === playerId),
+  );
+
+  const aggregate = (gameType: "Singles" | "Doubles" | "Team Game") => {
+    const rows = currentPlayerRows.filter((row) => row.gameType === gameType);
+    const wins = rows.reduce((acc, row) => acc + row.wins, 0);
+    const losses = rows.reduce((acc, row) => acc + row.loses, 0);
+
+    return { wins, losses, winPct: calcPct(wins, losses) };
+  };
+
+  const singles = aggregate("Singles");
+  const doubles = aggregate("Doubles");
+  const teamGames = aggregate("Team Game");
+
   return (
     <PlayerOverviewClient
       player={{
@@ -28,12 +51,18 @@ export default async function PlayerOverviewPage({
       finesCount={data.finesWithType.length}
       paidFinesCount={data.paidFines.length}
       unpaidFinesCount={data.unpaidFines.length}
+      paidFinesValue={data.paidFines.reduce((acc, fine) => acc + (fine.amount ?? 0), 0)}
+      unpaidFinesValue={data.unpaidFines.reduce((acc, fine) => acc + (fine.amount ?? 0), 0)}
       subsTotalValue={data.subs.reduce((acc, sub) => acc + sub.amount, 0)}
       paidSubsCount={data.paidSubs.length}
       unpaidSubsCount={data.unpaidSubs.length}
+      seasonsPlayed={data.seasonSummaries.filter((season) => season.totalGames > 0).length}
       totalGamesWon={data.totalGamesWon}
       totalGamesLost={data.totalGamesLost}
       totalMatchesPlayed={data.totalMatchesPlayed}
+      singles={singles}
+      doubles={doubles}
+      teamGames={teamGames}
     />
   );
 }

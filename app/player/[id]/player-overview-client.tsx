@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { Camera, ImageUp, Trophy } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { Camera, ImageUp } from "lucide-react";
 import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
 
 import { updatePlayerImageUrl } from "@/server/actions/update-player-img";
@@ -11,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+
+type ModeStats = {
+  wins: number;
+  losses: number;
+  winPct: number;
+};
 
 type Props = {
   player: {
@@ -23,12 +31,18 @@ type Props = {
   finesCount: number;
   paidFinesCount: number;
   unpaidFinesCount: number;
+  paidFinesValue: number;
+  unpaidFinesValue: number;
   subsTotalValue: number;
   paidSubsCount: number;
   unpaidSubsCount: number;
+  seasonsPlayed: number;
   totalGamesWon: number;
   totalGamesLost: number;
   totalMatchesPlayed: number;
+  singles: ModeStats;
+  doubles: ModeStats;
+  teamGames: ModeStats;
 };
 
 function getInitials(name: string) {
@@ -42,16 +56,6 @@ function getInitials(name: string) {
 export function PlayerOverviewClient(props: Props) {
   const [avatarUrl, setAvatarUrl] = useState(props.player.imgUrl || "");
 
-  const totalGames = props.totalGamesWon + props.totalGamesLost;
-  const winPercent = totalGames > 0 ? Math.round((props.totalGamesWon / totalGames) * 100) : 0;
-
-  const arc = useMemo(() => {
-    const radius = 60;
-    const circumference = Math.PI * radius;
-    const dash = (winPercent / 100) * circumference;
-
-    return { radius, circumference, dash };
-  }, [winPercent]);
 
   const radialChartData = [
     {
@@ -109,55 +113,42 @@ export function PlayerOverviewClient(props: Props) {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
-          <CardHeader><CardTitle>Fines total</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Fines total</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
-            <div className="text-lg font-semibold">£{props.totalFinesIssuedValue.toFixed(2)}</div>
-            <div>Issues: {props.finesCount}</div>
-            <div>Paid: {props.paidFinesCount} / Unpaid: {props.unpaidFinesCount}</div>
+            <div className="font-semibold">Issued: £{props.totalFinesIssuedValue.toFixed(2)}</div>
+            <div>Issued: {props.finesCount}</div>
+            <div>Paid: {props.paidFinesCount} (£{props.paidFinesValue.toFixed(2)})</div>
+            <div>Unpaid: {props.unpaidFinesCount} (£{props.unpaidFinesValue.toFixed(2)})</div>
+            <Button asChild size="sm" variant="outline" className="mt-2">
+              <Link href={`/player/${props.player.id}/financial-summary/fines`}>See Fines</Link>
+            </Button>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Subs total</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Subs total</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
-            <div className="text-lg font-semibold">£{props.subsTotalValue.toFixed(2)}</div>
+            <div className="font-semibold">Total: £{props.subsTotalValue.toFixed(2)}</div>
             <div>Paid: {props.paidSubsCount}</div>
             <div>Unpaid: {props.unpaidSubsCount}</div>
+            <Button asChild size="sm" variant="outline" className="mt-2">
+              <Link href={`/player/${props.player.id}/financial-summary/subs`}>See Subs</Link>
+            </Button>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Win / loss</CardTitle></CardHeader>
-          <CardContent className="flex flex-col items-center gap-2">
-            <svg width="160" height="100" viewBox="0 0 160 100">
-              <path
-                d="M 20 80 A 60 60 0 0 1 140 80"
-                fill="none"
-                stroke="hsl(var(--muted))"
-                strokeWidth="16"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 20 80 A 60 60 0 0 1 140 80"
-                fill="none"
-                stroke="hsl(var(--chart-1))"
-                strokeWidth="16"
-                strokeLinecap="round"
-                strokeDasharray={`${arc.dash} ${arc.circumference}`}
-              />
-            </svg>
-            <div className="flex items-center gap-2 text-sm">
-              <Trophy className="h-4 w-4 text-yellow-500" />
-              {props.totalGamesWon}W / {props.totalGamesLost}L ({winPercent}%)
-            </div>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Player Summary</CardTitle></CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            <div>Seasons played: {props.seasonsPlayed}</div>
+            <div>Matches played: {props.totalMatchesPlayed}</div>
+            <Separator className="my-2" />
+            <div>Team games: {props.teamGames.wins} / {props.teamGames.losses} ({props.teamGames.winPct}%)</div>
+            <div>Doubles games: {props.doubles.wins} / {props.doubles.losses} ({props.doubles.winPct}%)</div>
+            <div>Singles games: {props.singles.wins} / {props.singles.losses} ({props.singles.winPct}%)</div>
           </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Matches played</CardTitle></CardHeader>
-          <CardContent className="text-lg font-semibold">{props.totalMatchesPlayed}</CardContent>
         </Card>
       </div>
 
@@ -184,24 +175,14 @@ export function PlayerOverviewClient(props: Props) {
               <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
                 <Label
                   content={({ viewBox }) => {
-                    if (!viewBox || !("cx" in viewBox) || !("cy" in viewBox)) {
-                      return null;
-                    }
+                    if (!viewBox || !('cx' in viewBox) || !('cy' in viewBox)) return null;
 
                     return (
                       <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy || 0) - 6}
-                          className="fill-foreground text-2xl font-bold"
-                        >
+                        <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 6} className="fill-foreground text-2xl font-bold">
                           {props.totalGamesWon}
                         </tspan>
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy || 0) + 14}
-                          className="fill-muted-foreground"
-                        >
+                        <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 14} className="fill-muted-foreground">
                           total wins
                         </tspan>
                       </text>
