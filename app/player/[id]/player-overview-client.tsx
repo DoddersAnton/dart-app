@@ -3,11 +3,13 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { Camera, ImageUp, Trophy } from "lucide-react";
+import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
 
 import { updatePlayerImageUrl } from "@/server/actions/update-player-img";
 import { UploadThingImageUploader } from "@/components/players/uploadthing-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 type Props = {
@@ -50,6 +52,14 @@ export function PlayerOverviewClient(props: Props) {
 
     return { radius, circumference, dash };
   }, [winPercent]);
+
+  const radialChartData = [
+    {
+      name: "results",
+      wins: props.totalGamesWon,
+      losses: props.totalGamesLost,
+    },
+  ];
 
   const updatePlayerAvatar = async (imageUrl: string) => {
     await updatePlayerImageUrl({ id: props.player.id, url: imageUrl });
@@ -119,7 +129,7 @@ export function PlayerOverviewClient(props: Props) {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Win / loss horseshoe</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Win / loss</CardTitle></CardHeader>
           <CardContent className="flex flex-col items-center gap-2">
             <svg width="160" height="100" viewBox="0 0 160 100">
               <path
@@ -150,6 +160,61 @@ export function PlayerOverviewClient(props: Props) {
           <CardContent className="text-lg font-semibold">{props.totalMatchesPlayed}</CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Wins vs losses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            config={{
+              wins: { label: "Wins", color: "hsl(var(--chart-1))" },
+              losses: { label: "Losses", color: "hsl(var(--chart-2))" },
+            }}
+            className="mx-auto aspect-square h-[280px]"
+          >
+            <RadialBarChart
+              data={radialChartData}
+              startAngle={180}
+              endAngle={0}
+              innerRadius={80}
+              outerRadius={140}
+            >
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                <Label
+                  content={({ viewBox }) => {
+                    if (!viewBox || !("cx" in viewBox) || !("cy" in viewBox)) {
+                      return null;
+                    }
+
+                    return (
+                      <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) - 6}
+                          className="fill-foreground text-2xl font-bold"
+                        >
+                          {props.totalGamesWon}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) + 14}
+                          className="fill-muted-foreground"
+                        >
+                          total wins
+                        </tspan>
+                      </text>
+                    );
+                  }}
+                />
+              </PolarRadiusAxis>
+              <RadialBar dataKey="wins" stackId="a" fill="var(--color-wins)" cornerRadius={8} />
+              <RadialBar dataKey="losses" stackId="a" fill="var(--color-losses)" cornerRadius={8} />
+            </RadialBarChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 }
