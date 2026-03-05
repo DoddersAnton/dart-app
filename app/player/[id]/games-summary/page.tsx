@@ -16,7 +16,6 @@ export default async function PlayerGamesSummaryPage({
   if (!data.player) notFound();
 
   const seasonsPlayed = data.seasonSummaries.filter((season) => season.totalGames > 0).length;
-  const currentSeasonRows = data.seasonSummaries.at(-1)?.allRows ?? [];
 
   return (
     <div className="space-y-4">
@@ -31,7 +30,7 @@ export default async function PlayerGamesSummaryPage({
       <Card>
         <CardHeader><CardTitle>Season stats and chart</CardTitle></CardHeader>
         <CardContent>
-          <PlayerGamesTabs rows={currentSeasonRows} currentPlayerId={playerId} />
+          <PlayerGamesTabs seasons={data.seasonSummaries} currentPlayerId={playerId} />
         </CardContent>
       </Card>
     </div>

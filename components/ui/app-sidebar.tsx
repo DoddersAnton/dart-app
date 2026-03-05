@@ -17,6 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { cn } from "@/lib/utils"
 
 export type SidebarItem = {
   label: string
@@ -27,9 +28,10 @@ export type SidebarItem = {
 
 type AppSidebarProps = {
   items: SidebarItem[]
+  className?: string
 }
 
-export function AppSidebar({ items }: AppSidebarProps) {
+export function AppSidebar({ items, className }: AppSidebarProps) {
   const pathname = usePathname()
 
   const isItemActive = (item: SidebarItem): boolean => {
@@ -44,7 +46,6 @@ export function AppSidebar({ items }: AppSidebarProps) {
     const active = isItemActive(item)
     const hasChildren = !!item.children?.length
 
-    // Leaf node
     if (!hasChildren && item.href) {
       return (
         <SidebarMenuItem key={item.href}>
@@ -62,7 +63,6 @@ export function AppSidebar({ items }: AppSidebarProps) {
       )
     }
 
-    // Parent node
     return (
       <Collapsible
         key={item.label}
@@ -94,7 +94,7 @@ export function AppSidebar({ items }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar collapsible="icon" className="mt-[85px]">
+    <Sidebar collapsible="icon" className={cn("mt-[85px]", className)}>
       <SidebarContent>
         <SidebarMenu>
           {items.map((item) => renderItem(item))}

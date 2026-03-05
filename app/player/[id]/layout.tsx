@@ -14,7 +14,7 @@ export default async function PlayerLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar items={getPlayerSidebarItems(playerId)} />
+      <AppSidebar items={getPlayerSidebarItems(playerId)} className="mt-0" />
 
       <SidebarInset>
         <header className="flex h-14 items-center gap-2 border-b px-4">
