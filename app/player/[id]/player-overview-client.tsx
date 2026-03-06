@@ -114,32 +114,32 @@ export function PlayerOverviewClient(props: Props) {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
+        <Card className="h-full">
           <CardHeader className="pb-2"><CardTitle className="text-base">Fines total</CardTitle></CardHeader>
-          <CardContent className="space-y-1 text-sm">
+          <CardContent className="flex h-full flex-col space-y-1 text-sm">
             <div className="font-semibold">Issued: £{props.totalFinesIssuedValue.toFixed(2)}</div>
             <div>Issued: {props.finesCount}</div>
             <div>Paid: {props.paidFinesCount} (£{props.paidFinesValue.toFixed(2)})</div>
             <div>Unpaid: {props.unpaidFinesCount} (£{props.unpaidFinesValue.toFixed(2)})</div>
-            <Button asChild size="sm" variant="outline" className="mt-2">
+            <Button asChild size="sm" variant="outline" className="mt-auto">
               <Link href={`/player/${props.player.id}/financial-summary/fines`}>See Fines</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full">
           <CardHeader className="pb-2"><CardTitle className="text-base">Subs total</CardTitle></CardHeader>
-          <CardContent className="space-y-1 text-sm">
+          <CardContent className="flex h-full flex-col space-y-1 text-sm">
             <div className="font-semibold">Total: £{props.subsTotalValue.toFixed(2)}</div>
             <div>Paid: {props.paidSubsCount}</div>
             <div>Unpaid: {props.unpaidSubsCount}</div>
-            <Button asChild size="sm" variant="outline" className="mt-2">
+            <Button asChild size="sm" variant="outline" className="mt-auto">
               <Link href={`/player/${props.player.id}/financial-summary/subs`}>See Subs</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full">
           <CardHeader className="pb-2"><CardTitle className="text-base">Player Summary</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
             <div>Seasons played: {props.seasonsPlayed}</div>
