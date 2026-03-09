@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Camera, ImageUp } from "lucide-react";
-import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
+import { Label, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, RadialBar, RadialBarChart } from "recharts";
 
 import { updatePlayerImageUrl } from "@/server/actions/update-player-img";
 import { UploadThingImageUploader } from "@/components/players/uploadthing-image-uploader";
@@ -43,6 +43,7 @@ type Props = {
   singles: ModeStats;
   doubles: ModeStats;
   teamGames: ModeStats;
+  fineTypeChartData: { type: string; count: number }[];
 };
 
 function getInitials(name: string) {
@@ -151,6 +152,28 @@ export function PlayerOverviewClient(props: Props) {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Fines by fine type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            config={{
+              count: { label: "Fines", color: "hsl(var(--chart-3))" },
+            }}
+            className="mx-auto aspect-square h-[320px]"
+          >
+            <RadarChart data={props.fineTypeChartData}>
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <PolarGrid />
+              <PolarAngleAxis dataKey="type" />
+              <PolarRadiusAxis />
+              <Radar dataKey="count" fill="var(--color-count)" fillOpacity={0.5} stroke="var(--color-count)" />
+            </RadarChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

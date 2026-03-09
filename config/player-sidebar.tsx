@@ -1,5 +1,5 @@
 import { SidebarItem } from "@/components/ui/app-sidebar";
-import { Banknote, ChartColumnBig, CirclePoundSterling, HandCoins, Home, ReceiptText } from "lucide-react";
+import { Banknote, ChartColumnBig, PoundSterling, HandCoins, Home, ReceiptText } from "lucide-react";
 
 export function getPlayerSidebarItems(id: number): SidebarItem[] {
   return [
@@ -16,7 +16,7 @@ export function getPlayerSidebarItems(id: number): SidebarItem[] {
         {
           label: "Overview",
           href: `/player/${id}/financial-summary`,
-          icon: <CirclePoundSterling className="h-4 w-4" />,
+          icon: <PoundSterling className="h-4 w-4" />,
         },
         {
           label: "Fines",
@@ -31,7 +31,7 @@ export function getPlayerSidebarItems(id: number): SidebarItem[] {
         {
           label: "Payments",
           href: `/player/${id}/financial-summary/payments`,
-          icon: <CirclePoundSterling className="h-4 w-4" />,
+          icon: <PoundSterling className="h-4 w-4" />,
         },
       ],
     },

@@ -39,6 +39,15 @@ export default async function PlayerOverviewPage({
   const doubles = aggregate("Doubles");
   const teamGames = aggregate("Team Game");
 
+  const fineTypeChartData = Object.entries(
+    data.finesWithType.reduce<Record<string, number>>((acc, fine) => {
+      const key = fine.title || "Unknown";
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {}),
+  ).map(([type, count]) => ({ type, count }));
+
+
   return (
     <PlayerOverviewClient
       player={{
@@ -63,6 +72,7 @@ export default async function PlayerOverviewPage({
       singles={singles}
       doubles={doubles}
       teamGames={teamGames}
+      fineTypeChartData={fineTypeChartData}
     />
   );
 }
