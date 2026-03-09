@@ -41,7 +41,7 @@ export function PlayerGamesTabs({
         {seasons.length > 0 ? (
           <div className="space-y-6">
             {seasons.map((data) => {
-              const sortedRows = [...data.allRows].sort((a, b) => (b.rankValue ?? 0) - (a.rankValue ?? 0));
+              const sortedRows = [...data.allRows].sort((a, b) => (a.rankValue ?? 999) - (b.rankValue ?? 999));
               return (
                 <Card key={data.season} className="shadow-lg">
                   <CardHeader>
