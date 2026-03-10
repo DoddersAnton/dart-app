@@ -44,6 +44,15 @@ type Props = {
   doubles: ModeStats;
   teamGames: ModeStats;
   fineTypeChartData: { type: string; count: number }[];
+  overallSummary: {
+    played: number;
+    wins: number;
+    losses: number;
+    legsFor: number;
+    legsAgainst: number;
+    result: number;
+    rank: number;
+  };
 };
 
 function getInitials(name: string) {
@@ -149,6 +158,33 @@ export function PlayerOverviewClient(props: Props) {
             <div>Team games: {props.teamGames.wins} / {props.teamGames.losses} ({props.teamGames.winPct}%)</div>
             <div>Doubles games: {props.doubles.wins} / {props.doubles.losses} ({props.doubles.winPct}%)</div>
             <div>Singles games: {props.singles.wins} / {props.singles.losses} ({props.singles.winPct}%)</div>
+
+            <div className="mt-3 overflow-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-muted-foreground">
+                    <th className="px-1 text-left">P</th>
+                    <th className="px-1 text-left">W</th>
+                    <th className="px-1 text-left">L</th>
+                    <th className="px-1 text-left">F</th>
+                    <th className="px-1 text-left">A</th>
+                    <th className="px-1 text-left">R</th>
+                    <th className="px-1 text-left">RK</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-1">{props.overallSummary.played}</td>
+                    <td className="px-1">{props.overallSummary.wins}</td>
+                    <td className="px-1">{props.overallSummary.losses}</td>
+                    <td className="px-1">{props.overallSummary.legsFor}</td>
+                    <td className="px-1">{props.overallSummary.legsAgainst}</td>
+                    <td className="px-1">{props.overallSummary.result}</td>
+                    <td className="px-1">{props.overallSummary.rank}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       </div>

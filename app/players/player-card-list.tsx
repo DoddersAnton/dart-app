@@ -17,6 +17,7 @@ interface Player {
   name: string;
   nickname: string | null;
   team: string | null;
+  imgUrl?: string | null;
 }
 
 interface PlayerCardListProps {
@@ -62,7 +63,7 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
       {filteredPlayers.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredPlayers.map((player) => {
-            const avatarSrc = avatarMap[player.id];
+            const avatarSrc = player.imgUrl || avatarMap[player.id];
 
             return (
               <Card key={player.id}>
@@ -91,7 +92,7 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
                   <p>Nickname: {player.nickname || "N/A"}</p>
                   <p>Team: {player.team || "N/A"}</p>
                   <Button asChild className="w-full" variant="outline">
-                    <Link href={`/players/${player.id}`}>View Player</Link>
+                    <Link href={`/player/${player.id}`}>View Player</Link>
                   </Button>
                 </CardContent>
               </Card>

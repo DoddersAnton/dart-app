@@ -39,6 +39,18 @@ export default async function PlayerOverviewPage({
   const doubles = aggregate("Doubles");
   const teamGames = aggregate("Team Game");
 
+  const overallRows = currentPlayerRows.filter((row) => row.gameType === "Overall");
+  const overallSummary = {
+    played: overallRows.reduce((acc, row) => acc + (row.wins + row.loses), 0),
+    wins: overallRows.reduce((acc, row) => acc + row.wins, 0),
+    losses: overallRows.reduce((acc, row) => acc + row.loses, 0),
+    legsFor: overallRows.reduce((acc, row) => acc + (row.legsFor ?? 0), 0),
+    legsAgainst: overallRows.reduce((acc, row) => acc + (row.legsAgainst ?? 0), 0),
+    result: overallRows.reduce((acc, row) => acc + (row.wins - row.loses), 0),
+    rank: overallRows.at(-1)?.rankValue ?? 0,
+  };
+
+
   const fineTypeChartData = Object.entries(
     data.finesWithType.reduce<Record<string, number>>((acc, fine) => {
       const key = fine.title || "Unknown";
@@ -73,6 +85,7 @@ export default async function PlayerOverviewPage({
       doubles={doubles}
       teamGames={teamGames}
       fineTypeChartData={fineTypeChartData}
+      overallSummary={overallSummary}
     />
   );
 }
