@@ -199,12 +199,12 @@ export function PlayerOverviewClient(props: Props) {
               config={{
                 count: { label: "Fines", color: "#388E3C" },
               }}
-              className="mx-auto aspect-square h-[320px]"
+              className="mx-auto h-[320px] w-full max-w-[520px]"
             >
-              <RadarChart data={props.fineTypeChartData}>
+              <RadarChart data={props.fineTypeChartData} margin={{ top: 24, right: 56, bottom: 24, left: 56 }}>
                 <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                 <PolarGrid />
-                <PolarAngleAxis dataKey="type" />
+                <PolarAngleAxis dataKey="type" tick={{ fontSize: 12 }} />
                 <PolarRadiusAxis />
                 <Radar dataKey="count" fill="#388E3C" fillOpacity={0.35} stroke="#388E3C" />
               </RadarChart>
