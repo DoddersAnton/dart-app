@@ -17,6 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { cn } from "@/lib/utils"
 
 export type SidebarItem = {
   label: string
@@ -27,9 +28,10 @@ export type SidebarItem = {
 
 type AppSidebarProps = {
   items: SidebarItem[]
+  className?: string
 }
 
-export function AppSidebar({ items }: AppSidebarProps) {
+export function AppSidebar({ items, className }: AppSidebarProps) {
   const pathname = usePathname()
 
   const isItemActive = (item: SidebarItem): boolean => {
@@ -44,25 +46,23 @@ export function AppSidebar({ items }: AppSidebarProps) {
     const active = isItemActive(item)
     const hasChildren = !!item.children?.length
 
-    // Leaf node
     if (!hasChildren && item.href) {
       return (
         <SidebarMenuItem key={item.href}>
           <SidebarMenuButton
             asChild
             isActive={active}
-            className={depth > 0 ? "pl-8" : undefined}
+            className={depth > 0 ? "pl-8 group-data-[collapsible=icon]:pl-2" : undefined}
           >
             <Link href={item.href} className="flex items-center gap-2">
               {item.icon}
-              <span>{item.label}</span>
+              <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
       )
     }
 
-    // Parent node
     return (
       <Collapsible
         key={item.label}
@@ -73,9 +73,9 @@ export function AppSidebar({ items }: AppSidebarProps) {
             <SidebarMenuButton isActive={active}>
               <div className="flex w-full items-center gap-2">
                 {item.icon}
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1 group-data-[collapsible=icon]:hidden">{item.label}</span>
                 <ChevronRight
-                  className="h-4 w-4 transition-transform data-[state=open]:rotate-90"
+                  className="h-4 w-4 transition-transform data-[state=open]:rotate-90 group-data-[collapsible=icon]:hidden"
                 />
               </div>
             </SidebarMenuButton>
@@ -94,7 +94,7 @@ export function AppSidebar({ items }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar collapsible="icon" className="mt-[85px]">
+    <Sidebar collapsible="icon" className={cn("mt-[88px]", className)}>
       <SidebarContent>
         <SidebarMenu>
           {items.map((item) => renderItem(item))}

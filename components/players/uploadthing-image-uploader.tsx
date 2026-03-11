@@ -1,31 +1,71 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChangeEvent } from "react";
 
-interface UploadThingImageUploaderProps {
-  playerId: number;
-  onUploadComplete: (playerId: number, imageUrl: string) => void;
-}
+type UploadThingImageUploaderProps = {
+  onUploadComplete: (imageUrl: string) => Promise<void> | void;
+};
 
-export function UploadThingImageUploader({
-  playerId,
-  onUploadComplete,
-}: UploadThingImageUploaderProps) {
-  const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageUploaderProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<string>("");
+
+  const selectedLabel = useMemo(() => {
+    if (!selectedFile) return "No file selected";
+    return `${selectedFile.name} (${Math.round(selectedFile.size / 1024)} KB)`;
+  }, [selectedFile]);
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    setUploading(true);
+    setMessage("Uploading...");
 
     const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onUploadComplete(playerId, reader.result);
+    reader.onload = async () => {
+      try {
+        if (typeof reader.result === "string") {
+          await onUploadComplete(reader.result);
+          setMessage("Upload complete");
+          setSelectedFile(null);
+        } else {
+          setMessage("Could not read file");
+        }
+      } finally {
+        setUploading(false);
       }
     };
-    reader.readAsDataURL(file);
+    reader.onerror = () => {
+      setUploading(false);
+      setMessage("Upload failed");
+    };
+
+    reader.readAsDataURL(selectedFile);
   };
 
-  return <Input type="file" accept="image/*" onChange={onFileChange} />;
+  return (
+    <div className="space-y-3">
+      <Input
+        type="file"
+        accept="image/*"
+        onChange={(event) => {
+          const file = event.target.files?.[0] ?? null;
+          setSelectedFile(file);
+          setMessage(file ? "Image selected" : "");
+        }}
+      />
+
+      <p className="text-xs text-muted-foreground">{selectedLabel}</p>
+
+      <Button onClick={handleUpload} disabled={!selectedFile || uploading}>
+        {uploading ? "Uploading..." : "Upload image"}
+      </Button>
+
+      {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
+    </div>
+  );
 }
