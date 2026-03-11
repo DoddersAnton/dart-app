@@ -189,72 +189,74 @@ export function PlayerOverviewClient(props: Props) {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Fines by fine type</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer
-            config={{
-              count: { label: "Fines", color: "#388E3C" },
-            }}
-            className="mx-auto aspect-square h-[320px]"
-          >
-            <RadarChart data={props.fineTypeChartData}>
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-              <PolarGrid />
-              <PolarAngleAxis dataKey="type" />
-              <PolarRadiusAxis />
-              <Radar dataKey="count" fill="#388E3C" fillOpacity={0.35} stroke="#388E3C" />
-            </RadarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Wins vs losses</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer
-            config={{
-              wins: { label: "Wins", color: "#388E3C" },
-              losses: { label: "Losses", color: "#A5D6A7" },
-            }}
-            className="mx-auto aspect-square h-[280px]"
-          >
-            <RadialBarChart
-              data={radialChartData}
-              startAngle={180}
-              endAngle={0}
-              innerRadius={80}
-              outerRadius={140}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Fines by fine type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                count: { label: "Fines", color: "#388E3C" },
+              }}
+              className="mx-auto aspect-square h-[320px]"
             >
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-              <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
-                <Label
-                  content={({ viewBox }) => {
-                    if (!viewBox || !('cx' in viewBox) || !('cy' in viewBox)) return null;
+              <RadarChart data={props.fineTypeChartData}>
+                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                <PolarGrid />
+                <PolarAngleAxis dataKey="type" />
+                <PolarRadiusAxis />
+                <Radar dataKey="count" fill="#388E3C" fillOpacity={0.35} stroke="#388E3C" />
+              </RadarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
-                    return (
-                      <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
-                        <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 6} className="fill-foreground text-2xl font-bold">
-                          {props.totalGamesWon}
-                        </tspan>
-                        <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 14} className="fill-muted-foreground">
-                          total wins
-                        </tspan>
-                      </text>
-                    );
-                  }}
-                />
-              </PolarRadiusAxis>
-              <RadialBar dataKey="wins" stackId="a" fill="#388E3C" cornerRadius={8} />
-              <RadialBar dataKey="losses" stackId="a" fill="#A5D6A7" cornerRadius={8} />
-            </RadialBarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Wins vs losses</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                wins: { label: "Wins", color: "#388E3C" },
+                losses: { label: "Losses", color: "#A5D6A7" },
+              }}
+              className="mx-auto aspect-square h-[280px]"
+            >
+              <RadialBarChart
+                data={radialChartData}
+                startAngle={180}
+                endAngle={0}
+                innerRadius={80}
+                outerRadius={140}
+              >
+                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                  <Label
+                    content={({ viewBox }) => {
+                      if (!viewBox || !('cx' in viewBox) || !('cy' in viewBox)) return null;
+
+                      return (
+                        <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
+                          <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 6} className="fill-foreground text-2xl font-bold">
+                            {props.totalGamesWon}
+                          </tspan>
+                          <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 14} className="fill-muted-foreground">
+                            total wins
+                          </tspan>
+                        </text>
+                      );
+                    }}
+                  />
+                </PolarRadiusAxis>
+                <RadialBar dataKey="wins" stackId="a" fill="#388E3C" cornerRadius={8} />
+                <RadialBar dataKey="losses" stackId="a" fill="#A5D6A7" cornerRadius={8} />
+              </RadialBarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

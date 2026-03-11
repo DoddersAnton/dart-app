@@ -27,6 +27,7 @@ export interface FineSummaryProps {
     amount: number;
     createdAt: string | null;
     status: string | null;
+    playerImgUrl?: string | null;
   }[];
 }
 

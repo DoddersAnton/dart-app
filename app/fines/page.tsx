@@ -26,6 +26,7 @@ export default async function Page() {
     return {
       id: item.id,
       player: displayName,
+      playerImgUrl: player?.imgUrl ?? null,
       fine: fines.find((c) => c.id === item.fineId)?.title ?? "unknown",
       matchDate: item.matchDate ? item.matchDate.toISOString() : null,
       notes: item.notes,

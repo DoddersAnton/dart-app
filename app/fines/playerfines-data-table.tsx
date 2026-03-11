@@ -55,7 +55,7 @@ export function PlayerFinesDataTable<TData, TValue>({
   return (
     <Card className="mt-4">
       <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-col gap-3 md:flex-row">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="relative w-full">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -78,6 +78,18 @@ export function PlayerFinesDataTable<TData, TValue>({
               }
             />
           </div>
+          <select
+            className="h-10 rounded-md border bg-background px-3 text-sm"
+            value={(table.getColumn("status")?.getFilterValue() as string) ?? "all"}
+            onChange={(event) => {
+              const value = event.target.value
+              table.getColumn("status")?.setFilterValue(value === "all" ? "" : value)
+            }}
+          >
+            <option value="all">All statuses</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Unpaid</option>
+          </select>
         </div>
 
         <div className="rounded-md border overflow-x-auto">

@@ -15,11 +15,12 @@ import { deletePlayerfine } from "@/server/actions/delete-player-fine"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-
+import Image from "next/image"
 
 export type PlayerFineColumn = {
-    id: number;
+  id: number;
   player: string;
+  playerImgUrl?: string | null;
   fine: string;
   matchDate: string | null;
   notes: string | null;
@@ -68,15 +69,45 @@ const ActionCell = ({ row }: { row: Row<PlayerFineColumn> }) => {
   )
 }
 
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+}
+
 export const playerFinesColumns: ColumnDef<PlayerFineColumn>[] = [
   {
     accessorKey: "id",
     header: "ID",
   },
- 
   {
     accessorKey: "player",
     header: "Player Name",
+    cell: ({ row }) => {
+      const player = row.original.player
+      const avatar = row.original.playerImgUrl
+      return (
+        <div className="flex items-center gap-2">
+          {avatar ? (
+            <Image
+              src={avatar}
+              alt={`${player} avatar`}
+              width={28}
+              height={28}
+              unoptimized
+              className="h-7 w-7 rounded-full border object-cover"
+            />
+          ) : (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border bg-muted text-[10px] font-semibold">
+              {getInitials(player)}
+            </div>
+          )}
+          <span>{player}</span>
+        </div>
+      )
+    },
   },
   {
     accessorKey: "fine",
@@ -86,22 +117,23 @@ export const playerFinesColumns: ColumnDef<PlayerFineColumn>[] = [
     accessorKey: "matchDate",
     header: "Match Date",
     cell: ({ row }) => {
-        const timestamp = new Date(row.getValue("matchDate"));
-        const formattedDate = timestamp.toLocaleDateString("en-GB");
-        return <div className="font-medium text-xs">{formattedDate}</div>
-      },
+      const value = row.getValue("matchDate") as string | null
+      if (!value) return <div className="font-medium text-xs">-</div>
+      const timestamp = new Date(value)
+      const formattedDate = timestamp.toLocaleDateString("en-GB")
+      return <div className="font-medium text-xs">{formattedDate}</div>
+    },
   },
   {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-        const status = row.getValue("status")
-        if (status === "Paid")       {
-         return <div className="font-medium text-xs"><Badge variant="default">Paid</Badge></div>
-        } else {
-          return <div className="font-medium text-xs"><Badge variant="secondary">Unpaid</Badge></div>
-        }
-      },
+      const status = row.getValue("status")
+      if (status === "Paid") {
+        return <div className="font-medium text-xs"><Badge variant="default">Paid</Badge></div>
+      }
+      return <div className="font-medium text-xs"><Badge variant="secondary">Unpaid</Badge></div>
+    },
   },
   {
     accessorKey: "amount",
