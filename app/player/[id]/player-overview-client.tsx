@@ -196,7 +196,7 @@ export function PlayerOverviewClient(props: Props) {
         <CardContent>
           <ChartContainer
             config={{
-              count: { label: "Fines", color: "hsl(var(--chart-3))" },
+              count: { label: "Fines", color: "#388E3C" },
             }}
             className="mx-auto aspect-square h-[320px]"
           >
@@ -205,7 +205,7 @@ export function PlayerOverviewClient(props: Props) {
               <PolarGrid />
               <PolarAngleAxis dataKey="type" />
               <PolarRadiusAxis />
-              <Radar dataKey="count" fill="var(--color-count)" fillOpacity={0.5} stroke="var(--color-count)" />
+              <Radar dataKey="count" fill="#388E3C" fillOpacity={0.35} stroke="#388E3C" />
             </RadarChart>
           </ChartContainer>
         </CardContent>
@@ -218,8 +218,8 @@ export function PlayerOverviewClient(props: Props) {
         <CardContent>
           <ChartContainer
             config={{
-              wins: { label: "Wins", color: "hsl(var(--chart-1))" },
-              losses: { label: "Losses", color: "hsl(var(--chart-2))" },
+              wins: { label: "Wins", color: "#388E3C" },
+              losses: { label: "Losses", color: "#A5D6A7" },
             }}
             className="mx-auto aspect-square h-[280px]"
           >
@@ -249,8 +249,8 @@ export function PlayerOverviewClient(props: Props) {
                   }}
                 />
               </PolarRadiusAxis>
-              <RadialBar dataKey="wins" stackId="a" fill="var(--color-wins)" cornerRadius={8} />
-              <RadialBar dataKey="losses" stackId="a" fill="var(--color-losses)" cornerRadius={8} />
+              <RadialBar dataKey="wins" stackId="a" fill="#388E3C" cornerRadius={8} />
+              <RadialBar dataKey="losses" stackId="a" fill="#A5D6A7" cornerRadius={8} />
             </RadialBarChart>
           </ChartContainer>
         </CardContent>

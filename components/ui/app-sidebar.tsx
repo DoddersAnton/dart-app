@@ -52,11 +52,11 @@ export function AppSidebar({ items, className }: AppSidebarProps) {
           <SidebarMenuButton
             asChild
             isActive={active}
-            className={depth > 0 ? "pl-8" : undefined}
+            className={depth > 0 ? "pl-8 group-data-[collapsible=icon]:pl-2" : undefined}
           >
             <Link href={item.href} className="flex items-center gap-2">
               {item.icon}
-              <span>{item.label}</span>
+              <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -73,9 +73,9 @@ export function AppSidebar({ items, className }: AppSidebarProps) {
             <SidebarMenuButton isActive={active}>
               <div className="flex w-full items-center gap-2">
                 {item.icon}
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1 group-data-[collapsible=icon]:hidden">{item.label}</span>
                 <ChevronRight
-                  className="h-4 w-4 transition-transform data-[state=open]:rotate-90"
+                  className="h-4 w-4 transition-transform data-[state=open]:rotate-90 group-data-[collapsible=icon]:hidden"
                 />
               </div>
             </SidebarMenuButton>
