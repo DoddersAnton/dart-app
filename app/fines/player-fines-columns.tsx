@@ -127,6 +127,12 @@ export const playerFinesColumns: ColumnDef<PlayerFineColumn>[] = [
   {
     accessorKey: "status",
     header: "Status",
+    filterFn: (row, id, value) => {
+      const status = row.getValue(id) as string | null
+      if (value === "Paid") return status === "Paid"
+      if (value === "Unpaid") return status !== "Paid"
+      return true
+    },
     cell: ({ row }) => {
       const status = row.getValue("status")
       if (status === "Paid") {

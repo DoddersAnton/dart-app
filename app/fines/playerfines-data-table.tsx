@@ -88,7 +88,7 @@ export function PlayerFinesDataTable<TData, TValue>({
           >
             <option value="all">All statuses</option>
             <option value="Paid">Paid</option>
-            <option value="Pending">Unpaid</option>
+            <option value="Unpaid">Unpaid</option>
           </select>
         </div>
 

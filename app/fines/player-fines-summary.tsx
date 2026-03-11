@@ -88,11 +88,15 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
       Object.values(
         filteredFines.reduce(
           (
-            acc: Record<string, { player: string; total: number; count: number; games: number }>,
+            acc: Record<string, { player: string; playerImgUrl?: string | null; total: number; count: number; games: number }>,
             fine,
           ) => {
             if (!acc[fine.player]) {
-              acc[fine.player] = { player: fine.player, total: 0, count: 0, games: 0 };
+              acc[fine.player] = { player: fine.player, playerImgUrl: fine.playerImgUrl ?? null, total: 0, count: 0, games: 0 };
+            }
+
+            if (!acc[fine.player].playerImgUrl && fine.playerImgUrl) {
+              acc[fine.player].playerImgUrl = fine.playerImgUrl;
             }
 
             acc[fine.player].total += fine.amount;
