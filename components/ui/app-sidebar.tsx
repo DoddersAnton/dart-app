@@ -94,7 +94,7 @@ export function AppSidebar({ items, className }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar collapsible="icon" className={cn("mt-[88px]", className)}>
+    <Sidebar collapsible="icon" className={cn("mt-[75px]", className)}>
       <SidebarContent>
         <SidebarMenu>
           {items.map((item) => renderItem(item))}
