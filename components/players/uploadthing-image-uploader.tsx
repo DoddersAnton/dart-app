@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useUploadThing } from "@uploadthing/react";
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +13,23 @@ type UploadThingImageUploaderProps = {
 
 export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string>("");
+
+  const { startUpload, isUploading } = useUploadThing<OurFileRouter>("imgUploader", {
+    onClientUploadComplete: async (res) => {
+      const url = res[0]?.url;
+      if (url) {
+        await onUploadComplete(url);
+        setMessage("Upload complete");
+        setSelectedFile(null);
+      } else {
+        setMessage("Upload failed: no URL returned");
+      }
+    },
+    onUploadError: (error) => {
+      setMessage(`Upload failed: ${error.message}`);
+    },
+  });
 
   const selectedLabel = useMemo(() => {
     if (!selectedFile) return "No file selected";
@@ -21,30 +38,8 @@ export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageU
 
   const handleUpload = async () => {
     if (!selectedFile) return;
-
-    setUploading(true);
     setMessage("Uploading...");
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        if (typeof reader.result === "string") {
-          await onUploadComplete(reader.result);
-          setMessage("Upload complete");
-          setSelectedFile(null);
-        } else {
-          setMessage("Could not read file");
-        }
-      } finally {
-        setUploading(false);
-      }
-    };
-    reader.onerror = () => {
-      setUploading(false);
-      setMessage("Upload failed");
-    };
-
-    reader.readAsDataURL(selectedFile);
+    await startUpload([selectedFile]);
   };
 
   return (
@@ -61,8 +56,8 @@ export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageU
 
       <p className="text-xs text-muted-foreground">{selectedLabel}</p>
 
-      <Button onClick={handleUpload} disabled={!selectedFile || uploading}>
-        {uploading ? "Uploading..." : "Upload image"}
+      <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
+        {isUploading ? "Uploading..." : "Upload image"}
       </Button>
 
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}

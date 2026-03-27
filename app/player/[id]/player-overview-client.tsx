@@ -65,6 +65,7 @@ function getInitials(name: string) {
 
 export function PlayerOverviewClient(props: Props) {
   const [avatarUrl, setAvatarUrl] = useState(props.player.imgUrl || "");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
 
   const radialChartData = [
@@ -78,6 +79,7 @@ export function PlayerOverviewClient(props: Props) {
   const updatePlayerAvatar = async (imageUrl: string) => {
     await updatePlayerImageUrl({ id: props.player.id, url: imageUrl });
     setAvatarUrl(imageUrl);
+    setDialogOpen(false);
   };
 
   return (
@@ -105,7 +107,7 @@ export function PlayerOverviewClient(props: Props) {
             </div>
           </div>
 
-          <Dialog>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" aria-label="Upload avatar">
                 <Camera className="h-4 w-4" />
