@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 
 import { getPlayerDashboardData } from "./_lib/player-dashboard-data";
 import { PlayerOverviewClient } from "./player-overview-client";
@@ -17,7 +18,10 @@ export default async function PlayerOverviewPage({
 }) {
   const { id } = await params;
   const playerId = Number(id);
-  const data = await getPlayerDashboardData(playerId);
+  const [data, { userId: clerkUserId }] = await Promise.all([
+    getPlayerDashboardData(playerId),
+    auth(),
+  ]);
 
   if (!data.player) {
     notFound();
@@ -67,7 +71,9 @@ export default async function PlayerOverviewPage({
         name: data.player.name,
         nickname: data.player.nickname,
         imgUrl: data.player.imgUrl,
+        userid: data.player.userid ?? null,
       }}
+      clerkUserId={clerkUserId}
       totalFinesIssuedValue={data.totalFinesIssuedValue}
       finesCount={data.finesWithType.length}
       paidFinesCount={data.paidFines.length}

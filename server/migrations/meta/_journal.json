@@ -71,6 +71,20 @@
       "when": 1772399510245,
       "tag": "0009_familiar_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774701710620,
+      "tag": "0010_milky_ultimo",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1774701931353,
+      "tag": "0011_vengeful_phalanx",
+      "breakpoints": true
     }
   ]
 }

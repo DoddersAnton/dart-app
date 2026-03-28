@@ -17,6 +17,8 @@ type Sub = {
 };
 
 const PAGE_SIZE = 10;
+const STRIPE_FEE = 0.35;
+const MIN_AMOUNT = 0.30;
 
 const isPaid = (status: string) => status.toLowerCase() === "paid";
 
@@ -25,6 +27,10 @@ export function SubsTableClient({ subs, playerId }: { subs: Sub[]; playerId: num
   const [page, setPage] = useState(1);
   const [selectedSubIds, setSelectedSubIds] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
+  const [payAllOpen, setPayAllOpen] = useState(false);
+
+  const unpaidSubs = useMemo(() => subs.filter((sub) => !isPaid(sub.status)), [subs]);
+  const unpaidTotal = useMemo(() => unpaidSubs.reduce((sum, sub) => sum + sub.amount, 0), [unpaidSubs]);
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return subs;
@@ -41,6 +47,26 @@ export function SubsTableClient({ subs, playerId }: { subs: Sub[]; playerId: num
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        {unpaidSubs.length === 0 ? (
+          <span className="text-sm text-muted-foreground">No subscriptions outstanding</span>
+        ) : unpaidTotal > MIN_AMOUNT ? (
+          <>
+            <PaymentDrawer
+              amount={unpaidTotal + STRIPE_FEE}
+              playerId={playerId}
+              sublist={unpaidSubs.map((s) => s.id)}
+              open={payAllOpen}
+              setOpen={setPayAllOpen}
+            />
+            <span className="text-xs text-muted-foreground">35p transaction fee included</span>
+          </>
+        ) : (
+          <span className="text-sm text-muted-foreground">Outstanding amount too low to pay (min 30p)</span>
+        )}
+      </div>
+
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Subscription list</CardTitle>
@@ -59,9 +85,9 @@ export function SubsTableClient({ subs, playerId }: { subs: Sub[]; playerId: num
       </CardHeader>
       <CardContent className="space-y-3">
         {selectedSubIds.length > 0 ? (
-          selectedAmount > 0.3 ? (
+          selectedAmount > MIN_AMOUNT ? (
             <PaymentDrawer
-              amount={selectedAmount + 0.35}
+              amount={selectedAmount + STRIPE_FEE}
               playerId={playerId}
               sublist={selectedSubIds}
               open={open}
@@ -115,5 +141,6 @@ export function SubsTableClient({ subs, playerId }: { subs: Sub[]; playerId: num
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }

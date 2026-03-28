@@ -3,10 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Camera, ImageUp } from "lucide-react";
+import { Camera, ImageUp, Link2, CheckCircle2 } from "lucide-react";
 import { Label, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, RadialBar, RadialBarChart } from "recharts";
 
 import { updatePlayerImageUrl } from "@/server/actions/update-player-img";
+import { linkPlayerUser } from "@/server/actions/link-player-user";
 import { UploadThingImageUploader } from "@/components/players/uploadthing-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +27,9 @@ type Props = {
     name: string;
     nickname: string | null;
     imgUrl: string | null;
+    userid: string | null;
   };
+  clerkUserId: string | null;
   totalFinesIssuedValue: number;
   finesCount: number;
   paidFinesCount: number;
@@ -66,6 +69,9 @@ function getInitials(name: string) {
 export function PlayerOverviewClient(props: Props) {
   const [avatarUrl, setAvatarUrl] = useState(props.player.imgUrl || "");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const isLinked = props.clerkUserId !== null && props.player.userid === props.clerkUserId;
+  const [linked, setLinked] = useState(isLinked);
 
 
   const radialChartData = [
@@ -80,6 +86,13 @@ export function PlayerOverviewClient(props: Props) {
     await updatePlayerImageUrl({ id: props.player.id, url: imageUrl });
     setAvatarUrl(imageUrl);
     setDialogOpen(false);
+  };
+
+  const handleLinkPlayer = async () => {
+    setLinking(true);
+    await linkPlayerUser({ id: props.player.id });
+    setLinked(true);
+    setLinking(false);
   };
 
   return (
@@ -107,12 +120,27 @@ export function PlayerOverviewClient(props: Props) {
             </div>
           </div>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Upload avatar">
-                <Camera className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
+          <div className="flex">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Link player"
+              onClick={handleLinkPlayer}
+              disabled={linking || linked}
+              className={`rounded-r-none border-r-0 ${linked ? "border-green-500 text-green-500" : ""}`}
+            >
+              {linked
+                ? <CheckCircle2 className="h-4 w-4" />
+                : <Link2 className="h-4 w-4" />
+              }
+            </Button>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Upload avatar" className="rounded-l-none">
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
@@ -121,7 +149,8 @@ export function PlayerOverviewClient(props: Props) {
               </DialogHeader>
               <UploadThingImageUploader onUploadComplete={updatePlayerAvatar} />
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </CardHeader>
       </Card>
 

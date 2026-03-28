@@ -1,11 +1,20 @@
 import { db } from "@/server";
+import { auth } from "@clerk/nextjs/server";
 
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
+import { players as playersTable } from "@/server/schema";
 import { PlayerFinesSummary } from "./player-fines-summary";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const players = await db.query.players.findMany();
+  const { userId: clerkUserId } = await auth();
+
+  const [players, linkedPlayer] = await Promise.all([
+    db.query.players.findMany(),
+    clerkUserId
+      ? db.query.players.findFirst({ where: eq(playersTable.userid, clerkUserId) })
+      : Promise.resolve(undefined),
+  ]);
   const fines = await db.query.fines.findMany();
 
   const dataTable = await db.query.playerFines.findMany({
@@ -40,6 +49,7 @@ export default async function Page() {
     <div className="w-full mt-22 lg:w-[80%] px-2 mx-auto">
       <PlayerFinesSummary
         playerFinesData={data}
+        myPlayerId={linkedPlayer?.id ?? null}
       />
     </div>
   );

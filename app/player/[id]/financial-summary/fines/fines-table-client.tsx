@@ -20,11 +20,18 @@ const PAGE_SIZE = 10;
 
 const isPaid = (status: string | null) => (status ?? "").toLowerCase() === "paid";
 
+const STRIPE_FEE = 0.35;
+const MIN_AMOUNT = 0.30;
+
 export function FinesTableClient({ fines, playerId }: { fines: Fine[]; playerId: number }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [page, setPage] = useState(1);
   const [selectedFineIds, setSelectedFineIds] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
+  const [payAllOpen, setPayAllOpen] = useState(false);
+
+  const unpaidFines = useMemo(() => fines.filter((fine) => !isPaid(fine.status)), [fines]);
+  const unpaidTotal = useMemo(() => unpaidFines.reduce((sum, fine) => sum + fine.amount, 0), [unpaidFines]);
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return fines;
@@ -41,27 +48,47 @@ export function FinesTableClient({ fines, playerId }: { fines: Fine[]; playerId:
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        {unpaidFines.length === 0 ? (
+          <span className="text-sm text-muted-foreground">No fines outstanding</span>
+        ) : unpaidTotal > MIN_AMOUNT ? (
+          <>
+            <PaymentDrawer
+              amount={unpaidTotal + STRIPE_FEE}
+              playerId={playerId}
+              fineList={unpaidFines.map((f) => f.id)}
+              open={payAllOpen}
+              setOpen={setPayAllOpen}
+            />
+            <span className="text-xs text-muted-foreground">35p transaction fee included</span>
+          </>
+        ) : (
+          <span className="text-sm text-muted-foreground">Outstanding amount too low to pay (min 30p)</span>
+        )}
+      </div>
+
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Fine details</CardTitle>
-        <select
-          className="rounded-md border bg-background px-2 py-1 text-sm"
-          value={statusFilter}
-          onChange={(event) => {
-            setStatusFilter(event.target.value as "all" | "paid" | "unpaid");
-            setPage(1);
-          }}
-        >
-          <option value="all">All</option>
-          <option value="paid">Paid</option>
-          <option value="unpaid">Unpaid</option>
-        </select>
+          <select
+            className="rounded-md border bg-background px-2 py-1 text-sm"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value as "all" | "paid" | "unpaid");
+              setPage(1);
+            }}
+          >
+            <option value="all">All</option>
+            <option value="paid">Paid</option>
+            <option value="unpaid">Unpaid</option>
+          </select>
       </CardHeader>
       <CardContent className="space-y-3">
         {selectedFineIds.length > 0 ? (
-          selectedAmount > 0.3 ? (
+          selectedAmount > MIN_AMOUNT ? (
             <PaymentDrawer
-              amount={selectedAmount + 0.35}
+              amount={selectedAmount + STRIPE_FEE}
               playerId={playerId}
               fineList={selectedFineIds}
               open={open}
@@ -115,5 +142,6 @@ export function FinesTableClient({ fines, playerId }: { fines: Fine[]; playerId:
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }

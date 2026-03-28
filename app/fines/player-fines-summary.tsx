@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Plus, FilterIcon, EraserIcon, LayoutDashboard, Table2, ChartColumn } from "lucide-react";
 
@@ -18,6 +19,7 @@ import { FineChart } from "./fine-chart";
 import { FineTypeBarChart } from "./fine-chart-byfinetype";
 
 export interface FineSummaryProps {
+  myPlayerId: number | null;
   playerFinesData: {
     id: number;
     player: string;
@@ -31,7 +33,7 @@ export interface FineSummaryProps {
   }[];
 }
 
-export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
+export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryProps) {
   const [filterDate, setFilterDate] = useState<string>("all");
   const [filterPlayer, setFilterPlayer] = useState<string>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -122,7 +124,16 @@ export function PlayerFinesSummary({ playerFinesData }: FineSummaryProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        {myPlayerId ? (
+          <Link href={`/player/${myPlayerId}/financial-summary/fines`}>
+            <Button variant="outline">My Fines</Button>
+          </Link>
+        ) : (
+          <Button variant="outline" onClick={() => toast.error("Your account is not linked to a player. Visit a player profile and click the link button.")}>
+            My Fines
+          </Button>
+        )}
         <Link href="/fines/add-fine" className="block">
           <Button variant="outline">
             Add Fine <Plus className="ml-2 h-4 w-4" />

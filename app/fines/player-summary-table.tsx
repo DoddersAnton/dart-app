@@ -24,6 +24,8 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, Search } from "lucide-react"
+import Image from "next/image"
+import { PlayerFineSummaryColumn } from "./player-summary-columns"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -69,7 +71,42 @@ export function PlayerFinesSummaryDataTable<TData, TValue>({
           />
         </div>
 
-        <div className="rounded-md border overflow-x-auto">
+        {/* Mobile card list */}
+        <div className="md:hidden space-y-2">
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => {
+              const item = row.original as PlayerFineSummaryColumn
+              const avg = item.games > 0 ? item.total / item.games : 0
+              return (
+                <Card key={row.id}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      {item.playerImgUrl ? (
+                        <Image src={item.playerImgUrl} alt={item.player} width={32} height={32} unoptimized className="h-8 w-8 rounded-full border object-cover shrink-0" />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border bg-muted text-xs font-semibold shrink-0">
+                          {item.player.slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium truncate">{item.player}</span>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0 text-xs">
+                      <span className="font-semibold">£{item.total.toFixed(2)}</span>
+                      <span className="text-muted-foreground">{item.count} fine{item.count !== 1 ? "s" : ""}</span>
+                      <span className="text-muted-foreground">avg £{avg.toFixed(2)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
+          ) : (
+            <p className="text-center text-sm text-muted-foreground py-8">No results.</p>
+          )}
+          <p className="text-xs text-muted-foreground text-right">Avg per match: £{average.toFixed(2)} · Total: £{total.toFixed(2)}</p>
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (

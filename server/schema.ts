@@ -10,6 +10,8 @@ export const players = pgTable("players", {
     //teamId: integer("team_id").references(() => team.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow(),
     imgUrl: varchar("img_url", { length: 500 }),
+    userid: varchar("user_id", { length: 255 }),
+    userEmail: varchar("user_email", { length: 255 }),
   });
 
   export const fines = pgTable("fines", {
@@ -138,6 +140,26 @@ export const players = pgTable("players", {
     createdAt: timestamp("created_at").defaultNow(),
   });
   
+
+export const attendance = pgTable("attendance", {
+    id: serial("id").primaryKey(),
+    playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    fixtureId: integer("fixture_id").notNull().references(() => fixtures.id, { onDelete: "cascade" }),
+    attending: boolean("attending").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  });
+
+export const attendanceRelations = relations(attendance, ({ one }) => ({
+    player: one(players, {
+      fields: [attendance.playerId],
+      references: [players.id],
+    }),
+    fixture: one(fixtures, {
+      fields: [attendance.fixtureId],
+      references: [fixtures.id],
+    }),
+  }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
     player: one(players, {
