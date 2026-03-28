@@ -19,7 +19,7 @@ import { FineChart } from "./fine-chart";
 import { FineTypeBarChart } from "./fine-chart-byfinetype";
 
 export interface FineSummaryProps {
-  myPlayerId: number | null;
+  myPlayerId?: number | null;
   playerFinesData: {
     id: number;
     player: string;
