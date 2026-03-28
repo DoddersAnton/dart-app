@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useUploadThing } from "@uploadthing/react";
-import type { OurFileRouter } from "@/app/api/uploadthing/core";
+import { useUploadThing } from "@/app/api/uploadthing/upload";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,7 @@ export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageU
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string>("");
 
-  const { startUpload, isUploading } = useUploadThing<OurFileRouter>("imgUploader", {
+  const { startUpload, isUploading } = useUploadThing("imgUploader", {
     onClientUploadComplete: async (res) => {
       const url = res[0]?.url;
       if (url) {
