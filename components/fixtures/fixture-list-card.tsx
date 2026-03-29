@@ -6,7 +6,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../ui/card";
@@ -19,7 +18,6 @@ import {
   Pencil,
   Plus,
   Trash,
-  Trophy,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
@@ -161,6 +159,19 @@ function seasonPlayerListItem({
   );
 }
 
+function WinBar({ wins, losses }: { wins: number; losses: number }) {
+  const total = wins + losses;
+  const pct = total > 0 ? Math.round((wins / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs text-muted-foreground shrink-0">{pct}%</span>
+    </div>
+  );
+}
+
 function seasonKpiItem({
   fixtureKpi,
   key,
@@ -169,73 +180,61 @@ function seasonKpiItem({
   key?: string | number;
 }) {
   return (
-    <Card key={key ?? fixtureKpi.season} className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{fixtureKpi.season}</p>
-          <p className="mt-1 text-2xl font-semibold">
-            Matches: {fixtureKpi.totalFixtures}
-            {"  "}
-            <br />
-            <p className="mt-1 text-lg">Points {fixtureKpi.totalPoints}</p>
-          </p>
-          <p>
-            wins ({fixtureKpi.totalFixtureWins}) losses (
-            {fixtureKpi.totalFixtureLosses})
-          </p>
-          <p>
-            home wins ({fixtureKpi.totalHomeWins}) vs losses: (
-            {fixtureKpi.totalHomeLosses})
-          </p>
-          <p>
-            away wins ({fixtureKpi.totalAwayWins}) vs losses: (
-            {fixtureKpi.totalAwayLosses})
-          </p>
-        </div>
-        <div className="text-muted-foreground text-xs">
-          {/* small contextual text or icon placeholder */}
-          {/* replace with sparkline or icon if available */}
-          <div className="text-2xl">
-            {" "}
-            {fixtureKpi.totalFixturePercentWin.toFixed(1)}% 🏆
-          </div>
-        </div>
+    <div key={key ?? fixtureKpi.season} className="space-y-4">
+      <h2 className="text-lg font-semibold">{fixtureKpi.season}</h2>
+      {/* KPI grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+       
+        <Card>
+          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground font-normal">Matches</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{fixtureKpi.totalFixtures}</p>
+            <p className="text-xs text-muted-foreground">{fixtureKpi.totalFixtureWins}W – {fixtureKpi.totalFixtureLosses}L</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground font-normal">Win rate</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{fixtureKpi.totalFixturePercentWin.toFixed(0)}%</p>
+            <p className="text-xs text-muted-foreground">{fixtureKpi.totalPoints} pts scored</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground font-normal">Home</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{fixtureKpi.totalHomeWins}W</p>
+            <p className="text-xs text-muted-foreground">{fixtureKpi.totalHomeLosses} losses</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground font-normal">Away</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{fixtureKpi.totalAwayWins}W</p>
+            <p className="text-xs text-muted-foreground">{fixtureKpi.totalAwayLosses} losses</p>
+          </CardContent>
+        </Card>
       </div>
-      <Separator className="black" />
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="mt-1 text-2xl font-semibold">
-            Games: {fixtureKpi.totalGames}
-            {"  "}
-            <br />
-          </p>
-          <p>
-            Wins ({fixtureKpi.totalGamesWins}) Losses (
-            {fixtureKpi.totalGamesLosses})
-          </p>
-          <p>
-            Team Wins ({fixtureKpi.totalTeamGameWins}) vs Losses: (
-            {fixtureKpi.totalteamGameLosses})
-          </p>
-          <p>
-            Doubles Wins ({fixtureKpi.totalDoublesGameWins}) vs Losses: (
-            {fixtureKpi.totalDoublesGameLosses})
-          </p>
-          <p>
-            Singles Wins ({fixtureKpi.totalSinglesGameWins}) vs Losses: (
-            {fixtureKpi.totalSinglesGameLosses})
-          </p>
-        </div>
-        <div className="text-muted-foreground text-xs">
-          {/* small contextual text or icon placeholder */}
-          {/* replace with sparkline or icon if available */}
-          <div className="text-2xl">
-            {" "}
-            {fixtureKpi.totalGamesPercentWin.toFixed(1)}% 🏆
+
+      {/* Game breakdown */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Game breakdown</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            {[
+              { label: "Singles", wins: fixtureKpi.totalSinglesGameWins, losses: fixtureKpi.totalSinglesGameLosses },
+              { label: "Doubles", wins: fixtureKpi.totalDoublesGameWins, losses: fixtureKpi.totalDoublesGameLosses },
+              { label: "Team Game", wins: fixtureKpi.totalTeamGameWins, losses: fixtureKpi.totalteamGameLosses },
+            ].map(({ label, wins, losses }) => (
+              <div key={label}>
+                <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                <p className="text-lg font-bold">{wins}W – {losses}L</p>
+                <WinBar wins={wins} losses={losses} />
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -246,120 +245,84 @@ function fixtureItem({
   fixtureData: FixtureListSummary;
   key?: number;
 }) {
+  const isWin = fixtureData.isAppTeamWin;
+  const isScheduled = fixtureData.matchStatus === "scheduled";
+
   return (
-    <Card className="p-1 pt-2" key={key}>
-      <CardHeader>
-        <CardTitle>
-          <div className="flex justify-between items-center">
-            <div>
-              🏆{" "}
-              {fixtureData.homeTeamScore < fixtureData.awayTeamScore
-                ? `${fixtureData.awayTeam} (${fixtureData.awayTeamScore})`
-                : `${fixtureData.homeTeam} (${fixtureData.homeTeamScore})`}{" "}
-              -{" "}
-              {fixtureData.awayTeamScore < fixtureData.homeTeamScore
-                ? `${fixtureData.awayTeam} (${fixtureData.awayTeamScore})`
-                : `${fixtureData.homeTeam} (${fixtureData.homeTeamScore})`}{" "}
-            </div>
-            <div>
-              <Badge
-                variant={
-                  fixtureData.matchStatus === "completed"
-                    ? "default"
-                    : fixtureData.matchStatus === "cancelled"
-                    ? "secondary"
-                    : "default"
-                }
-                className="ml-2"
-              >
-                {fixtureData.matchStatus}
-              </Badge>
-            </div>
+    <Card key={key}>
+      <CardHeader className="pb-3">
+        {/* Meta row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar size={12} />
+            <span>{fixtureData.matchDate}</span>
+            <span>·</span>
+            <HouseIcon size={12} />
+            <span>{fixtureData.matchLocation}</span>
           </div>
-        </CardTitle>
-        <div className="flex flex-col lg:flex-row items-start gap-2">
-          <CardDescription>
-            <Badge variant="secondary" className="min-w-[100px] text-left">
-              {fixtureData.season} - {fixtureData.league}
-            </Badge>
-          </CardDescription>
-          <CardDescription>
-            <Badge variant="secondary" className="min-w-[100px] text-left">
-              {fixtureData.league}
-            </Badge>
-          </CardDescription>
+          <Badge variant={isScheduled ? "secondary" : isWin ? "default" : "outline"}
+            className={!isScheduled && isWin ? "bg-green-600 text-white" : !isScheduled && !isWin ? "border-red-400 text-red-500" : ""}>
+            {isScheduled ? "Scheduled" : isWin ? "Win" : "Loss"}
+          </Badge>
+        </div>
+
+        {/* Score row */}
+        <div className="flex items-center justify-between mt-1">
+          <div>
+            <p className="text-base font-semibold">{fixtureData.homeTeam}</p>
+            <p className="text-base font-semibold">{fixtureData.awayTeam}</p>
+          </div>
+          {!isScheduled && (
+            <div className="text-right">
+              <p className="text-2xl font-bold tabular-nums">{fixtureData.homeTeamScore}</p>
+              <p className="text-2xl font-bold tabular-nums">{fixtureData.awayTeamScore}</p>
+            </div>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="overflow-auto">
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <HouseIcon size={12} />
-              <div>{fixtureData.matchLocation}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar size={12} />
-              <div>{fixtureData.matchDate}</div>
-            </div>
-            <div>
-              <Separator className="my-2" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Trophy size={12} />
-              <div>Team game: {fixtureData.teamGameResult}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Trophy size={12} />
-              <div>Doubles: {fixtureData.doublesGameResult}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Trophy size={12} />
-              <div>Singles: {fixtureData.singlesGameResult}</div>
-            </div>
-          </div>
-          <div>
-            <DropdownMenu key={fixtureData.id}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant={"ghost"}
-                  className=" flex items-center flex-row gap-1"
-                  title="Fixture Actions"
-                >
-                  Actions <span></span>
-                  <ChevronDown className="h-8 w-8" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-                  <Link
-                    href={`/fixtures/${fixtureData.id}`}
-                    className="flex items-center gap-2"
-                  >
-                    <EyeIcon className="h-4 w-4 hover:text-black" />
-                    View Match
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="dark:focus:bg-yellow-100 focus:bg-yellow-100 cursor-pointer">
-                  <Link
-                    href={`/fixture/edit-fixtures?id=${fixtureData.id}`}
-                    className="flex items-center gap-2"
-                  >
-                    <Pencil className="h-4 w-4 hover:text-black" />
-                    Edit Match
-                  </Link>
-                </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  disabled={true}
-                  //onClick={() => handleDeleteMatch({ id: fixtureData.id })}
-                  className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer flex items-center gap-2"
-                >
-                  <Trash className="h-4 w-4 hover:text-black" />
-                  Delete Match
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      {!isScheduled && (
+        <CardContent className="pt-0 space-y-1">
+          <Separator className="mb-3" />
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            {[
+              { label: "Team Game", result: fixtureData.teamGameResult },
+              { label: "Doubles", result: fixtureData.doublesGameResult },
+              { label: "Singles", result: fixtureData.singlesGameResult },
+            ].map(({ label, result }) => (
+              <div key={label}>
+                <p className="text-muted-foreground mb-0.5">{label}</p>
+                <p className="font-medium">{result}</p>
+              </div>
+            ))}
           </div>
+        </CardContent>
+      )}
+
+      <CardContent className={!isScheduled ? "pt-2" : "pt-0"}>
+        <div className="flex justify-end">
+          <DropdownMenu key={fixtureData.id}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+                Actions <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
+                <Link href={`/fixtures/${fixtureData.id}`} className="flex items-center gap-2">
+                  <EyeIcon className="h-4 w-4" /> View Match
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="dark:focus:bg-yellow-100 focus:bg-yellow-100 cursor-pointer">
+                <Link href={`/fixture/edit-fixtures?id=${fixtureData.id}`} className="flex items-center gap-2">
+                  <Pencil className="h-4 w-4" /> Edit Match
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled className="cursor-pointer flex items-center gap-2">
+                <Trash className="h-4 w-4" /> Delete Match
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
