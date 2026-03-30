@@ -31,7 +31,7 @@ export function Home() {
     <div className="min-h-screen">
 
       {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-18 pb-12">
+      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-24 pb-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
