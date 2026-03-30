@@ -13,6 +13,12 @@ const photos = [
   { src: "/team-pic-4.jpeg", alt: "Team photo 4" },
 ];
 
+const sponsors = [
+  { name: "Rustico", img: "/rustico.png", href: "https://hellorustico.co.uk/" },
+  { name: "Tarian Drums", img: "/TarianDrums-sponsor.jpeg", href: "https://www.tariandrums.wales/" },
+  { name: "West Wales Weighing", img: "/WWW-sponsor.jpeg", href: "https://www.westwalesweighing.co.uk/" },
+];
+
 const features = [
   { icon: Target, label: "Fines", description: "Track and manage player fines", href: "/fines" },
   { icon: Users, label: "Players", description: "View player profiles and stats", href: "/players" },
@@ -25,13 +31,13 @@ export function Home() {
     <div className="min-h-screen">
 
       {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-32 pb-16">
+      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-18 pb-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <Image src="/DRT-logo.png" alt="DRT Logo" width={100} height={100} className="mx-auto mb-2" />
+          <Image src="/DRT-logo.png" alt="DRT Logo" width={100} height={100} className="mx-auto" />
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Dartiau Rhieni Trisant</h1>
           <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
             A team of dads from Llantrisant, based at the Working Men&apos;s Club. Track our fines, results, and player performance all in one place.
@@ -101,6 +107,33 @@ export function Home() {
               </div>
             </Link>
           ))}
+        </motion.div>
+      </section>
+
+      {/* Sponsors */}
+      <section className="px-4 py-12 max-w-5xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <p className="text-center text-xs text-muted-foreground uppercase tracking-widest mb-6">Thanks to our sponsors</p>
+          <div className="grid grid-cols-3 gap-6">
+            {sponsors.map(({ name, img, href }) => (
+              <a
+                key={name}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col items-center gap-3 rounded-xl border bg-card p-4 hover:border-primary transition-colors"
+              >
+                <div className="relative h-20 w-full overflow-hidden rounded-lg">
+                  <Image src={img} alt={name} fill unoptimized className="object-contain group-hover:scale-105 transition-transform duration-300" />
+                </div>
+                <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors text-center">{name}</span>
+              </a>
+            ))}
+          </div>
         </motion.div>
       </section>
 

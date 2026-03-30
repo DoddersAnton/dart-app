@@ -63,6 +63,19 @@ export default async function PlayerOverviewPage({
     }, {}),
   ).map(([type, count]) => ({ type, count }));
 
+  const seasonTrend = data.seasonSummaries
+    .filter((s) => s.totalGames > 0)
+    .map((s) => {
+      const overallRow = s.allRows.find((r) => r.playerId === playerId && r.gameType === "Overall");
+      return {
+        season: s.season,
+        wins: s.wins,
+        losses: s.losses,
+        legsFor: (overallRow as { legsFor?: number } | undefined)?.legsFor ?? 0,
+        legsAgainst: (overallRow as { legsAgainst?: number } | undefined)?.legsAgainst ?? 0,
+      };
+    });
+
 
   return (
     <PlayerOverviewClient
@@ -92,6 +105,7 @@ export default async function PlayerOverviewPage({
       teamGames={teamGames}
       fineTypeChartData={fineTypeChartData}
       overallSummary={overallSummary}
+      seasonTrend={seasonTrend}
     />
   );
 }

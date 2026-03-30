@@ -1,12 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import Link from "next/link";
@@ -61,50 +54,39 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
       />
 
       {filteredPlayers.length ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {filteredPlayers.map((player) => {
             const avatarSrc = player.imgUrl || avatarMap[player.id];
 
             return (
-              <Card key={player.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      {avatarSrc ? (
-                        <Image
-                          src={avatarSrc}
-                          alt={`${player.name} avatar`}
-                          width={44}
-                          height={44}
-                          unoptimized
-                          className="h-11 w-11 rounded-full object-cover border"
-                        />
-                      ) : (
-                        <div className="h-11 w-11 rounded-full border flex items-center justify-center bg-muted text-xs font-semibold">
-                          {getInitials(player.name)}
-                        </div>
-                      )}
-                      <CardTitle className="text-lg">{player.name}</CardTitle>
+              <Link key={player.id} href={`/player/${player.id}`}>
+                <div className="group aspect-square rounded-xl border bg-card p-5 hover:border-primary transition-colors flex flex-col items-center justify-center gap-3">
+                  {avatarSrc ? (
+                    <Image
+                      src={avatarSrc}
+                      alt={`${player.name} avatar`}
+                      width={80}
+                      height={80}
+                      unoptimized
+                      className="h-20 w-20 rounded-full object-cover border"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-full border flex items-center justify-center bg-muted text-sm font-semibold">
+                      {getInitials(player.name)}
                     </div>
+                  )}
+                  <div className="text-center">
+                    <p className="font-semibold text-sm group-hover:text-primary transition-colors">{player.name}</p>
+                    {player.nickname && <p className="text-xs text-muted-foreground mt-0.5">{player.nickname}</p>}
+                    {player.team && <p className="text-xs text-muted-foreground">{player.team}</p>}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <p>Nickname: {player.nickname || "N/A"}</p>
-                  <p>Team: {player.team || "N/A"}</p>
-                  <Button asChild className="w-full" variant="outline">
-                    <Link href={`/player/${player.id}`}>View Player</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </Link>
             );
           })}
         </div>
       ) : (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No players found.
-          </CardContent>
-        </Card>
+        <p className="py-8 text-center text-muted-foreground text-sm">No players found.</p>
       )}
     </div>
   );
