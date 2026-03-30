@@ -1,6 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,17 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemTitle,
-} from "../ui/item";
-import {
-  Calendar,
-  ChevronDown,
   EyeIcon,
-  HouseIcon,
+  MoreHorizontal,
   Pencil,
   Rocket,
   Trash,
@@ -29,10 +22,10 @@ import {
 } from "lucide-react";
 
 const gameTypeIcons: { [key: string]: React.ReactNode } = {
-  "Team Game": <Users2Icon />,
-  Doubles: <UsersIcon />,
-  Singles: <UserIcon />,
-  default: <TrophyIcon />,
+  "Team Game": <Users2Icon className="h-4 w-4" />,
+  Doubles: <UsersIcon className="h-4 w-4" />,
+  Singles: <UserIcon className="h-4 w-4" />,
+  default: <TrophyIcon className="h-4 w-4" />,
 };
 
 interface GamesSummaryCardProps {
@@ -54,6 +47,7 @@ export type GameSummary = {
     id: number;
     name: string;
     nickname: string | null;
+    imgUrl: string | null;
   }>;
 };
 
@@ -61,102 +55,100 @@ export default function GamesSummaryCard({
   gameSummary,
   handleDeleteGame,
 }: GamesSummaryCardProps) {
+  const homeWon = gameSummary.homeTeamScore > gameSummary.awayTeamScore;
+  const awayWon = gameSummary.awayTeamScore > gameSummary.homeTeamScore;
+  const resultBadge = gameSummary.isDilfWin ? (
+    <Badge className="bg-green-600 hover:bg-green-700">Win</Badge>
+  ) : homeWon || awayWon ? (
+    <Badge variant="destructive">Loss</Badge>
+  ) : (
+    <Badge variant="secondary">Draw</Badge>
+  );
+
   return (
-    <>
-      <Item variant="outline" key={gameSummary.id} className="mb-4">
-        <ItemContent>
-          <ItemTitle className="flex items-center justify-between">
-            <span>
+    <Card>
+      <CardContent className="pt-4 space-y-3">
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">
               {gameTypeIcons[gameSummary.gameType] || gameTypeIcons.default}
             </span>
-            <div>{gameSummary.gameType} </div>
-            <div className="flex gap-2 flex-row">
-              <div className="flex items-center gap-2" title="Home team">
-                <HouseIcon size={12} />
-                <div>{gameSummary.homeTeam}</div>
-              </div>
+            <span className="text-sm font-semibold">{gameSummary.gameType}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {resultBadge}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/games/${gameSummary.id}`} className="flex items-center gap-2 cursor-pointer">
+                    <EyeIcon className="h-4 w-4" /> View game
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/games/edit-game?id=${gameSummary.id}&fixtureId=${gameSummary.fixtureId}`} className="flex items-center gap-2 cursor-pointer">
+                    <Pencil className="h-4 w-4" /> Edit game
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/games/dart-tracker?id=${gameSummary.id}`} className="flex items-center gap-2 cursor-pointer">
+                    <Rocket className="h-4 w-4" /> Dart tracker
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDeleteGame({ id: gameSummary.id })}
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <Trash className="h-4 w-4" /> Delete game
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
-              <div className="flex items-center gap-2" title="match date">
-                <Calendar size={12} />
-                <div>{gameSummary.matchDate}</div>
-              </div>
-            </div>
-          </ItemTitle>
-          <ItemDescription className="mt-2">
-            <div className="text-sm mb-2">
-              🏆{" "}
-              {gameSummary.awayTeamScore > gameSummary.homeTeamScore
-                ? `${gameSummary.awayTeam} (${gameSummary.awayTeamScore})`
-                : `${gameSummary.homeTeam} (${gameSummary.homeTeamScore})`}{" "}
-              -{" "}
-              {gameSummary.awayTeamScore < gameSummary.homeTeamScore
-                ? `${gameSummary.awayTeam} (${gameSummary.awayTeamScore})`
-                : `${gameSummary.homeTeam} (${gameSummary.homeTeamScore})`}
-            </div>
-            <div className="flex flex-wrap gap-1 mb-1 mt-1">
-              {gameSummary.players.map((player) => (
-                <Badge
-                  key={player.id}
-                  variant="outline"
-                  className="cursor-pointer pb-2 text-left mb-2"
-                >
-                  {player.name} {player.nickname ? `(${player.nickname})` : ""}
-                </Badge>
-              ))}
-            </div>
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant={"ghost"}
-                className=" flex items-center flex-row gap-1"
-                title="Game Actions"
-              >
-                Actions <span></span>
-                <ChevronDown className="h-8 w-8" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-                <Link
-                  href={`/games/${gameSummary.id}`}
-                  className="flex items-center gap-2"
-                >
-                  <EyeIcon className="h-4 w-4 hover:text-black" />
-                  View Game
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-                <Link
-                  href={`/games/edit-game?id=${gameSummary.id}&fixtureId=${gameSummary.fixtureId}`}
-                  className="flex items-center gap-2"
-                >
-                  <Pencil className="h-4 w-4 hover:text-black" />
-                  Edit Game
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-                <Link
-                  href={`/games/dart-tracker?id=${gameSummary.id}`}
-                  className="flex items-center gap-2"
-                >
-                  <Rocket className="h-4 w-4 hover:text-black" />
-                  Open Dart Tracker
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDeleteGame({ id: gameSummary.id })}
-                className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer flex items-center gap-2"
-              >
-                <Trash className="h-4 w-4 hover:text-black" />
-                Delete Game
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ItemActions>
-      </Item>
-    </>
+        {/* Score */}
+        <div className="flex items-center justify-center gap-6 py-3 rounded-lg bg-muted/50">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-1">{gameSummary.homeTeam}</p>
+            <p className="text-3xl font-extrabold">{gameSummary.homeTeamScore}</p>
+          </div>
+          <p className="text-xl font-light text-muted-foreground">–</p>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-1">{gameSummary.awayTeam}</p>
+            <p className="text-3xl font-extrabold">{gameSummary.awayTeamScore}</p>
+          </div>
+        </div>
+
+        {/* Players */}
+        {gameSummary.players.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {gameSummary.players.map((player) => (
+              <Badge key={player.id} variant="outline" className="text-xs pl-0.5 pr-2 py-0.5 flex items-center gap-1.5">
+                {player.imgUrl ? (
+                  <Image
+                    src={player.imgUrl}
+                    alt={player.name}
+                    width={20}
+                    height={20}
+                    unoptimized
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold shrink-0">
+                    {player.name.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase()).join("")}
+                  </div>
+                )}
+                {player.name}{player.nickname ? ` (${player.nickname})` : ""}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

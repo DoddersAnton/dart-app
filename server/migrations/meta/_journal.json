@@ -85,6 +85,13 @@
       "when": 1774701931353,
       "tag": "0011_vengeful_phalanx",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774876266729,
+      "tag": "0012_mysterious_guardian",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,7 @@ import { createSafeActionClient } from "next-safe-action";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { fixtures, locations, seasons, team } from "../schema";
+import { attendance, fixtures, locations, players, seasons, team } from "../schema";
 import { createFixtureSchema } from "@/types/add-fixture-schema";
 
 const actionClient = createSafeActionClient();
@@ -108,7 +108,7 @@ seasonId, league
         return { success: `Fixture at ${location.name} on ${matchDate.getDay()}/${matchDate.getMonth()}/${matchDate.getFullYear()} has been updated` };
       }
 
-      await db
+      const [newFixture] = await db
       .insert(fixtures)
       .values({
         homeTeam: homeTeam.name ?? undefined,
@@ -121,18 +121,33 @@ seasonId, league
         matchDate: matchDate,
         createdAt: new Date(),
         updatedAt: new Date(),
-        league: league, 
-        season: season.name, 
+        league: league,
+        season: season.name,
         seasonsId: seasonId,
         homeTeamId: homeTeamId ?? undefined,
         awayTeamId: awayTeamId ?? undefined,
         isAppTeamWin: isAppTeamWin,
       })
       .returning();
+
+      // Auto-create pending availability records for all players
+      const isScheduled = matchStatus === "Scheduled" || matchDate > new Date();
+      if (newFixture && isScheduled) {
+        const allPlayers = await db.query.players.findMany();
+        if (allPlayers.length > 0) {
+          await db.insert(attendance).values(
+            allPlayers.map((p) => ({
+              playerId: p.id,
+              fixtureId: newFixture.id,
+              attending: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }))
+          );
+        }
+      }
+
       revalidatePath("/fixtures/add-fixture");
-
-      // or each play create a subscription to the fixture
-
      return { success: `Fixture at ${location.name} on ${matchDate.getDay()}/${matchDate.getMonth()}/${matchDate.getFullYear()} has been created` };
     } catch (error) {
       console.error(error);

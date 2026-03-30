@@ -145,7 +145,8 @@ export const attendance = pgTable("attendance", {
     id: serial("id").primaryKey(),
     playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
     fixtureId: integer("fixture_id").notNull().references(() => fixtures.id, { onDelete: "cascade" }),
-    attending: boolean("attending").notNull(),
+    attending: boolean("attending"), // null = pending, true = yes, false = no
+    note: varchar("note", { length: 500 }),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   });

@@ -1,5 +1,5 @@
 import { SidebarItem } from "@/components/ui/app-sidebar";
-import { Banknote, ChartColumnBig, PoundSterling, HandCoins, Home, ReceiptText } from "lucide-react";
+import { Banknote, CalendarCheck, ChartColumnBig, PoundSterling, HandCoins, Home, ReceiptText } from "lucide-react";
 
 export function getPlayerSidebarItems(id: number): SidebarItem[] {
   return [
@@ -39,6 +39,11 @@ export function getPlayerSidebarItems(id: number): SidebarItem[] {
       label: "Games Summary",
       href: `/player/${id}/games-summary`,
       icon: <ChartColumnBig className="h-4 w-4" />,
+    },
+    {
+      label: "Availability",
+      href: `/player/${id}/availability`,
+      icon: <CalendarCheck className="h-4 w-4" />,
     },
   ];
 }

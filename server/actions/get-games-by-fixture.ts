@@ -36,7 +36,7 @@ export async function getGamesByFixture(fixtureId: number) {
     }
 
     type GameWithPlayers = typeof games[number] & {
-      players: { id: number; name: string; nickname: string }[];
+      players: { id: number; name: string; nickname: string; imgUrl: string | null }[];
       matchDate: string;
       homeTeam: string;
       awayTeam: string;
@@ -57,6 +57,7 @@ export async function getGamesByFixture(fixtureId: number) {
           id: player?.id ?? gp.playerId,
           name: player ? player.name : "Unknown",
           nickname: player?.nickname ?? "",
+          imgUrl: player?.imgUrl ?? null,
         };
       });
 

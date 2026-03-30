@@ -21,14 +21,15 @@ export async function getFixture(id: number) {
         const fixtureAwayTeam = await getTeam(fixture.awayTeamId ?? 0);
 
         const fixtureWithReferences = {
-            ...
-            fixture,
+            ...fixture,
             season: fixture.season ? fixture.season : (fixtureSeason.success ? fixtureSeason.success?.name : undefined),
             location: fixture.matchLocation ? fixture.matchLocation : (fixtureLocation.success ? fixtureLocation.success.name : undefined),
+            locationAddress: fixtureLocation.success?.address ?? null,
+            locationMapsLink: fixtureLocation.success?.googleMapsLink ?? null,
             awayTeam: fixture.awayTeam ? fixture.awayTeam : (fixtureAwayTeam.success ? fixtureAwayTeam.success.name : 'Unknown Team'),
             homeTeam: fixture.homeTeam ? fixture.homeTeam : (fixtureHomeTeam.success ? fixtureHomeTeam.success.name : 'Unknown Team'),
-            isAppTeamWin: fixture.isAppTeamWin ? fixture.isAppTeamWin : (fixture.homeTeamId === 1 
-                ? (fixture.homeTeamScore > fixture.awayTeamScore) 
+            isAppTeamWin: fixture.isAppTeamWin ? fixture.isAppTeamWin : (fixture.homeTeamId === 1
+                ? (fixture.homeTeamScore > fixture.awayTeamScore)
                 : (fixture.awayTeamScore > fixture.homeTeamScore))
         }
 
