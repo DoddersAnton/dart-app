@@ -12,9 +12,9 @@ import {
 import { Badge } from "../ui/badge";
 import {
   Calendar,
-  ChevronDown,
   EyeIcon,
   HouseIcon,
+  MoreHorizontal,
   Pencil,
   Plus,
   Trash,
@@ -42,12 +42,59 @@ import {
 import {
   GamesSummary,
 } from "@/server/actions/get-player-games-summary";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 interface EnhancedFixtureCardProps {
   data: FixtureListSummary[];
   kpis: FixtureKpiSummary[];
   playerGameSummary: GamesSummary[];
+}
+
+function PlayerStatsList({ summaries }: { summaries: GamesSummary["gameTypesSummaries"] }) {
+  if (!summaries) return null;
+
+  return (
+    <div className="space-y-6">
+      {["Overall", "Singles", "Doubles", "Team Game"].map((type) => {
+        const rows = summaries
+          .filter((s) => s.gameType === type && s.wins + s.loses > 0)
+          .sort((a, b) => (a.rankValue ?? 999) - (b.rankValue ?? 999));
+
+        if (rows.length === 0) return null;
+
+        return (
+          <div key={type}>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{type}</p>
+            <div className="space-y-2">
+              {rows.map((s) => (
+                <div key={s.playerId} className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-5 shrink-0 text-right">#{s.rankValue}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {s.playerName}{s.nickname ? ` (${s.nickname})` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {s.gamesPlayed ?? (s.wins + s.loses)}P · {s.legsFor ?? 0}F – {s.legsAgainst ?? 0}A
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs text-muted-foreground">
+                      {s.wins}W–{s.loses}L
+                      <span className={`ml-1 ${s.wins - s.loses > 0 ? "text-green-600" : s.wins - s.loses < 0 ? "text-red-500" : "text-muted-foreground"}`}>
+                        ({s.wins - s.loses > 0 ? "+" : ""}{s.wins - s.loses})
+                      </span>
+                    </p>
+                    <div className="w-20">
+                      <WinBar wins={s.wins} losses={s.loses} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function seasonPlayerListItem({
@@ -58,102 +105,13 @@ function seasonPlayerListItem({
   key?: string | number;
 }) {
   return (
-    <Card key={key} className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="text-xl font-bold">
-          Season {data.season}
-        </CardTitle>
-        <CardTitle className="text-lg semibold">
-          <div>Total matches: {data.totalMatches}</div>
-        </CardTitle>
+    <Card key={key}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Season {data.season}</CardTitle>
+        <p className="text-xs text-muted-foreground">{data.totalMatches} matches played</p>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/** Overall table first */}
-        <div key={"_overall"}>
-          <h3 className="font-semibold mb-2">Overall</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead>P</TableHead>
-                <TableHead>W</TableHead>
-                <TableHead>L</TableHead>
-                <TableHead>F</TableHead>
-                <TableHead>A</TableHead>
-                <TableHead>R</TableHead>
-                <TableHead>RK</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody key={"_overall_"}>
-              {data.gameTypesSummaries &&
-                data.gameTypesSummaries.length > 0 &&
-                data.gameTypesSummaries
-                  .filter((summary) => summary.gameType === "Overall" && summary.wins + summary.loses > 0)
-                  .sort((a, b) => (a.rankValue ?? Number.MAX_SAFE_INTEGER) - (b.rankValue ?? Number.MAX_SAFE_INTEGER))
-                  .map((summary) => (
-                    <TableRow
-                      key={summary.playerId + "_overall"}
-                      
-                    >
-                         <TableCell>{summary.playerName}{summary.nickname ? ` (${summary.nickname})` : null}</TableCell>
-                      <TableCell>{summary.gamesPlayed ?? (summary.wins + summary.loses)}</TableCell>
-                      <TableCell>{summary.wins}</TableCell>
-                      <TableCell>{summary.loses}</TableCell>
-                      <TableCell>{summary.legsFor ?? 0}</TableCell>
-                      <TableCell>{summary.legsAgainst ?? 0}</TableCell>
-                      <TableCell>{summary.variance ?? 0}</TableCell>
-                      <TableCell>{summary.rankValue}</TableCell>
-                    </TableRow>
-                  ))}
-            </TableBody>
-          </Table>
-        </div>
-        {data.gameTypesSummaries &&
-          data.gameTypesSummaries.length > 0 &&
-          ["Singles", "Doubles", "Team Game"].map((type) => {
-            const gameTypeRows = data.gameTypesSummaries
-              ?.sort((a, b) => (a.rankValue ?? Number.MAX_SAFE_INTEGER) - (b.rankValue ?? Number.MAX_SAFE_INTEGER))
-              .filter((summary) => summary.gameType === type && summary.wins + summary.loses > 0);
-            return (
-              <div key={type} className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">{type}</h3>
-
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Player</TableHead>
-                      <TableHead>P</TableHead>
-                      <TableHead>W</TableHead>
-                      <TableHead>L</TableHead>
-                      <TableHead>F</TableHead>
-                      <TableHead>A</TableHead>
-                      <TableHead>R</TableHead>
-                      <TableHead>RK</TableHead>
-                    </TableRow>
-                  </TableHeader>
-
-                  <TableBody>
-                    {gameTypeRows
-                      ?.filter((summary) => summary.gameType === type)
-                      .map((summary) => (
-                        <TableRow
-                          key={summary.playerId}
-                        >
-                        <TableCell>{summary.playerName}{summary.nickname ? ` (${summary.nickname})` : null}</TableCell>
-                          <TableCell>{summary.gamesPlayed ?? (summary.wins + summary.loses)}</TableCell>
-                          <TableCell>{summary.wins}</TableCell>
-                          <TableCell>{summary.loses}</TableCell>
-                          <TableCell>{summary.legsFor ?? 0}</TableCell>
-                          <TableCell>{summary.legsAgainst ?? 0}</TableCell>
-                          <TableCell>{summary.variance ?? 0}</TableCell>
-                          <TableCell>{summary.rankValue}</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
-            );
-          })}
+      <CardContent>
+        <PlayerStatsList summaries={data.gameTypesSummaries} />
       </CardContent>
     </Card>
   );
@@ -260,29 +218,58 @@ function fixtureItem({
             <HouseIcon size={12} />
             <span>{fixtureData.matchLocation}</span>
           </div>
-          <Badge variant={isScheduled ? "secondary" : isWin ? "default" : "outline"}
-            className={!isScheduled && isWin ? "bg-green-600 text-white" : !isScheduled && !isWin ? "border-red-400 text-red-500" : ""}>
-            {isScheduled ? "Scheduled" : isWin ? "Win" : "Loss"}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <DropdownMenu key={fixtureData.id}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
+                  <Link href={`/fixtures/${fixtureData.id}`} className="flex items-center gap-2">
+                    <EyeIcon className="h-4 w-4" /> View Match
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="dark:focus:bg-yellow-100 focus:bg-yellow-100 cursor-pointer">
+                  <Link href={`/fixture/edit-fixtures?id=${fixtureData.id}`} className="flex items-center gap-2">
+                    <Pencil className="h-4 w-4" /> Edit Match
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-pointer flex items-center gap-2">
+                  <Trash className="h-4 w-4" /> Delete Match
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Badge variant={isScheduled ? "secondary" : isWin ? "default" : "outline"}
+              className={!isScheduled && isWin ? "bg-green-600 text-white" : !isScheduled && !isWin ? "border-red-400 text-red-500" : ""}>
+              {isScheduled ? "Scheduled" : isWin ? "Win" : "Loss"}
+            </Badge>
+          </div>
         </div>
 
-        {/* Score row */}
-        <div className="flex items-center justify-between mt-1">
-          <div>
-            <p className="text-base font-semibold">{fixtureData.homeTeam}</p>
-            <p className="text-base font-semibold">{fixtureData.awayTeam}</p>
-          </div>
-          {!isScheduled && (
-            <div className="text-right">
-              <p className="text-2xl font-bold tabular-nums">{fixtureData.homeTeamScore}</p>
-              <p className="text-2xl font-bold tabular-nums">{fixtureData.awayTeamScore}</p>
-            </div>
-          )}
-        </div>
+          {/* Teams title */}
+        <p className="text-base font-semibold mt-1">{fixtureData.homeTeam} vs {fixtureData.awayTeam}</p>
       </CardHeader>
 
       {!isScheduled && (
-        <CardContent className="pt-0 space-y-1">
+        <CardContent className="pt-0 pb-3">
+          <div className="flex items-center justify-center gap-6 py-3 rounded-lg bg-muted/50">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">{fixtureData.homeTeam}</p>
+              <p className="text-4xl font-extrabold">{fixtureData.homeTeamScore}</p>
+            </div>
+            <p className="text-2xl font-light text-muted-foreground">–</p>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">{fixtureData.awayTeam}</p>
+              <p className="text-4xl font-extrabold">{fixtureData.awayTeamScore}</p>
+            </div>
+          </div>
+        </CardContent>
+      )}
+
+      {!isScheduled && (
+        <CardContent className="pt-0 pb-3">
           <Separator className="mb-3" />
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             {[
@@ -299,32 +286,6 @@ function fixtureItem({
         </CardContent>
       )}
 
-      <CardContent className={!isScheduled ? "pt-2" : "pt-0"}>
-        <div className="flex justify-end">
-          <DropdownMenu key={fixtureData.id}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-                Actions <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-                <Link href={`/fixtures/${fixtureData.id}`} className="flex items-center gap-2">
-                  <EyeIcon className="h-4 w-4" /> View Match
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="dark:focus:bg-yellow-100 focus:bg-yellow-100 cursor-pointer">
-                <Link href={`/fixture/edit-fixtures?id=${fixtureData.id}`} className="flex items-center gap-2">
-                  <Pencil className="h-4 w-4" /> Edit Match
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled className="cursor-pointer flex items-center gap-2">
-                <Trash className="h-4 w-4" /> Delete Match
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardContent>
     </Card>
   );
 }
