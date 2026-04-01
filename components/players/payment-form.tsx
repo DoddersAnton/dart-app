@@ -40,6 +40,9 @@ export default function Payment({
         setIsLoading(false);
         toast.success(data.data?.success);
         setIsComplete(true);
+        setTimeout(() => {
+          setOpen?.(false);
+        }, 3000);
       }
     },
     onError: (error) => {
@@ -113,31 +116,20 @@ export default function Payment({
       } else {
         setIsLoading(false);
 
-        // if execute is sucessful, wait for response and then reload the page
+        const hasFines = (fineList?.length ?? 0) > 0;
+        const hasSubs = (sublist?.length ?? 0) > 0;
+        const paymentType = hasFines && hasSubs ? "Combined" : hasSubs ? "Sub" : "Fine";
+
         execute({
           amount: amount,
           playerId: playerId ?? 0,
           paymentMethod: "Stripe",
-          paymentType: "Fine",
+          paymentType,
           paymentStatus: "Completed",
-          transactionId: successData.paymentIntentID ?? null,
+          transactionId: successData.paymentIntentID ?? undefined,
           fineList: fineList ?? [],
           subList: sublist ?? [],
         });
-
-        setIsComplete(true);
-        toast.success("Payment completed successfully!");
-
-        //awit 1sec and then reload the page
-        setTimeout(() => {
-            setOpen?.(false);
-        }, 3000);
-
-        return;
-
-        
-      
-         
       }
     }
   };

@@ -94,7 +94,7 @@ export function FineTypeCardList({ fines }: FineTypeCardListProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer">
-                          <Link href={`/fines/fine-types/add-fine-type?id=${fine.id}`}>
+                          <Link href={`/settings/add-fine-type?id=${fine.id}`}>
                             Edit Fine
                           </Link>
                         </DropdownMenuItem>

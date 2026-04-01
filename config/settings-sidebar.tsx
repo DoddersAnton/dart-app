@@ -41,10 +41,22 @@ export const settingsSidebarItems: SidebarItem[] = [
       },
     ]
   },
-   {
+  {
     label: "Fine Types",
     href: "/settings/fine-types",
     icon: <Banknote className="h-4 w-4" />,
+    children: [
+      {
+        label: "All Fine Types",
+        href: "/settings/fine-types",
+        icon: <Banknote className="h-4 w-4" />,
+      },
+      {
+        label: "Add Fine Type",
+        href: "/settings/add-fine-type",
+        icon: <Plus className="h-4 w-4" />,
+      },
+    ]
   },
    {
     label: "Seasons",

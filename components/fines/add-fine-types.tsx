@@ -46,7 +46,7 @@ export default function FineTypeForm() {
       const data = await getFine(id);
       if (data?.error) {
         toast.error(data.error);
-        router.push("/fines/fine-types");
+        router.push("/settings/fine-types");
         return;
       }
       if (data.success) {
@@ -73,11 +73,11 @@ export default function FineTypeForm() {
     onSuccess: (data) => {
       if (data.data?.error) {
         toast.error(data.data.error);
-        router.push("/fines/fine-types");
+        router.push("/settings/fine-types");
         return;
       }
       if (data.data?.success) {
-        router.push("/fines/fine-types");
+        router.push("/settings/fine-types");
         toast.success(data.data.success);
       }
     },

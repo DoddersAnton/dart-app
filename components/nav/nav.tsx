@@ -33,6 +33,7 @@ const navLinks = [
   },
   { titleEng: "Players", img: "/dart-img.png", navDescriptionEng: "Player information", href: "/players", subLinks: [] },
   { titleEng: "Matches", img: "/dart-img.png", navDescriptionEng: "Fixtures and results", href: "/fixtures", subLinks: [] },
+  { titleEng: "Reports", img: "/dart-img.png", navDescriptionEng: "League reports and stats", href: "/reports", subLinks: [] },
   {
     titleEng: "Settings",
     img: "/dart-img.png",

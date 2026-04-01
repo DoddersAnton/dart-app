@@ -232,7 +232,7 @@ function fixtureItem({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="dark:focus:bg-yellow-100 focus:bg-yellow-100 cursor-pointer">
-                  <Link href={`/fixture/edit-fixtures?id=${fixtureData.id}`} className="flex items-center gap-2">
+                  <Link href={`/fixtures/edit-fixture?id=${fixtureData.id}`} className="flex items-center gap-2">
                     <Pencil className="h-4 w-4" /> Edit Match
                   </Link>
                 </DropdownMenuItem>
