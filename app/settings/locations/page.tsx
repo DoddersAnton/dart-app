@@ -29,47 +29,49 @@ export default async function GetLocations() {
 
       <div className="container mx-auto mt-8 px-2 lg:w-[80%]">
         {!locations || locations.success.length === 0 ? (
-          <div>
-            {" "}
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Locate size={48} />
-                </EmptyMedia>
-                <EmptyTitle>No Locations Yet</EmptyTitle>
-                <EmptyDescription>
-                  No Locations added yet. Start by creating a new location.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <div className="flex gap-2">
-                  <Link href="/settings/add-location">
-                    <Button>Create Location</Button>
-                  </Link>
-                </div>
-              </EmptyContent>
-            </Empty>
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-auto">
-          {locations &&
-            locations.success.length > 0 &&
-            locations.success.map((location) => (
-              <LocationCard
-                key={location.id}
-                id={location.id}
-                name={location.name}
-                createdAt={
-                  location.createdAt
-                    ? new Date(location.createdAt).toLocaleDateString("en-GB")
-                    : null
-                }
-                address={location.address}
-                googleMapsLink={location.googleMapsLink}
-              />
-            ))}
-        </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Locate size={48} />
+              </EmptyMedia>
+              <EmptyTitle>No Locations Yet</EmptyTitle>
+              <EmptyDescription>
+                Start by creating a new location.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <div className="flex gap-2">
+                <Link href="/settings/add-location">
+                  <Button>Create Location</Button>
+                </Link>
+              </div>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <>
+            <div className="flex justify-end mb-4">
+              <Link href="/settings/add-location">
+                <Button variant="outline" size="sm">Add Location</Button>
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {locations.success.map((location) => (
+                <LocationCard
+                  key={location.id}
+                  id={location.id}
+                  name={location.name}
+                  createdAt={
+                    location.createdAt
+                      ? new Date(location.createdAt).toLocaleDateString("en-GB")
+                      : null
+                  }
+                  address={location.address}
+                  googleMapsLink={location.googleMapsLink}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

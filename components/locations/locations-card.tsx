@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ChevronDown,
-  HouseIcon,
-  Pencil,
-  PinIcon,
-  Trash,
-} from "lucide-react";
+import { MapPin, MoreHorizontal, Pencil, Trash } from "lucide-react";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -14,14 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemHeader,
-  ItemTitle,
-} from "../ui/item";
-import { Separator } from "../ui/separator";
 import {
   Dialog,
   DialogClose,
@@ -31,8 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-
-import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import Link from "next/link";
 
 interface LocationCardProps {
@@ -48,88 +33,66 @@ export default function LocationCard({
   name,
   address,
   googleMapsLink,
-  }: LocationCardProps) {
+}: LocationCardProps) {
   return (
-    <Item variant="outline" key={id} className="mb-4">
-      <ItemHeader className="bg-gray-50 dark:bg-gray-800 p-2 rounded-t-md">
-        <ItemTitle>
-          <div>
-            <HouseIcon></HouseIcon>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">{name}</CardTitle>
           </div>
-          <div className="flex flex-row items-center gap-2 justify-between"></div>
-          <ItemTitle>{name}</ItemTitle>
-          <Dialog>
-            <DialogTrigger asChild title="View Venue">
-              <Button variant="link" color="secondary" className="p-0 m-0">
-                {" "}
-                <PinIcon className="inline-block mr-2" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] lg:max-w-[600px] ml-2">
-              <DialogHeader>
-                <DialogTitle>View Venue</DialogTitle>
-              </DialogHeader>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/settings/add-location?id=${id}`} className="flex items-center gap-2 cursor-pointer">
+                  <Pencil className="h-4 w-4" /> Edit location
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive">
+                <Trash className="h-4 w-4" /> Delete location
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
 
+      {(address || googleMapsLink) && (
+        <CardContent className="pt-0">
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="flex items-start gap-2 text-sm text-muted-foreground hover:text-primary transition-colors text-left">
+                <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  {address && <p className="text-xs">{address}</p>}
+                </div>
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{name}</DialogTitle>
+              </DialogHeader>
+              {address && <p className="text-sm text-muted-foreground">{address}</p>}
               {googleMapsLink && (
                 <div
-                  className="w-[300x] h-[200px] h-l-[400px] w-l-full rounded-lg overflow-hidden"
+                  className="w-full h-52 rounded-lg overflow-hidden border [&>iframe]:w-full [&>iframe]:h-full"
                   dangerouslySetInnerHTML={{ __html: googleMapsLink }}
-                ></div>
+                />
               )}
-
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">Close</Button>
                 </DialogClose>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </ItemTitle>
-      </ItemHeader>
-      <Separator />
-      <ItemContent>
-        <div className="flex justify-between items-center w-full align-middle">
-         
-            <div> {address}</div>
-          
-          <div>
-            <ItemActions>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant={"ghost"}
-                    className=" flex items-center flex-row gap-1"
-                    title="Game Actions"
-                  >
-                    Actions <span></span>
-                    <ChevronDown className="h-8 w-8" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer text-black">
-                    <Link
-                      href={`/settings/add-location?id=${id}`}
-                      className="flex items-center gap-2"
-                    >
-                      <Pencil className="h-4 w-4 hover:text-black" />
-                      Edit Location
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    //onClick={() => handleDeleteGame({ id: gameSummary.id })}
-                    disabled={true}
-                    className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer flex items-center gap-2"
-                  >
-                    <Trash className="h-4 w-4 hover:text-black" />
-                    Delete Location
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ItemActions>
-          </div>
-        </div>
-      </ItemContent>
-    </Item>
+        </CardContent>
+      )}
+    </Card>
   );
 }

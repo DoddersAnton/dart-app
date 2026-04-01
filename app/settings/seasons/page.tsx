@@ -21,44 +21,49 @@ export default async function SeasonsSettingsPage() {
 
   return (
     <div className="mx-auto">
-      <h1 className="text-2xl font-bold">Seasons Settings Page</h1>
+      <h1 className="text-2xl font-bold">Seasons</h1>
       <p>Manage your seasons settings here.</p>
 
       <div className="container mx-auto mt-8 lg:w-[80%]">
         {!seasons || seasons.success.length === 0 ? (
-          <div>
-            {" "}
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Sun size={48} />
-                </EmptyMedia>
-                <EmptyTitle>No Seasons Yet</EmptyTitle>
-                <EmptyDescription>
-                  No Locations added yet. Start by creating a new location.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <div className="flex gap-2">
-                  <Link href="/settings/add-season">
-                    <Button>Create Season</Button>
-                  </Link>
-                </div>
-              </EmptyContent>
-            </Empty>
-          </div>
-        ) : null}
-        {seasons &&
-          seasons.success.length > 0 &&
-          seasons.success.map((location) => (
-            <SeasonCard
-              key={location.id}
-              id={location.id}
-              name={location.name}
-              fromSeasonDate={location.startDate}
-              toSeasonDate={location.endDate}
-            />
-          ))}
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Sun size={48} />
+              </EmptyMedia>
+              <EmptyTitle>No Seasons Yet</EmptyTitle>
+              <EmptyDescription>
+                Start by creating a new season.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <div className="flex gap-2">
+                <Link href="/settings/add-season">
+                  <Button>Create Season</Button>
+                </Link>
+              </div>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <>
+            <div className="flex justify-end mb-4">
+              <Link href="/settings/add-season">
+                <Button variant="outline" size="sm">Add Season</Button>
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {seasons.success.map((season) => (
+                <SeasonCard
+                  key={season.id}
+                  id={season.id}
+                  name={season.name}
+                  fromSeasonDate={season.startDate}
+                  toSeasonDate={season.endDate}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

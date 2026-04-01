@@ -1,29 +1,10 @@
-import {
-  ChevronDown,
-  Home,
-  Pencil,
-  StarIcon,
-  Trash,
-  UserIcon,
-  Users2Icon,
-} from "lucide-react";
-import { Button } from "../ui/button";
-import {
-  Item,
-  ItemActions,
-  ItemContent,  
-  ItemHeader,
-  ItemTitle,
-} from "../ui/item";
-import { Separator } from "../ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
+import { MapPin, MoreHorizontal, Pencil, Star, Trash, Users2Icon, UserIcon } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 interface TeamCardProps {
   id: number;
@@ -34,110 +15,84 @@ interface TeamCardProps {
   locationGoogleMapsLink?: string | null;
   isAppTeam?: boolean;
 }
+
 export default function TeamCard({
   id,
-  name,  
+  name,
   locationName,
   locationAddress,
   locationGoogleMapsLink,
-  isAppTeam
+  isAppTeam,
 }: TeamCardProps) {
   return (
-    <Item variant="outline" key={id} className="mb-4">
-      <ItemHeader
-        className={`${
-          isAppTeam ? "bg-green-50" : "bg-gray-50"
-        } dark:bg-gray-800 p-2 rounded-t-md`}
-      >
-        <ItemTitle>
-          <div>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
             {isAppTeam ? (
-              <UserIcon className="inline-block mr-2" />
+              <UserIcon className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <Users2Icon className="inline-block mr-2" />
+              <Users2Icon className="h-4 w-4 text-muted-foreground" />
+            )}
+            <CardTitle className="text-base">{name}</CardTitle>
+            {isAppTeam && (
+              <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">
+                <Star className="h-3 w-3 mr-1" /> Our team
+              </Badge>
             )}
           </div>
-          <div className="flex flex-row items-center gap-2 justify-between"></div>
-          <ItemTitle>{name}</ItemTitle>
-          <div className="relative">
-        </div>
-            <ItemTitle className="float-end justify-end">  
-                <span title="Is main app name"> {isAppTeam ? <StarIcon className="text-yellow-500" /> : null}</span></ItemTitle>
-        </ItemTitle>
-      </ItemHeader>
-      <Separator />
-      <ItemContent>
-        <div className="flex justify-between items-center w-full align-middle">
-          <div className="flex items-center gap-2 flex-row">
-            {" "}
-            <Home />{" "}
-            <Dialog>
-            <DialogTrigger asChild title="View Venue">
-              <Button variant="link" color="secondary" className="p-0 m-0">
-                {" "}
-               {locationName || "No Venue Assigned"} 
-                
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/settings/add-team?id=${id}`} className="flex items-center gap-2 cursor-pointer">
+                  <Pencil className="h-4 w-4" /> Edit team
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive">
+                <Trash className="h-4 w-4" /> Delete team
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+
+      {locationName && (
+        <CardContent className="pt-0">
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="flex items-start gap-2 text-sm text-muted-foreground hover:text-primary transition-colors text-left">
+                <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">{locationName}</p>
+                  {locationAddress && <p className="text-xs">{locationAddress}</p>}
+                </div>
+              </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] lg:max-w-[600px] ml-2">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>View Venue</DialogTitle>
+                <DialogTitle>{locationName}</DialogTitle>
               </DialogHeader>
-            <p>{locationAddress}</p>
+              {locationAddress && <p className="text-sm text-muted-foreground">{locationAddress}</p>}
               {locationGoogleMapsLink && (
                 <div
-                  className="w-[300x] h-[200px] h-l-[400px] w-l-full rounded-lg overflow-hidden"
+                  className="w-full h-52 rounded-lg overflow-hidden border [&>iframe]:w-full [&>iframe]:h-full"
                   dangerouslySetInnerHTML={{ __html: locationGoogleMapsLink }}
-                ></div>
+                />
               )}
-
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">Close</Button>
                 </DialogClose>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          </div>
-
-          <div>
-            <ItemActions>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant={"ghost"}
-                    className=" flex items-center flex-row gap-1"
-                    title="Game Actions"
-                  >
-                    Actions <span></span>
-                    <ChevronDown className="h-8 w-8" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem className="dark:focus:bg-primary focus:bg-primary/50 cursor-pointer text-black">
-                    <Link
-                      href={`/settings/add-team?id=${id}`}
-                      className="flex items-center gap-2"
-                    >
-                      <Pencil className="h-4 w-4 hover:text-black" />
-                      Edit Team
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    //onClick={() => handleDeleteGame({ id: gameSummary.id })}
-                    disabled={true}
-                    className="dark:focus:bg-destructive focus:bg-destructive/50 cursor-pointer flex items-center gap-2"
-                  >
-                    <Trash className="h-4 w-4 hover:text-black" />
-                    Delete Team
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ItemActions>
-          </div>
-        </div>
-      </ItemContent>
-    </Item>
+        </CardContent>
+      )}
+    </Card>
   );
 }
