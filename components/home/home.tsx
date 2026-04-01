@@ -15,7 +15,7 @@ const photos = [
 
 const sponsors = [
   { name: "Rustico", img: "/rustico.png", href: "https://hellorustico.co.uk/" },
-  { name: "Tarian Drums", img: "/TarianDrums-sponsor.jpeg", href: "https://www.tariandrums.wales/" },
+  { name: "Tarian Drums", img: "/t-drums-sponsor.jpeg", href: "https://www.tariandrums.wales/" },
   { name: "West Wales Weighing", img: "/WWW-sponsor.jpeg", href: "https://www.westwalesweighing.co.uk/" },
 ];
 
