@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, Menu, User, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -55,7 +55,9 @@ function NavText({ title }: { title: string }) {
   );
 }
 
-export function Nav() {
+type LinkedPlayer = { id: number; name: string } | null;
+
+export function Nav({ linkedPlayer }: { linkedPlayer?: LinkedPlayer }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
 
@@ -118,6 +120,14 @@ export function Nav() {
             </div>
           </SignedOut>
           <SignedIn>
+            <Link
+              href={linkedPlayer ? `/player/${linkedPlayer.id}` : "#"}
+              title={linkedPlayer ? `Go to ${linkedPlayer.name}'s profile` : "No player linked to your account"}
+              className="hidden md:flex items-center gap-1.5 text-sm px-2 py-1 rounded-md hover:bg-muted transition-colors"
+            >
+              <User className="h-4 w-4" />
+              <span className="text-sm">{linkedPlayer ? linkedPlayer.name : "My Profile"}</span>
+            </Link>
             <UserButton />
           </SignedIn>
           <ModeToggle />
@@ -152,6 +162,25 @@ export function Nav() {
               </div>
 
               <div className="space-y-2">
+                <SignedIn>
+                  <div className="rounded-md border p-3">
+                    {linkedPlayer ? (
+                      <Link
+                        href={`/player/${linkedPlayer.id}`}
+                        onClick={() => setIsMobileOpen(false)}
+                        className="flex items-center gap-2 text-base font-medium"
+                      >
+                        <User className="h-4 w-4" />
+                        My Profile
+                      </Link>
+                    ) : (
+                      <p className="flex items-center gap-2 text-base font-medium text-muted-foreground">
+                        <User className="h-4 w-4" />
+                        No player linked
+                      </p>
+                    )}
+                  </div>
+                </SignedIn>
                 {navLinks.map((link) => (
                   <div key={link.titleEng} className="rounded-md border p-3">
                     {link.subLinks.length > 0 ? (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Target, Trophy, Users, ChartBar } from "lucide-react";
 import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
 
 const photos = [
   { src: "/team-pic-1.jpeg", alt: "Team photo 1" },
@@ -26,7 +27,13 @@ const features = [
   { icon: ChartBar, label: "Reports", description: "Performance insights", href: "/reports" },
 ];
 
-export function Home() {
+type HomeProps = {
+  userName?: string | null;
+  userImageUrl?: string | null;
+  linkedPlayer?: { id: number; name: string; imgUrl: string | null } | null;
+};
+
+export function Home({ userName, userImageUrl, linkedPlayer }: HomeProps) {
   return (
     <div className="min-h-screen">
 
@@ -50,6 +57,46 @@ export function Home() {
               <Button size="lg" variant="outline">Fixtures <Trophy className="ml-2 h-4 w-4" /></Button>
             </Link>
           </div>
+          {userName && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="mt-8 flex justify-center"
+            >
+              <Card className="w-full max-w-sm text-left">
+                <CardContent className="flex items-center gap-4 p-4">
+                  {(linkedPlayer?.imgUrl ?? userImageUrl) && (
+                    <Image
+                      src={(linkedPlayer?.imgUrl ?? userImageUrl)!}
+                      alt={userName}
+                      width={48}
+                      height={48}
+                      unoptimized
+                      className="h-12 w-12 rounded-full object-cover border"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{userName}</p>
+                    {linkedPlayer ? (
+                      <p className="text-xs text-muted-foreground truncate">Linked to {linkedPlayer.name}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No player linked</p>
+                    )}
+                  </div>
+                  {linkedPlayer ? (
+                    <Link href={`/player/${linkedPlayer.id}`}>
+                      <Button size="sm" variant="outline">View Profile</Button>
+                    </Link>
+                  ) : (
+                    <Link href="/players">
+                      <Button size="sm" variant="outline">Link Player</Button>
+                    </Link>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </motion.div>
       </section>
 

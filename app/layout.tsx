@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Nav } from "@/components/nav/nav";
+import { NavWrapper } from "@/components/nav/nav-wrapper";
 import Toaster from "@/components/ui/toaster";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
@@ -30,7 +30,7 @@ export default function RootLayout({
             className="font-sans antialiased"
           >
              <SidebarProvider>
-            <Nav />
+            <NavWrapper />
             <Toaster />
             
              {/* This is critical */}
