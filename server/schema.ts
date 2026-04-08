@@ -54,6 +54,7 @@ export const players = pgTable("players", {
     seasonsId: integer("seasons_id").references(() => seasons.id, { onDelete: "set null" }),
     matchStatus: varchar("match_status", { length: 255 }).notNull(),
     isAppTeamWin: boolean("is_app_team_win").default(false).notNull(),
+    notes: varchar("notes", { length: 1055 }),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   });

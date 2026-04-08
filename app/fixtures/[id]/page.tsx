@@ -33,6 +33,7 @@ export default async function FixturePage({
     season: s.season ?? "",
     league: s.league,
     isAppTeamWin: s.isAppTeamWin,
+    notes: s.notes ?? null,
     createdAt: s.createdAt ? s.createdAt.toLocaleDateString("en-GB") : "",
   };
 

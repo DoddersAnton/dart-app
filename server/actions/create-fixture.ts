@@ -148,7 +148,7 @@ seasonId, league
       }
 
       revalidatePath("/fixtures/add-fixture");
-     return { success: `Fixture at ${location.name} on ${matchDate.getDay()}/${matchDate.getMonth()}/${matchDate.getFullYear()} has been created` };
+      return { success: `Fixture at ${location.name} on ${matchDate.getDay()}/${matchDate.getMonth()}/${matchDate.getFullYear()} has been created`, fixtureId: newFixture.id };
     } catch (error) {
       console.error(error);
       return { error: JSON.stringify(error) };

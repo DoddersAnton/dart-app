@@ -189,8 +189,12 @@ const { execute, status } = useAction(createFixture, {
       return;
     }
     if (data.data?.success) {
-      router.push(`/fixtures`);
       toast.success(data.data.success);
+      if (data.data.fixtureId) {
+        router.push(`/fixtures/${data.data.fixtureId}`);
+      } else {
+        router.push(`/fixtures`);
+      }
     }
   },
   onExecute: () => {

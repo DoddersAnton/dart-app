@@ -241,8 +241,10 @@ function fixtureItem({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Badge variant={isScheduled ? "secondary" : isWin ? "default" : "outline"}
-              className={!isScheduled && isWin ? "bg-green-600 text-white" : !isScheduled && !isWin ? "border-red-400 text-red-500" : ""}>
+            <Badge
+              variant={isScheduled ? "outline" : isWin ? "default" : "destructive"}
+              className={isScheduled ? "text-amber-500 border-amber-400" : isWin ? "bg-green-600 hover:bg-green-700" : ""}
+            >
               {isScheduled ? "Scheduled" : isWin ? "Win" : "Loss"}
             </Badge>
           </div>

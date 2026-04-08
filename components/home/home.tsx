@@ -37,7 +37,7 @@ export function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <Image src="/DRT-logo.png" alt="DRT Logo" width={100} height={100} className="mx-auto" />
+          <Image src="/DRT-logo.png" alt="DRT Logo" width={100} height={100} unoptimized className="mx-auto" />
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Dartiau Rhieni Trisant</h1>
           <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
             A team of dads from Llantrisant, based at the Working Men&apos;s Club. Track our fines, results, and player performance all in one place.
