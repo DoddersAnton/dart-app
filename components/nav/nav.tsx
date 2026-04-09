@@ -57,7 +57,7 @@ function NavText({ title }: { title: string }) {
 
 type LinkedPlayer = { id: number; name: string } | null;
 
-export function Nav({ linkedPlayer }: { linkedPlayer?: LinkedPlayer }) {
+export function Nav({ linkedPlayer, isSignedIn }: { linkedPlayer?: LinkedPlayer; isSignedIn?: boolean }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
 
@@ -119,7 +119,7 @@ export function Nav({ linkedPlayer }: { linkedPlayer?: LinkedPlayer }) {
               <SignInButton />
             </div>
           </SignedOut>
-          <SignedIn>
+          {isSignedIn && (
             <Link
               href={linkedPlayer ? `/player/${linkedPlayer.id}` : "#"}
               title={linkedPlayer ? `Go to ${linkedPlayer.name}'s profile` : "No player linked to your account"}
@@ -128,6 +128,8 @@ export function Nav({ linkedPlayer }: { linkedPlayer?: LinkedPlayer }) {
               <User className="h-4 w-4" />
               <span className="text-sm">{linkedPlayer ? linkedPlayer.name : "My Profile"}</span>
             </Link>
+          )}
+          <SignedIn>
             <UserButton />
           </SignedIn>
           <ModeToggle />
@@ -162,7 +164,7 @@ export function Nav({ linkedPlayer }: { linkedPlayer?: LinkedPlayer }) {
               </div>
 
               <div className="space-y-2">
-                <SignedIn>
+                {isSignedIn && (
                   <div className="rounded-md border p-3">
                     {linkedPlayer ? (
                       <Link
@@ -180,7 +182,7 @@ export function Nav({ linkedPlayer }: { linkedPlayer?: LinkedPlayer }) {
                       </p>
                     )}
                   </div>
-                </SignedIn>
+                )}
                 {navLinks.map((link) => (
                   <div key={link.titleEng} className="rounded-md border p-3">
                     {link.subLinks.length > 0 ? (

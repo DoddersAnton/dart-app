@@ -13,5 +13,5 @@ export async function NavWrapper() {
     }
   }
 
-  return <Nav linkedPlayer={linkedPlayer} />;
+  return <Nav linkedPlayer={linkedPlayer} isSignedIn={!!user} />;
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useUploadThing } from "@/app/api/uploadthing/upload";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -12,7 +12,18 @@ type UploadThingImageUploaderProps = {
 
 export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
 
   const { startUpload, isUploading } = useUploadThing("imgUploader", {
     onClientUploadComplete: async (res) => {
@@ -30,11 +41,6 @@ export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageU
     },
   });
 
-  const selectedLabel = useMemo(() => {
-    if (!selectedFile) return "No file selected";
-    return `${selectedFile.name} (${Math.round(selectedFile.size / 1024)} KB)`;
-  }, [selectedFile]);
-
   const handleUpload = async () => {
     if (!selectedFile) return;
     setMessage("Uploading...");
@@ -49,17 +55,28 @@ export function UploadThingImageUploader({ onUploadComplete }: UploadThingImageU
         onChange={(event) => {
           const file = event.target.files?.[0] ?? null;
           setSelectedFile(file);
-          setMessage(file ? "Image selected" : "");
+          setMessage("");
         }}
       />
 
-      <p className="text-xs text-muted-foreground">{selectedLabel}</p>
+      {previewUrl && (
+        <div className="flex justify-center">
+          <Image
+            src={previewUrl}
+            alt="Preview"
+            width={120}
+            height={120}
+            unoptimized
+            className="h-28 w-28 rounded-full object-cover border"
+          />
+        </div>
+      )}
 
       <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
         {isUploading ? "Uploading..." : "Upload image"}
       </Button>
 
-      {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
+      {message && <p className="text-xs text-muted-foreground">{message}</p>}
     </div>
   );
 }
