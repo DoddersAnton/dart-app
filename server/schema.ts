@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, timestamp, varchar,  real, boolean } from "drizzle-orm/pg-core";
+import { integer, pgTable, serial, timestamp, varchar, real, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 
@@ -199,6 +199,15 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
     players: many(players),
   }));
   */
+
+  export const appSettings = pgTable("app_settings", {
+    id: serial("id").primaryKey(),
+    maxTeamGamesPerMatch: integer("max_team_games_per_match").default(1).notNull(),
+    maxDoublesGamesPerMatch: integer("max_doubles_games_per_match").default(2).notNull(),
+    maxSinglesGamesPerMatch: integer("max_singles_games_per_match").default(4).notNull(),
+    maxLegsPerGame: integer("max_legs_per_game").default(3).notNull(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  });
 
   export const playersRelations = relations(players, ({ many }) => ({
     playerFines: many(playerFines),

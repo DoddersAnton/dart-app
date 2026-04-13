@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAction } from "next-safe-action/hooks";
 import { getGamesByFixture } from "@/server/actions/get-games-by-fixture";
 import { deleteGame } from "@/server/actions/delete-game";
 import { updateFixtureNotes } from "@/server/actions/update-fixture-notes";
+import { updateFixtureStatus } from "@/server/actions/update-fixture-status";
 import Link from "next/link";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -115,9 +117,11 @@ function useGamesByFixture(fixtureId: number) {
 export default function FixtureCard({
   fixtureData,
   availability,
+  linkedPlayerId,
 }: {
   fixtureData: Fixture;
   availability: AvailabilityRecord[];
+  linkedPlayerId?: number | null;
 }) {
   const { games, loading, error, fetchGames } = useGamesByFixture(fixtureData.id);
 
@@ -125,6 +129,17 @@ export default function FixtureCard({
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState(fixtureData.notes ?? "");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(fixtureData.matchStatus);
+
+  const { execute: executeStatusUpdate, status: statusUpdateStatus } = useAction(updateFixtureStatus, {
+    onSuccess: (data) => {
+      if (data.data?.error) toast.error(data.data.error);
+      else if (data.data?.success) {
+        toast.success(data.data.success);
+        setCurrentStatus("in progress");
+      }
+    },
+  });
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);
@@ -152,8 +167,10 @@ export default function FixtureCard({
     }
   };
 
-  const isScheduled = fixtureData.matchStatus === "Scheduled" ||
-    (fixtureData.matchDate ? new Date(fixtureData.matchDate) > new Date() : false);
+  const isInProgress = currentStatus === "in progress";
+  const isCancelled = currentStatus === "cancelled";
+  const isScheduled = !isInProgress && !isCancelled && (currentStatus === "scheduled" ||
+    (fixtureData.matchDate ? new Date(fixtureData.matchDate) > new Date() : false));
 
   const going = availability.filter((r) => r.attending === true);
   const notGoing = availability.filter((r) => r.attending === false);
@@ -162,7 +179,19 @@ export default function FixtureCard({
   const matchDate = fixtureData.matchDate ? new Date(fixtureData.matchDate) : null;
 
   // Result badge
-  const statusBadge = isScheduled ? (
+  const statusBadge = isInProgress ? (
+    <span className="flex items-center gap-1.5">
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+      </span>
+      <span className="text-xs font-medium text-red-500">In Progress</span>
+    </span>
+  ) : isCancelled ? (
+    fixtureData.isAppTeamWin
+      ? <Badge variant="outline" className="text-green-600 border-green-500">Cancelled (win)</Badge>
+      : <Badge variant="outline" className="text-destructive border-destructive">Cancelled (lost)</Badge>
+  ) : isScheduled ? (
     <Badge variant="outline" className="text-amber-500 border-amber-400">Scheduled</Badge>
   ) : fixtureData.isAppTeamWin ? (
     <Badge className="bg-green-600 hover:bg-green-700">Win</Badge>
@@ -192,6 +221,13 @@ export default function FixtureCard({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={currentStatus !== "scheduled" || statusUpdateStatus === "executing"}
+                    onClick={() => executeStatusUpdate({ id: fixtureData.id, status: "in progress" })}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-red-500" /> Start Match
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/fixtures/edit-fixture?id=${fixtureData.id}`} className="flex items-center gap-2 cursor-pointer">
                       <Pencil className="h-4 w-4" /> Edit Match
@@ -307,7 +343,14 @@ export default function FixtureCard({
       {availability.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Availability</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Availability</CardTitle>
+              {linkedPlayerId && (
+                <Link href={`/player/${linkedPlayerId}/availability`}>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">My availability</Button>
+                </Link>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Going */}

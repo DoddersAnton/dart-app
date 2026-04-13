@@ -7,6 +7,32 @@ import { revalidatePath } from "next/cache";
 import {  fixtures, gamePlayers, games, team } from "../schema";
 import { addGameSchema } from "@/types/add-game-schema";
 
+async function recalculateFixtureScore(fixtureId: number) {
+  const fixture = await db.query.fixtures.findFirst({ where: eq(fixtures.id, fixtureId) });
+  if (!fixture) return;
+
+  const allGames = await db.query.games.findMany({ where: eq(games.fixtureId, fixtureId) });
+
+  const homeWins = allGames.filter(g => g.homeTeamScore > g.awayTeamScore).length;
+  const awayWins = allGames.filter(g => g.awayTeamScore > g.homeTeamScore).length;
+
+  const homeTeam = fixture.homeTeamId
+    ? await db.query.team.findFirst({ where: eq(team.id, fixture.homeTeamId) })
+    : null;
+  const awayTeam = fixture.awayTeamId
+    ? await db.query.team.findFirst({ where: eq(team.id, fixture.awayTeamId) })
+    : null;
+
+  const isAppTeamWin =
+    (homeTeam?.isAppTeam === true && homeWins > awayWins) ||
+    (awayTeam?.isAppTeam === true && awayWins > homeWins);
+
+  await db
+    .update(fixtures)
+    .set({ homeTeamScore: homeWins, awayTeamScore: awayWins, isAppTeamWin, updatedAt: new Date() })
+    .where(eq(fixtures.id, fixtureId));
+}
+
 const actionClient = createSafeActionClient();
 
 export const createGame = actionClient
@@ -79,7 +105,8 @@ export const createGame = actionClient
             await db.insert(gamePlayers).values(playerValues);
         }
 
-        revalidatePath(`/games/${id}`);
+        await recalculateFixtureScore(fixtureId as number);
+        revalidatePath(`/fixtures/${fixtureId}`);
         return { success: `Game has been updated` };
       }
 
@@ -106,9 +133,8 @@ export const createGame = actionClient
             await db.insert(gamePlayers).values(playerValues);
         }
 
-        revalidatePath(`/games/${id}`);
-
-      // or each play create a subscription to the fixture
+        await recalculateFixtureScore(fixtureId as number);
+        revalidatePath(`/fixtures/${fixtureId}`);
 
      return { success: `Game has been created` };
     } catch (error) {

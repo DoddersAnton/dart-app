@@ -204,7 +204,9 @@ function fixtureItem({
   key?: number;
 }) {
   const isWin = fixtureData.isAppTeamWin;
-  const isScheduled = fixtureData.matchStatus === "scheduled";
+  const isInProgress = fixtureData.matchStatus === "in progress";
+  const isCancelled = fixtureData.matchStatus === "cancelled";
+  const isScheduled = !isInProgress && !isCancelled && fixtureData.matchStatus === "scheduled";
 
   return (
     <Card key={key}>
@@ -241,12 +243,26 @@ function fixtureItem({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Badge
-              variant={isScheduled ? "outline" : isWin ? "default" : "destructive"}
-              className={isScheduled ? "text-amber-500 border-amber-400" : isWin ? "bg-green-600 hover:bg-green-700" : ""}
-            >
-              {isScheduled ? "Scheduled" : isWin ? "Win" : "Loss"}
-            </Badge>
+            {isInProgress ? (
+              <span className="flex items-center gap-1.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                </span>
+                <span className="text-xs font-medium text-red-500">In Progress</span>
+              </span>
+            ) : isCancelled ? (
+              isWin
+                ? <Badge variant="outline" className="text-green-600 border-green-500">Cancelled (win)</Badge>
+                : <Badge variant="outline" className="text-destructive border-destructive">Cancelled (lost)</Badge>
+            ) : (
+              <Badge
+                variant={isScheduled ? "outline" : isWin ? "default" : "destructive"}
+                className={isScheduled ? "text-amber-500 border-amber-400" : isWin ? "bg-green-600 hover:bg-green-700" : ""}
+              >
+                {isScheduled ? "Scheduled" : isWin ? "Win" : "Loss"}
+              </Badge>
+            )}
           </div>
         </div>
 

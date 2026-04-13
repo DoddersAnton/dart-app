@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { CalendarDays, CheckCircle2, XCircle, Clock, MapPin } from "lucide-react";
+import { CalendarDays, CheckCircle2, XCircle, Clock, MapPin, ExternalLink } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
+import Link from "next/link";
 
 import { updateAvailability } from "@/server/actions/update-availability";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -29,14 +32,19 @@ type Record = {
   locationMapsLink: string | null;
 };
 
+type PlayerEntry = { id: number; name: string };
+type FixtureCounts = { going: PlayerEntry[]; notGoing: PlayerEntry[]; pending: PlayerEntry[] };
+
 function FixtureAvailabilityCard({
   record,
   playerId,
   pending,
+  counts,
 }: {
   record: Record;
   playerId: number;
   pending: boolean;
+  counts?: FixtureCounts;
 }) {
   const [note, setNote] = useState(record.note ?? "");
   const [showNote, setShowNote] = useState(false);
@@ -54,20 +62,78 @@ function FixtureAvailabilityCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-base">
-              {record.homeTeam} vs {record.awayTeam}
-            </CardTitle>
+            <Link href={`/fixtures/${record.fixtureId}`} className="hover:underline">
+              <CardTitle className="text-base">
+                {record.homeTeam} vs {record.awayTeam}
+              </CardTitle>
+            </Link>
             <p className="text-xs text-muted-foreground mt-0.5">{record.league} · {record.season}</p>
           </div>
-          {!pending && (
-            <Badge variant={record.attending ? "default" : "destructive"} className={record.attending ? "bg-green-600" : ""}>
-              {record.attending ? "Going" : "Not going"}
-            </Badge>
-          )}
-          {pending && (
-            <Badge variant="outline" className="text-amber-500 border-amber-400">Pending</Badge>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {!pending && (
+              <Badge variant={record.attending ? "default" : "destructive"} className={record.attending ? "bg-green-600" : ""}>
+                {record.attending ? "Going" : "Not going"}
+              </Badge>
+            )}
+            {pending && (
+              <Badge variant="outline" className="text-amber-500 border-amber-400">Pending</Badge>
+            )}
+          </div>
         </div>
+
+        {/* Fixture availability summary */}
+        {counts && (
+          <div className="flex items-center gap-2 mt-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-3 rounded-md px-2 py-1 hover:bg-muted transition-colors">
+                  <span className="flex items-center gap-1 text-xs text-green-600">
+                    <CheckCircle2 className="h-3 w-3" /> {counts.going.length}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-destructive">
+                    <XCircle className="h-3 w-3" /> {counts.notGoing.length}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-amber-500">
+                    <Clock className="h-3 w-3" /> {counts.pending.length}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-3 space-y-3" align="start">
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-green-600 mb-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Going ({counts.going.length})
+                  </p>
+                  {counts.going.length > 0
+                    ? counts.going.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                    : <p className="text-xs text-muted-foreground pl-5">None yet</p>}
+                </div>
+                <Separator />
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-destructive mb-1.5">
+                    <XCircle className="h-3.5 w-3.5" /> Not going ({counts.notGoing.length})
+                  </p>
+                  {counts.notGoing.length > 0
+                    ? counts.notGoing.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                    : <p className="text-xs text-muted-foreground pl-5">None</p>}
+                </div>
+                <Separator />
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 mb-1.5">
+                    <Clock className="h-3.5 w-3.5" /> Pending ({counts.pending.length})
+                  </p>
+                  {counts.pending.length > 0
+                    ? counts.pending.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                    : <p className="text-xs text-muted-foreground pl-5">None</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Link href={`/fixtures/${record.fixtureId}`} className="ml-auto">
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                <ExternalLink className="h-3 w-3" /> View match
+              </Button>
+            </Link>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -145,9 +211,11 @@ function FixtureAvailabilityCard({
 export function AvailabilityClient({
   playerId,
   records,
+  fixtureCounts,
 }: {
   playerId: number;
   records: Record[];
+  fixtureCounts: { [fixtureId: number]: FixtureCounts };
 }) {
   const pending = records.filter((r) => r.attending === null);
   const responded = records.filter((r) => r.attending !== null);
@@ -174,7 +242,7 @@ export function AvailabilityClient({
         {pending.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {pending.map((record) => (
-              <FixtureAvailabilityCard key={record.id} record={record} playerId={playerId} pending />
+              <FixtureAvailabilityCard key={record.id} record={record} playerId={playerId} pending counts={fixtureCounts[record.fixtureId]} />
             ))}
           </div>
         ) : (
@@ -188,7 +256,7 @@ export function AvailabilityClient({
         {responded.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {responded.map((record) => (
-              <FixtureAvailabilityCard key={record.id} record={record} playerId={playerId} pending={false} />
+              <FixtureAvailabilityCard key={record.id} record={record} playerId={playerId} pending={false} counts={fixtureCounts[record.fixtureId]} />
             ))}
           </div>
         ) : (

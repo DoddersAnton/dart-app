@@ -542,6 +542,9 @@ const { execute, status } = useAction(createFixture, {
                                   <SelectItem value="scheduled">
                                     Scheduled
                                   </SelectItem>
+                                  <SelectItem value="in progress">
+                                    In Progress
+                                  </SelectItem>
                                   <SelectItem value="completed">
                                     Completed
                                   </SelectItem>

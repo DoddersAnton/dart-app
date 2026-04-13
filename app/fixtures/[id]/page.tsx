@@ -1,6 +1,8 @@
 import FixtureCard from "@/components/fixtures/fixture-card";
 import { getFixture } from "@/server/actions/get-fixture";
 import { getFixtureAvailability } from "@/server/actions/get-fixture-availability";
+import { getPlayerByUserId } from "@/server/actions/get-player-by-user-id";
+import { currentUser } from "@clerk/nextjs/server";
 
 export default async function FixturePage({
   params,
@@ -8,9 +10,12 @@ export default async function FixturePage({
   params: Promise<{ id: number }>;
 }) {
   const { id } = await params;
-  const [match, availability] = await Promise.all([
+  const user = await currentUser();
+
+  const [match, availability, linkedPlayer] = await Promise.all([
     getFixture(id),
     getFixtureAvailability(Number(id)),
+    user ? getPlayerByUserId(user.id) : Promise.resolve(null),
   ]);
 
   if (match.error || !match.success) {
@@ -39,7 +44,7 @@ export default async function FixturePage({
 
   return (
     <div className="w-full px-4 mx-auto max-w-4xl mt-24 space-y-6">
-      <FixtureCard fixtureData={matchDetails} availability={availability} />
+      <FixtureCard fixtureData={matchDetails} availability={availability} linkedPlayerId={linkedPlayer?.id ?? null} />
     </div>
   );
 }
