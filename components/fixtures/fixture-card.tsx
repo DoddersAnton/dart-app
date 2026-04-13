@@ -419,7 +419,7 @@ export default function FixtureCard({
           ) : games.length > 0 ? (
             <div className="space-y-3">
               {games.map((game) => (
-                <GamesSummaryCard key={game.id} gameSummary={game} handleDeleteGame={handleDeleteGame} />
+                <GamesSummaryCard key={game.id} gameSummary={game} handleDeleteGame={handleDeleteGame} fixtureStatus={currentStatus} />
               ))}
             </div>
           ) : (

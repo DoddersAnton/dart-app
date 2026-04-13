@@ -20,6 +20,7 @@ import {
   Users2Icon,
   UsersIcon,
 } from "lucide-react";
+import { Separator } from "../ui/separator";
 
 const gameTypeIcons: { [key: string]: React.ReactNode } = {
   "Team Game": <Users2Icon className="h-4 w-4" />,
@@ -31,6 +32,7 @@ const gameTypeIcons: { [key: string]: React.ReactNode } = {
 interface GamesSummaryCardProps {
   handleDeleteGame: ({ id }: { id: number }) => Promise<void>;
   gameSummary: GameSummary;
+  fixtureStatus?: string;
 }
 
 export type GameSummary = {
@@ -54,7 +56,9 @@ export type GameSummary = {
 export default function GamesSummaryCard({
   gameSummary,
   handleDeleteGame,
+  fixtureStatus,
 }: GamesSummaryCardProps) {
+  const isInProgress = fixtureStatus === "in progress";
   const homeWon = gameSummary.homeTeamScore > gameSummary.awayTeamScore;
   const awayWon = gameSummary.awayTeamScore > gameSummary.homeTeamScore;
   const resultBadge = gameSummary.isDilfWin ? (
@@ -147,6 +151,22 @@ export default function GamesSummaryCard({
               </Badge>
             ))}
           </div>
+        )}
+
+        {/* Launch tracker when match is live */}
+        {isInProgress && (
+          <>
+            <Separator />
+            <Link href={`/games/dart-tracker?id=${gameSummary.id}`} className="block">
+              <Button className="w-full gap-2 bg-red-600 hover:bg-red-700">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                </span>
+                Launch Dart Tracker
+              </Button>
+            </Link>
+          </>
         )}
       </CardContent>
     </Card>

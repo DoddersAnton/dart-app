@@ -1,40 +1,27 @@
-
-
 import DartTracker from "@/components/games/dart-tracker";
 import { getGame } from "@/server/actions/get-game";
 
 export default async function LaunchDartTracker({
-  params,
+  searchParams,
 }: {
-  params: Promise<{ id: number }>;
+  searchParams: Promise<{ id?: string }>;
 }) {
+  const { id } = await searchParams;
+  const gameId = Number(id);
 
-
-  const { id } = await params;
-  const game = await getGame(id);
-
-  if (game.error) {
-    return <div className="mt-22">{game.error}</div>;
+  if (!gameId) {
+    return <div className="mt-24 container mx-auto py-12">No game specified.</div>;
   }
 
-  if (!game) {
-    return (
-      <div className="container mx-auto py-12 mt-22">
-        <h1 className="text-2xl font-bold">Match not found</h1>
-      </div>
-    );
+  const game = await getGame(gameId);
+
+  if (game.error || !game.success) {
+    return <div className="mt-24 container mx-auto py-12">{game.error ?? "Game not found"}</div>;
   }
-
-  
-
-if (game.success) {
- 
 
   return (
-    <div className="w-full px-2 mx-auto lg:w-[80%] mt-24">
+    <div className="w-full px-2 mx-auto max-w-2xl mt-20 pb-8">
       <DartTracker gameData={game.success} />
     </div>
   );
-}
-  
 }
