@@ -3,52 +3,72 @@
 import { eq } from "drizzle-orm";
 import { db } from ".."
 import { GameWithPlayers } from "@/types/game-with-players";
-
-
+import { rounds, team } from "../schema";
 
 export async function getGame(gameId: number) {
-    try {
-        const game = await db.query.games.findFirst({
-            where: (game) => eq(game.id, gameId),
-        });
+  try {
+    const game = await db.query.games.findFirst({
+      where: (game) => eq(game.id, gameId),
+    });
 
-        if (!game) {
-            return { error: "No games found for this fixture" };
-        }
-
-        const players = await db.query.players.findMany(); 
-
-     
-      const gamePlayers = await db.query.gamePlayers.findMany({
-        where: (gamePlayer) => eq(gamePlayer.gameId, game.id),
-      });
-
-      const fixture = await db.query.fixtures.findFirst({
-        where: (fixture) => eq(fixture.id, game.fixtureId),
-      });
-
-      // Add array of player id, name, and nickname to game item
-      const playerArray = gamePlayers.map(gp => {
-        const player = players.find(p => p.id === gp.playerId);
-        return {
-          id: player?.id ?? gp.playerId,
-          name: player ? player.name : "Unknown",
-          nickname: player && player.nickname !== null ? player.nickname : "",
-        };
-      });
-
-      const gameWithPlayers: GameWithPlayers = {
-        ...game,
-        homeTeam: fixture?.homeTeam ?? "Home",
-        awayTeam: fixture?.awayTeam ?? "Away",
-       
-        players: playerArray,
-      };
-
-      return { success: gameWithPlayers };
-
-    } catch (error) {
-        console.error(error);
-        return { error: "Failed to get game" };
+    if (!game) {
+      return { error: "No games found for this fixture" };
     }
+
+    const [allPlayers, gamePlayers, gameRounds, fixture] = await Promise.all([
+      db.query.players.findMany(),
+      db.query.gamePlayers.findMany({ where: (gp) => eq(gp.gameId, game.id) }),
+      db.query.rounds.findMany({
+        where: eq(rounds.gameId, game.id),
+        orderBy: (r, { asc }) => [asc(r.leg), asc(r.roundNumber)],
+      }),
+      db.query.fixtures.findFirst({ where: (f) => eq(f.id, game.fixtureId) }),
+    ]);
+
+    const homeTeamRecord = fixture?.homeTeamId
+      ? await db.query.team.findFirst({ where: (t) => eq(t.id, fixture.homeTeamId!) })
+      : null;
+
+    const playerMap = Object.fromEntries(allPlayers.map((p) => [p.id, p]));
+
+    const playerArray = gamePlayers.map((gp) => {
+      const player = playerMap[gp.playerId];
+      return {
+        id: player?.id ?? gp.playerId,
+        name: player?.name ?? "Unknown",
+        nickname: player?.nickname ?? null,
+        imgUrl: player?.imgUrl ?? null,
+      };
+    });
+
+    const roundArray = gameRounds.map((r) => ({
+      id: r.id,
+      roundNumber: r.roundNumber,
+      leg: r.leg,
+      playerId: r.playerId,
+      playerName: playerMap[r.playerId]?.name ?? "Unknown",
+      homeScore: r.homeScore,
+      awayScore: r.awayScore,
+      fineAdded: r.fineAdded,
+    }));
+
+    const gameWithPlayers: GameWithPlayers = {
+      ...game,
+      homeTeam: fixture?.homeTeam ?? "Home",
+      awayTeam: fixture?.awayTeam ?? "Away",
+      isAppTeamWin: game.isAppTeamWin,
+      isAppTeamHome: homeTeamRecord?.isAppTeam === true,
+      matchDate: fixture?.matchDate ? fixture.matchDate.toISOString() : null,
+      league: fixture?.league ?? null,
+      season: fixture?.season ?? null,
+      players: playerArray,
+      rounds: roundArray,
+    };
+
+    return { success: gameWithPlayers };
+
+  } catch (error) {
+    console.error(error);
+    return { error: "Failed to get game" };
+  }
 }

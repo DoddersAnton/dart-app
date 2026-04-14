@@ -1,10 +1,27 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { GameWithPlayers } from "@/types/game-with-players";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Select,
   SelectContent,
@@ -35,6 +52,54 @@ type Round = {
 
 type FineData = { id: number; title: string; description: string | null; amount: number; createdAt: string | null };
 type PlayerData = { id: number; name: string; nickname: string | null; team: string | null; createdAt: Date };
+
+function computeInitialState(gameData: GameWithPlayers, initialScore: number) {
+  const legNums = [...new Set(gameData.rounds.map((r) => r.leg))].sort((a, b) => a - b);
+  let homeLegs = 0;
+  let awayLegs = 0;
+  let currentLeg = 1;
+  let homeScore = initialScore;
+  let awayScore = initialScore;
+  let restoredRounds: Round[] = [];
+
+  for (const leg of legNums) {
+    const legRounds = gameData.rounds.filter((r) => r.leg === leg).sort((a, b) => a.roundNumber - b.roundNumber);
+    let h = initialScore;
+    let a = initialScore;
+    let legComplete = false;
+
+    for (const r of legRounds) {
+      const newH = h - r.homeScore;
+      const newA = a - r.awayScore;
+      if (newH >= 0) h = newH;
+      if (newA >= 0) a = newA;
+      if (h === 0) { homeLegs++; legComplete = true; break; }
+      if (a === 0) { awayLegs++; legComplete = true; break; }
+    }
+
+    if (!legComplete) {
+      // This leg is in progress — restore it
+      currentLeg = leg;
+      homeScore = h;
+      awayScore = a;
+      restoredRounds = legRounds.map((r) => ({
+        roundNumber: r.roundNumber,
+        gameId: gameData.id,
+        playerId: r.playerId,
+        player: r.playerName,
+        fineAdded: r.fineAdded,
+        home: r.homeScore,
+        away: r.awayScore,
+      }));
+      return { currentLeg, homeLegs, awayLegs, homeScore, awayScore, restoredRounds };
+    } else {
+      currentLeg = leg + 1;
+    }
+  }
+
+  // All saved legs were complete — start fresh on next leg
+  return { currentLeg, homeLegs, awayLegs, homeScore, awayScore, restoredRounds: [] };
+}
 
 const CHECKOUT_HINTS: Record<number, string> = {
   170: "T20 T20 Bull", 167: "T20 T19 Bull", 164: "T20 T18 Bull", 161: "T20 T17 Bull",
@@ -74,16 +139,80 @@ const CHECKOUT_HINTS: Record<number, string> = {
   3: "1 D1", 2: "D1",
 };
 
-export default function DartTracker({ gameData }: { gameData: GameWithPlayers }) {
+type PlayerEntry = GameWithPlayers["players"][number];
+
+function SortablePlayerRow({ player }: { player: PlayerEntry }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+  const initials = player.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2 touch-none"
+    >
+      <button {...listeners} {...attributes} className="text-muted-foreground cursor-grab active:cursor-grabbing">
+        <GripVertical className="h-4 w-4" />
+      </button>
+      {player.imgUrl ? (
+        <Image src={player.imgUrl} alt={player.name} width={28} height={28} unoptimized className="h-7 w-7 rounded-full object-cover shrink-0" />
+      ) : (
+        <div className="h-7 w-7 rounded-full bg-muted border flex items-center justify-center text-[10px] font-semibold shrink-0">{initials}</div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium leading-tight truncate">{player.name}</p>
+        {player.nickname && <p className="text-xs text-muted-foreground leading-tight">{player.nickname}</p>}
+      </div>
+    </div>
+  );
+}
+
+export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: GameWithPlayers; maxLegsPerGame: number }) {
   const INITIAL_SCORE = gameData.gameType === "Team Game" ? 801 : gameData.gameType === "Doubles" ? 601 : 501;
 
-  const [homeScore, setHomeScore] = useState(INITIAL_SCORE);
-  const [awayScore, setAwayScore] = useState(INITIAL_SCORE);
-  const [homeLegs, setHomeLegs] = useState(0);
-  const [awayLegs, setAwayLegs] = useState(0);
-  const [rounds, setRounds] = useState<Round[]>([]);
-  const [currentRound, setCurrentRound] = useState<Partial<Round>>({});
-  const [currentLeg, setCurrentLeg] = useState(1);
+  const init = computeInitialState(gameData, INITIAL_SCORE);
+
+  const [homeScore, setHomeScore] = useState(init.homeScore);
+  const [awayScore, setAwayScore] = useState(init.awayScore);
+  const [homeLegs, setHomeLegs] = useState(init.homeLegs);
+  const [awayLegs, setAwayLegs] = useState(init.awayLegs);
+  const [rounds, setRounds] = useState<Round[]>(init.restoredRounds);
+  const [currentLeg, setCurrentLeg] = useState(init.currentLeg);
+
+  // Player order — starts from insert order, can be reordered before first round
+  const [playerOrder, setPlayerOrder] = useState<PlayerEntry[]>(gameData.players);
+  const orderLocked = init.restoredRounds.length > 0 || rounds.length > 0;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setPlayerOrder((prev) => {
+      const oldIdx = prev.findIndex((p) => p.id === active.id);
+      const newIdx = prev.findIndex((p) => p.id === over.id);
+      const reordered = arrayMove(prev, oldIdx, newIdx);
+      // Update rotation to first player in new order
+      setPlayerIndex(0);
+      setCurrentRound({ player: reordered[0]?.name });
+      return reordered;
+    });
+  };
+
+  // Player rotation — initialise from how many rounds have already been thrown in this leg
+  const shouldRotate = gameData.gameType === "Team Game" || gameData.gameType === "Doubles";
+  const initialPlayerIndex = shouldRotate && playerOrder.length > 0
+    ? init.restoredRounds.length % playerOrder.length
+    : 0;
+  const [playerIndex, setPlayerIndex] = useState(initialPlayerIndex);
+  const defaultPlayer = shouldRotate && playerOrder.length > 0
+    ? playerOrder[initialPlayerIndex].name
+    : undefined;
+  const [currentRound, setCurrentRound] = useState<Partial<Round>>({ player: defaultPlayer });
   const [winner, setWinner] = useState<"home" | "away" | null>(null);
   const [showFineDialog, setShowFineDialog] = useState(false);
   const [showRoundFineDialog, setShowRoundFineDialog] = useState(false);
@@ -147,9 +276,11 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
     let newHome = homeScore;
     let newAway = awayScore;
 
+    const appTeamScore = gameData.isAppTeamHome ? home : away;
+
     if (typeof home === "number") {
-      // Low score fine check
-      if (home <= 20) {
+      // Fine only applies when it's the app team's score
+      if (typeof appTeamScore === "number" && appTeamScore <= 20 && gameData.isAppTeamHome) {
         const lowFine = finesData.find((f) => f.title === "20 or under");
         if (lowFine) {
           setPendingFinePlayer(currentRound.player ?? null);
@@ -163,7 +294,7 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
     }
 
     if (typeof away === "number") {
-      if (away <= 20) {
+      if (typeof appTeamScore === "number" && appTeamScore <= 20 && !gameData.isAppTeamHome) {
         const lowFine = finesData.find((f) => f.title === "20 or under");
         if (lowFine) {
           setPendingFinePlayer(currentRound.player ?? null);
@@ -180,7 +311,7 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
       roundNumber: rounds.length + 1,
       gameId: gameData.id,
       player: currentRound.player,
-      playerId: gameData.players.find((p) => p.name === currentRound.player)?.id,
+      playerId: playerOrder.find((p) => p.name === currentRound.player)?.id,
       home,
       away,
       fineAdded: false,
@@ -189,7 +320,15 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
     setRounds((prev) => [...prev, newRound]);
     setHomeScore(newHome);
     setAwayScore(newAway);
-    setCurrentRound({});
+
+    // Advance to next player in rotation
+    if (shouldRotate && playerOrder.length > 0) {
+      const nextIndex = (playerIndex + 1) % playerOrder.length;
+      setPlayerIndex(nextIndex);
+      setCurrentRound({ player: playerOrder[nextIndex].name });
+    } else {
+      setCurrentRound({});
+    }
 
     if (newHome === 0) { setWinner("home"); setHomeLegs((l) => l + 1); }
     else if (newAway === 0) { setWinner("away"); setAwayLegs((l) => l + 1); }
@@ -202,11 +341,17 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
     setAwayScore((s) => s + (last.away ?? 0));
     setRounds((prev) => prev.slice(0, -1));
     setWinner(null);
+    // Step back one in the rotation
+    if (shouldRotate && playerOrder.length > 0) {
+      const prevIndex = (playerIndex - 1 + playerOrder.length) % playerOrder.length;
+      setPlayerIndex(prevIndex);
+      setCurrentRound({ player: playerOrder[prevIndex].name });
+    }
   };
 
   const submitFine = () => {
     if (!pendingFinePlayer || !pendingFineId) return;
-    const player = gameData.players.find((p) => p.name === pendingFinePlayer);
+    const player = playerOrder.find((p) => p.name === pendingFinePlayer);
     const fine = finesData.find((f) => f.title === pendingFineId);
     if (!player || !fine) { toast.error("Player or fine not found"); return; }
     executeFine({ playerId: player.id, fineId: fine.id, matchDate: new Date(), quantity: 1, notes: `Fine during ${gameData.gameType}` });
@@ -244,14 +389,21 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
         toast.success("Game saved!");
         window.location.href = `/fixtures/${gameData.fixtureId}`;
       } else {
-        setCurrentLeg((l) => l + 1);
+        const nextLeg = currentLeg + 1;
+        if (nextLeg > maxLegsPerGame) {
+          toast.info("Maximum legs reached — game complete.");
+          window.location.href = `/fixtures/${gameData.fixtureId}`;
+          return;
+        }
+        setCurrentLeg(nextLeg);
         setHomeScore(INITIAL_SCORE);
         setAwayScore(INITIAL_SCORE);
         setRounds([]);
-        setCurrentRound({});
         setWinner(null);
         setShowHistory(false);
-        toast.success("Leg saved — starting next leg");
+        setPlayerIndex(0);
+        setCurrentRound(shouldRotate && playerOrder.length > 0 ? { player: playerOrder[0].name } : {});
+        toast.success(`Leg ${currentLeg} saved — starting leg ${nextLeg}`);
       }
     } catch {
       toast.error("Failed to save");
@@ -263,6 +415,27 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
   const homeCheckout = CHECKOUT_HINTS[homeScore];
   const awayCheckout = CHECKOUT_HINTS[awayScore];
 
+  // Max legs reached — nothing more to track
+  if (currentLeg > maxLegsPerGame) {
+    return (
+      <div className="space-y-4 max-w-sm mx-auto text-center pt-8">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-6 space-y-3">
+          <Target className="h-10 w-10 mx-auto text-destructive" />
+          <p className="text-lg font-semibold">All legs completed</p>
+          <p className="text-sm text-muted-foreground">
+            This game has reached the maximum of <span className="font-semibold">{maxLegsPerGame} leg{maxLegsPerGame !== 1 ? "s" : ""}</span> allowed per game.
+          </p>
+          <Link href={`/games/${gameData.id}`}>
+            <Button variant="outline" className="w-full mt-2">View game summary</Button>
+          </Link>
+          <Link href={`/fixtures/${gameData.fixtureId}`}>
+            <Button variant="ghost" className="w-full">Back to fixture</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <CreateFineAlert
@@ -273,7 +446,7 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
           PopupProps={{
             showRoundFineDialog,
             setShowRoundFineDialog,
-            playerId: gameData.players.find((p) => p.name === pendingFinePlayer)?.id,
+            playerId: playerOrder.find((p) => p.name === pendingFinePlayer)?.id,
             fineId: null,
             fineData: finesData,
             defaultPlayers: playersListData,
@@ -325,14 +498,54 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
         </div>
       </div>
 
-      {/* Players */}
-      <div className="flex flex-wrap gap-1.5 justify-center">
-        {gameData.players.map((p) => (
-          <Badge key={p.id} variant="secondary" className="text-xs">
-            {p.nickname ?? p.name.split(" ")[0]}
-          </Badge>
-        ))}
-      </div>
+      {/* Players — drag to reorder before first round, locked badges after */}
+      {shouldRotate && !orderLocked && rounds.length === 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs text-center text-muted-foreground">Drag to set throwing order</p>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={playerOrder.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {playerOrder.map((p) => (
+                  <SortablePlayerRow key={p.id} player={p} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2 justify-center">
+          {playerOrder.map((p, idx) => {
+            const isNext = shouldRotate && !winner && idx === playerIndex;
+            const initials = p.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+            return (
+              <div
+                key={p.id}
+                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 border transition-all ${
+                  isNext
+                    ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-1 ring-amber-400"
+                    : "bg-muted/50 border-border"
+                }`}
+              >
+                {p.imgUrl ? (
+                  <Image src={p.imgUrl} alt={p.name} width={28} height={28} unoptimized className="h-7 w-7 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="h-7 w-7 rounded-full bg-muted border flex items-center justify-center text-[10px] font-semibold shrink-0">
+                    {initials}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold leading-tight truncate">
+                    {shouldRotate && <span className="text-muted-foreground mr-1">{idx + 1}.</span>}
+                    {p.name}
+                  </p>
+                  {p.nickname && <p className="text-[10px] text-muted-foreground leading-tight truncate">{p.nickname}</p>}
+                </div>
+                {isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide ml-1">Next</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Winner banner */}
       {winner && (
@@ -398,52 +611,86 @@ export default function DartTracker({ gameData }: { gameData: GameWithPlayers })
           <p className="text-xs font-medium text-muted-foreground">Round {rounds.length + 1}</p>
 
           {/* Player selector */}
-          <Select
-            value={currentRound.player ?? ""}
-            onValueChange={(val) => setCurrentRound((prev) => ({ ...prev, player: val }))}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select player" />
-            </SelectTrigger>
-            <SelectContent>
-              {gameData.players.map((p) => (
-                <SelectItem key={p.id} value={p.name}>
-                  {p.name}{p.nickname ? ` (${p.nickname})` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            {shouldRotate && (
+              <p className="text-xs text-muted-foreground">
+                Up next: <span className="font-medium text-foreground">
+                  {playerOrder[playerIndex]?.name}
+                  {playerOrder[playerIndex]?.nickname && (
+                    <span className="text-muted-foreground font-normal"> ({playerOrder[playerIndex].nickname})</span>
+                  )}
+                </span>
+              </p>
+            )}
+            <Select
+              value={currentRound.player ?? ""}
+              onValueChange={(val) => {
+                const idx = playerOrder.findIndex((p) => p.name === val);
+                if (idx !== -1) setPlayerIndex(idx);
+                setCurrentRound((prev) => ({ ...prev, player: val }));
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select player" />
+              </SelectTrigger>
+              <SelectContent>
+                {playerOrder.map((p, idx) => (
+                  <SelectItem key={p.id} value={p.name}>
+                    <span className="font-medium">{p.name}</span>
+                    {p.nickname && <span className="text-muted-foreground ml-1.5 text-xs">({p.nickname})</span>}
+                    {shouldRotate && idx === playerIndex && (
+                      <span className="ml-2 text-[10px] text-amber-500 font-semibold">↑ next</span>
+                    )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Score inputs */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground text-center">{gameData.homeTeam}</p>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={180}
-                placeholder="0"
-                className="text-center text-lg font-bold h-12"
-                value={currentRound.home ?? ""}
-                onChange={(e) => setCurrentRound((prev) => ({ ...prev, home: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground text-center">{gameData.awayTeam}</p>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={180}
-                placeholder="0"
-                className="text-center text-lg font-bold h-12"
-                value={currentRound.away ?? ""}
-                onChange={(e) => setCurrentRound((prev) => ({ ...prev, away: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
-              />
-            </div>
+            {[
+              { team: gameData.homeTeam, field: "home" as const, remaining: homeScore },
+              { team: gameData.awayTeam, field: "away" as const, remaining: awayScore },
+            ].map(({ team, field, remaining }) => {
+              const entered = currentRound[field];
+              const preview = typeof entered === "number" && entered > 0
+                ? remaining - entered
+                : null;
+              const isBust = preview !== null && preview < 0;
+              const isCheckout = preview === 0;
+              const hint = preview !== null && !isBust && preview > 0 && preview <= 170
+                ? CHECKOUT_HINTS[preview]
+                : null;
+              return (
+                <div key={field} className="space-y-1">
+                  <p className="text-xs text-muted-foreground text-center">{team}</p>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={180}
+                    placeholder="0"
+                    className={`text-center text-lg font-bold h-12 ${isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
+                    value={currentRound[field] ?? ""}
+                    onChange={(e) => setCurrentRound((prev) => ({ ...prev, [field]: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
+                  />
+                  {isBust && (
+                    <p className="text-xs text-destructive text-center font-semibold">Bust!</p>
+                  )}
+                  {isCheckout && (
+                    <p className="text-xs text-green-600 text-center font-semibold">Checkout! 🎯</p>
+                  )}
+                  {!isBust && !isCheckout && preview !== null && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Leaves <span className={`font-semibold ${hint ? "text-amber-500" : "text-foreground"}`}>{preview}</span>
+                      {hint && <span className="block text-[10px]">{hint}</span>}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Actions */}
