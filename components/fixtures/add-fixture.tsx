@@ -56,7 +56,51 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../ui/accordion";
-import { Input } from "../ui/input";
+import { Minus, Plus } from "lucide-react";
+
+function ScoreStepper({
+  value,
+  onChange,
+  min = 0,
+  max,
+  label,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max: number;
+  label?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <div className="flex flex-col items-center min-w-[3rem]">
+        <span className="text-2xl font-bold tabular-nums leading-none">{value}</span>
+        {label && <span className="text-xs text-muted-foreground mt-0.5">{label}</span>}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+      <span className="text-xs text-muted-foreground">max {max}</span>
+    </div>
+  );
+}
 
 type FixtureTeam = {
   id: number;
@@ -492,12 +536,13 @@ const { execute, status } = useAction(createFixture, {
                         name="homeTeamScore"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Home Score</FormLabel>
+                            <FormLabel>Home Score (points)</FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                className="input"
-                                {...field}
+                              <ScoreStepper
+                                value={field.value ?? 0}
+                                onChange={(v) => field.onChange(v)}
+                                max={7}
+                                label="pts"
                               />
                             </FormControl>
                             <FormMessage />
@@ -510,12 +555,13 @@ const { execute, status } = useAction(createFixture, {
                         name="awayTeamScore"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Away Score</FormLabel>
+                            <FormLabel>Away Score (points)</FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                className="input"
-                                {...field}
+                              <ScoreStepper
+                                value={field.value ?? 0}
+                                onChange={(v) => field.onChange(v)}
+                                max={7}
+                                label="pts"
                               />
                             </FormControl>
                             <FormMessage />
