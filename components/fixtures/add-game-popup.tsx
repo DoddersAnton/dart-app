@@ -25,12 +25,56 @@ import {
 } from "../ui/select";
 import { Button } from "../ui/button";
 import { useAction } from "next-safe-action/hooks";
-import { Info, Plus } from "lucide-react";
+import { Info, Minus, Plus } from "lucide-react";
 import { addGameSchema, zGameSchema } from "@/types/add-game-schema";
-import { Input } from "../ui/input";
 import { getGame } from "@/server/actions/get-game";
 import { createGame } from "@/server/actions/create-game";
 import { getPlayers } from "@/server/actions/get-players";
+import { getAppSettings } from "@/server/actions/get-app-settings";
+
+function ScoreStepper({
+  value,
+  onChange,
+  min = 0,
+  max,
+  label,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max: number;
+  label?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <div className="flex flex-col items-center min-w-[3rem]">
+        <span className="text-2xl font-bold tabular-nums leading-none">{value}</span>
+        {label && <span className="text-xs text-muted-foreground mt-0.5">{label}</span>}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+      <span className="text-xs text-muted-foreground">max {max}</span>
+    </div>
+  );
+}
 
 import { z } from "zod";
 
@@ -108,13 +152,21 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
 
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedPlayers, setSelectedPlayers] = useState<string[] | undefined>(
-    undefined
-  );
+  const [selectedPlayers, setSelectedPlayers] = useState<string[] | undefined>(undefined);
+  const [maxLegs, setMaxLegs] = useState(3);
+  const maxLegsWon = Math.ceil(maxLegs / 2);
+
+  const homeScore = form.watch("homeTeamScore") ?? 0;
+  const awayScore = form.watch("awayTeamScore") ?? 0;
+  const homeMax = Math.min(maxLegsWon, maxLegs - awayScore);
+  const awayMax = Math.min(maxLegsWon, maxLegs - homeScore);
 
   useEffect(() => {
-   
     fetchPlayers();
+
+    getAppSettings().then((res) => {
+      if (res.success?.maxLegsPerGame) setMaxLegs(res.success.maxLegsPerGame);
+    });
 
     if (editMode) {
       setLoading(true);
@@ -287,16 +339,17 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
                       name="homeTeamScore"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Home Team Score</FormLabel>
+                          <FormLabel>Home Team Score (legs)</FormLabel>
                           <FormDescription>
                             <Info className="inline-block mr-2" size={14} />
-                            You can override or set to 0 for future games.
+                            Number of legs won by home team.
                           </FormDescription>
                           <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="add a amount"
-                              type="number"
+                            <ScoreStepper
+                              value={field.value ?? 0}
+                              onChange={(v) => field.onChange(v)}
+                              max={homeMax}
+                              label="legs"
                             />
                           </FormControl>
                           <FormMessage />
@@ -309,16 +362,17 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
                       name="awayTeamScore"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Away Team Score</FormLabel>
+                          <FormLabel>Away Team Score (legs)</FormLabel>
                           <FormDescription>
                             <Info className="inline-block mr-2" size={14} />
-                            You can override or set to 0 for future games.
+                            Number of legs won by away team.
                           </FormDescription>
                           <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="add a amount"
-                              type="number"
+                            <ScoreStepper
+                              value={field.value ?? 0}
+                              onChange={(v) => field.onChange(v)}
+                              max={awayMax}
+                              label="legs"
                             />
                           </FormControl>
                           <FormMessage />

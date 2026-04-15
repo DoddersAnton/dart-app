@@ -36,6 +36,30 @@ function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
+function avg(scores: number[]): number | null {
+  const valid = scores.filter((s) => s > 0);
+  if (valid.length === 0) return null;
+  return valid.reduce((a, b) => a + b, 0) / valid.length;
+}
+
+function computeAverages(rounds: GameRound[], isAppTeamHome: boolean) {
+  const homeAvg = avg(rounds.map((r) => r.homeScore));
+  const awayAvg = avg(rounds.map((r) => r.awayScore));
+
+  // Per-player averages: player tracked is the app team's thrower
+  const playerMap = new Map<number, { name: string; total: number; count: number }>();
+  for (const r of rounds) {
+    const score = isAppTeamHome ? r.homeScore : r.awayScore;
+    const entry = playerMap.get(r.playerId) ?? { name: r.playerName, total: 0, count: 0 };
+    playerMap.set(r.playerId, { name: entry.name, total: entry.total + score, count: entry.count + 1 });
+  }
+  const playerAverages = [...playerMap.values()]
+    .map((p) => ({ name: p.name, avg: p.count > 0 ? p.total / p.count : 0 }))
+    .sort((a, b) => b.avg - a.avg);
+
+  return { homeAvg, awayAvg, playerAverages };
+}
+
 function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
   leg: number;
   rounds: GameRound[];
@@ -55,6 +79,9 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
 
   const homeWon = homeRemaining === 0;
   const awayWon = awayRemaining === 0;
+
+  const legHomeAvg = avg(rounds.map((r) => r.homeScore));
+  const legAwayAvg = avg(rounds.map((r) => r.awayScore));
 
   return (
     <div className="space-y-2">
@@ -99,6 +126,21 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
               </tr>
             ))}
           </tbody>
+          {(legHomeAvg !== null || legAwayAvg !== null) && (
+            <tfoot className="border-t border-border bg-muted/30">
+              <tr>
+                <td colSpan={2} className="py-1.5 px-3 text-xs font-semibold text-muted-foreground">Leg avg</td>
+                <td className="py-1.5 px-3 text-center text-xs font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+                  {legHomeAvg !== null ? legHomeAvg.toFixed(1) : "–"}
+                </td>
+                <td />
+                <td className="py-1.5 px-3 text-center text-xs font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+                  {legAwayAvg !== null ? legAwayAvg.toFixed(1) : "–"}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>
@@ -108,6 +150,7 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
 export default function GameCard({ gameData }: { gameData: GameWithPlayers }) {
   const legs = [...new Set(gameData.rounds.map((r) => r.leg))].sort((a, b) => a - b);
   const hasRounds = gameData.rounds.length > 0;
+  const { homeAvg, awayAvg, playerAverages } = computeAverages(gameData.rounds, gameData.isAppTeamHome);
 
   const homeWon = gameData.homeTeamScore > gameData.awayTeamScore;
   const awayWon = gameData.awayTeamScore > gameData.homeTeamScore;
@@ -173,18 +216,37 @@ export default function GameCard({ gameData }: { gameData: GameWithPlayers }) {
           )}
 
           {/* Score (legs) */}
-          <div className="flex items-center justify-center gap-6 py-4 rounded-lg bg-muted/50">
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground mb-1">{gameData.homeTeam}</p>
-              <p className="text-5xl font-black tabular-nums">{gameData.homeTeamScore}</p>
-              <p className="text-xs text-muted-foreground mt-1">legs</p>
+          <div className="rounded-lg bg-muted/50 overflow-hidden">
+            <div className="flex items-center justify-center gap-6 py-4 px-4">
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">{gameData.homeTeam}</p>
+                <p className="text-5xl font-black tabular-nums">{gameData.homeTeamScore}</p>
+                <p className="text-xs text-muted-foreground mt-1">legs</p>
+              </div>
+              <p className="text-3xl font-light text-muted-foreground">–</p>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">{gameData.awayTeam}</p>
+                <p className="text-5xl font-black tabular-nums">{gameData.awayTeamScore}</p>
+                <p className="text-xs text-muted-foreground mt-1">legs</p>
+              </div>
             </div>
-            <p className="text-3xl font-light text-muted-foreground">–</p>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground mb-1">{gameData.awayTeam}</p>
-              <p className="text-5xl font-black tabular-nums">{gameData.awayTeamScore}</p>
-              <p className="text-xs text-muted-foreground mt-1">legs</p>
-            </div>
+            {(homeAvg !== null || awayAvg !== null) && (
+              <div className="flex items-center justify-center gap-6 border-t border-border/50 py-2 px-4 bg-muted/30">
+                <div className="text-center min-w-[4rem]">
+                  <p className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                    {homeAvg !== null ? homeAvg.toFixed(1) : "–"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">avg/round</p>
+                </div>
+                <p className="text-xs text-muted-foreground">avg</p>
+                <div className="text-center min-w-[4rem]">
+                  <p className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                    {awayAvg !== null ? awayAvg.toFixed(1) : "–"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">avg/round</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Game type */}
@@ -194,26 +256,36 @@ export default function GameCard({ gameData }: { gameData: GameWithPlayers }) {
             <span className="text-muted-foreground">· {INITIAL_SCORE[gameData.gameType] ?? 501} start</span>
           </div>
 
-          {/* Players */}
+          {/* Players + per-player averages */}
           {gameData.players.length > 0 && (
             <>
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Players</p>
                 <div className="flex flex-wrap gap-2">
-                  {gameData.players.map((p) => (
-                    <div key={p.id} className="flex items-center gap-1.5">
-                      {p.imgUrl ? (
-                        <Image src={p.imgUrl} alt={p.name} width={24} height={24} unoptimized className="h-6 w-6 rounded-full object-cover" />
-                      ) : (
-                        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold shrink-0">
-                          {getInitials(p.name)}
+                  {gameData.players.map((p) => {
+                    const pAvg = playerAverages.find((pa) => pa.name === p.name);
+                    return (
+                      <div key={p.id} className="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1">
+                        {p.imgUrl ? (
+                          <Image src={p.imgUrl} alt={p.name} width={24} height={24} unoptimized className="h-6 w-6 rounded-full object-cover" />
+                        ) : (
+                          <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold shrink-0">
+                            {getInitials(p.name)}
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-sm font-medium">{p.name}</span>
+                          {p.nickname && <span className="text-xs text-muted-foreground ml-1">({p.nickname})</span>}
+                          {pAvg && (
+                            <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold leading-tight">
+                              avg {pAvg.avg.toFixed(1)}
+                            </p>
+                          )}
                         </div>
-                      )}
-                      <span className="text-sm font-medium">{p.name}</span>
-                      {p.nickname && <span className="text-xs text-muted-foreground">({p.nickname})</span>}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>

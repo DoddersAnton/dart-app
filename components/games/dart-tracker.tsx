@@ -385,7 +385,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         });
       }
 
-      if (finish) {
+      if (finish || gameDecided) {
         toast.success("Game saved!");
         window.location.href = `/fixtures/${gameData.fixtureId}`;
       } else {
@@ -414,16 +414,18 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
   const homeCheckout = CHECKOUT_HINTS[homeScore];
   const awayCheckout = CHECKOUT_HINTS[awayScore];
+  const legsToWin = Math.ceil(maxLegsPerGame / 2);
+  const gameDecided = homeLegs >= legsToWin || awayLegs >= legsToWin;
 
-  // Max legs reached — nothing more to track
-  if (currentLeg > maxLegsPerGame) {
+  // Game already complete (loaded from DB) — nothing more to track
+  if (currentLeg > maxLegsPerGame || (gameDecided && !winner)) {
     return (
       <div className="space-y-4 max-w-sm mx-auto text-center pt-8">
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-6 space-y-3">
           <Target className="h-10 w-10 mx-auto text-destructive" />
-          <p className="text-lg font-semibold">All legs completed</p>
+          <p className="text-lg font-semibold">Game complete</p>
           <p className="text-sm text-muted-foreground">
-            This game has reached the maximum of <span className="font-semibold">{maxLegsPerGame} leg{maxLegsPerGame !== 1 ? "s" : ""}</span> allowed per game.
+            This game has already been decided ({homeLegs}–{awayLegs} legs).
           </p>
           <Link href={`/games/${gameData.id}`}>
             <Button variant="outline" className="w-full mt-2">View game summary</Button>
@@ -498,6 +500,41 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         </div>
       </div>
 
+      {/* Averages row — all legs combined */}
+      {(() => {
+        // Combine DB rounds from completed legs + current unsaved rounds
+        const allHomeScores = [
+          ...gameData.rounds.map((r) => r.homeScore),
+          ...rounds.filter((r) => typeof r.home === "number").map((r) => r.home as number),
+        ].filter((s) => s > 0);
+        const allAwayScores = [
+          ...gameData.rounds.map((r) => r.awayScore),
+          ...rounds.filter((r) => typeof r.away === "number").map((r) => r.away as number),
+        ].filter((s) => s > 0);
+        const homeAvgVal = allHomeScores.length > 0
+          ? (allHomeScores.reduce((a, b) => a + b, 0) / allHomeScores.length).toFixed(1)
+          : null;
+        const awayAvgVal = allAwayScores.length > 0
+          ? (allAwayScores.reduce((a, b) => a + b, 0) / allAwayScores.length).toFixed(1)
+          : null;
+        if (!homeAvgVal && !awayAvgVal) return null;
+        return (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg bg-muted/40 py-1.5">
+              <p className="text-sm font-bold tabular-nums text-blue-600 dark:text-blue-400">{homeAvgVal ?? "–"}</p>
+              <p className="text-[10px] text-muted-foreground">avg/round</p>
+            </div>
+            <div className="flex items-center justify-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">avg</p>
+            </div>
+            <div className="rounded-lg bg-muted/40 py-1.5">
+              <p className="text-sm font-bold tabular-nums text-blue-600 dark:text-blue-400">{awayAvgVal ?? "–"}</p>
+              <p className="text-[10px] text-muted-foreground">avg/round</p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Players — drag to reorder before first round, locked badges after */}
       {shouldRotate && !orderLocked && rounds.length === 0 ? (
         <div className="space-y-2">
@@ -517,6 +554,21 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           {playerOrder.map((p, idx) => {
             const isNext = shouldRotate && !winner && idx === playerIndex;
             const initials = p.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
+            // Per-player avg: DB saved rounds + current unsaved rounds
+            const dbScores = gameData.rounds
+              .filter((r) => r.playerId === p.id)
+              .map((r) => (gameData.isAppTeamHome ? r.homeScore : r.awayScore))
+              .filter((s) => s > 0);
+            const liveScores = rounds
+              .filter((r) => r.playerId === p.id)
+              .map((r) => (gameData.isAppTeamHome ? (r.home ?? 0) : (r.away ?? 0)))
+              .filter((s) => s > 0);
+            const allScores = [...dbScores, ...liveScores];
+            const playerAvg = allScores.length > 0
+              ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1)
+              : null;
+
             return (
               <div
                 key={p.id}
@@ -539,6 +591,11 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                     {p.name}
                   </p>
                   {p.nickname && <p className="text-[10px] text-muted-foreground leading-tight truncate">{p.nickname}</p>}
+                  {playerAvg && (
+                    <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 leading-tight tabular-nums">
+                      avg {playerAvg}
+                    </p>
+                  )}
                 </div>
                 {isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide ml-1">Next</span>}
               </div>
@@ -550,13 +607,21 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       {/* Winner banner */}
       {winner && (
         <div className="rounded-xl bg-green-500/10 border border-green-500 p-4 text-center space-y-3">
-          <p className="text-lg font-bold text-green-600">
-            🎯 {winner === "home" ? gameData.homeTeam : gameData.awayTeam} wins leg {currentLeg}!
-          </p>
+          {gameDecided ? (
+            <p className="text-lg font-bold text-green-600">
+              🏆 {winner === "home" ? gameData.homeTeam : gameData.awayTeam} wins the game {homeLegs}–{awayLegs}!
+            </p>
+          ) : (
+            <p className="text-lg font-bold text-green-600">
+              🎯 {winner === "home" ? gameData.homeTeam : gameData.awayTeam} wins leg {currentLeg}!
+            </p>
+          )}
           <div className="flex gap-2 justify-center">
-            <Button variant="outline" disabled={saving} onClick={() => saveAndAdvance(false)}>
-              {saving ? "Saving..." : "Start next leg"}
-            </Button>
+            {!gameDecided && (
+              <Button variant="outline" disabled={saving} onClick={() => saveAndAdvance(false)}>
+                {saving ? "Saving..." : "Start next leg"}
+              </Button>
+            )}
             <Button disabled={saving} onClick={() => saveAndAdvance(true)}>
               {saving ? "Saving..." : "Finish game"}
             </Button>

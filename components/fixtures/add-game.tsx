@@ -170,6 +170,13 @@ export default function GameForm() {
 
   const [loading, setLoading] = useState(false);
   const [maxLegs, setMaxLegs] = useState(3);
+  // Best-of figure → max legs a team can win (e.g. best-of-3 → 2)
+  const maxLegsWon = Math.ceil(maxLegs / 2);
+
+  const homeScore = form.watch("homeTeamScore") ?? 0;
+  const awayScore = form.watch("awayTeamScore") ?? 0;
+  const homeMax = Math.min(maxLegsWon, maxLegs - awayScore);
+  const awayMax = Math.min(maxLegsWon, maxLegs - homeScore);
 
   const { execute, status } = useAction(createGame, {
     onSuccess: (data) => {
@@ -327,7 +334,7 @@ export default function GameForm() {
                             <ScoreStepper
                               value={field.value ?? 0}
                               onChange={(v) => field.onChange(v)}
-                              max={maxLegs}
+                              max={homeMax}
                               label="legs"
                             />
                           </FormControl>
@@ -350,7 +357,7 @@ export default function GameForm() {
                             <ScoreStepper
                               value={field.value ?? 0}
                               onChange={(v) => field.onChange(v)}
-                              max={maxLegs}
+                              max={awayMax}
                               label="legs"
                             />
                           </FormControl>

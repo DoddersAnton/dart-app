@@ -43,6 +43,7 @@ const navLinks = [
       { titleEng: "Locations", descriptionEng: "Manage match locations", href: "/settings/locations" },
       { titleEng: "Teams", descriptionEng: "Manage teams", href: "/settings/teams" },
       { titleEng: "Seasons", descriptionEng: "Manage seasons", href: "/settings/seasons" },
+      { titleEng: "App Settings", descriptionEng: "Game rules and app configuration", href: "/settings/app-settings" },
     ],
   },
 ] as const;
@@ -83,22 +84,24 @@ export function Nav({ linkedPlayer, isSignedIn }: { linkedPlayer?: LinkedPlayer;
                       <NavText title={link.titleEng} />
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
-                      <ul className="grid gap-1 p-4 md:w-[420px] lg:w-[520px] lg:grid-cols-[.8fr_1fr]">
-                        <li className="row-span-3">
-                          <NavigationMenuLink asChild>
-                            <Link href={link.href} className="flex h-full w-full flex-col justify-end rounded-md bg-muted p-4">
-                              <Image src={link.img} width={80} height={80} alt={link.titleEng} className="h-20 w-20" />
-                              <div className="mb-1 mt-4 text-base font-semibold">{link.titleEng}</div>
-                              <p className="text-sm text-muted-foreground">{link.navDescriptionEng}</p>
-                            </Link>
-                          </NavigationMenuLink>
-                        </li>
-                        {link.subLinks.map((subLink) => (
-                          <ListItem key={subLink.titleEng} title={subLink.titleEng} href={subLink.href}>
-                            {subLink.descriptionEng}
-                          </ListItem>
-                        ))}
-                      </ul>
+                      <div className="p-4 w-[420px] lg:w-[520px] space-y-3">
+                        <NavigationMenuLink asChild>
+                          <Link href={link.href} className="flex items-center gap-3 rounded-md bg-muted px-4 py-3 hover:bg-muted/80 transition-colors">
+                            <Image src={link.img} width={40} height={40} alt={link.titleEng} className="h-10 w-10" />
+                            <div>
+                              <div className="text-sm font-semibold">{link.titleEng}</div>
+                              <p className="text-xs text-muted-foreground">{link.navDescriptionEng}</p>
+                            </div>
+                          </Link>
+                        </NavigationMenuLink>
+                        <ul className="grid grid-cols-2 gap-1">
+                          {link.subLinks.map((subLink) => (
+                            <ListItem key={subLink.titleEng} title={subLink.titleEng} href={subLink.href}>
+                              {subLink.descriptionEng}
+                            </ListItem>
+                          ))}
+                        </ul>
+                      </div>
                     </NavigationMenuContent>
                   </>
                 ) : (
