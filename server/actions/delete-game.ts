@@ -1,7 +1,7 @@
 "use server";
 import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
-import { fixtures, games, team } from "../schema";
+import { appSettings, fixtures, games, team } from "../schema";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "..";
@@ -27,9 +27,11 @@ export const deleteGame = actionClient
         const fixtureId = game.fixtureId;
         const fixture = await db.query.fixtures.findFirst({ where: eq(fixtures.id, fixtureId) });
         if (fixture) {
+          const settings = await db.query.appSettings.findFirst();
+          const legsToWin = Math.ceil((settings?.maxLegsPerGame ?? 3) / 2);
           const allGames = await db.query.games.findMany({ where: eq(games.fixtureId, fixtureId) });
-          const homeWins = allGames.filter(g => g.homeTeamScore > g.awayTeamScore).length;
-          const awayWins = allGames.filter(g => g.awayTeamScore > g.homeTeamScore).length;
+          const homeWins = allGames.filter(g => g.homeTeamScore >= legsToWin).length;
+          const awayWins = allGames.filter(g => g.awayTeamScore >= legsToWin).length;
           const homeTeam = fixture.homeTeamId
             ? await db.query.team.findFirst({ where: eq(team.id, fixture.homeTeamId) })
             : null;

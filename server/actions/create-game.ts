@@ -4,17 +4,21 @@ import { createSafeActionClient } from "next-safe-action";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import {  fixtures, gamePlayers, games, team } from "../schema";
+import { appSettings, fixtures, gamePlayers, games, team } from "../schema";
 import { addGameSchema } from "@/types/add-game-schema";
 
 async function recalculateFixtureScore(fixtureId: number) {
   const fixture = await db.query.fixtures.findFirst({ where: eq(fixtures.id, fixtureId) });
   if (!fixture) return;
 
+  const settings = await db.query.appSettings.findFirst();
+  const maxLegsPerGame = settings?.maxLegsPerGame ?? 3;
+  const legsToWin = Math.ceil(maxLegsPerGame / 2);
+
   const allGames = await db.query.games.findMany({ where: eq(games.fixtureId, fixtureId) });
 
-  const homeWins = allGames.filter(g => g.homeTeamScore > g.awayTeamScore).length;
-  const awayWins = allGames.filter(g => g.awayTeamScore > g.homeTeamScore).length;
+  const homeWins = allGames.filter(g => g.homeTeamScore >= legsToWin).length;
+  const awayWins = allGames.filter(g => g.awayTeamScore >= legsToWin).length;
 
   const homeTeam = fixture.homeTeamId
     ? await db.query.team.findFirst({ where: eq(team.id, fixture.homeTeamId) })

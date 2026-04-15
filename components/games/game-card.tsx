@@ -147,10 +147,13 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
   );
 }
 
-export default function GameCard({ gameData }: { gameData: GameWithPlayers }) {
+export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: GameWithPlayers; maxLegsPerGame?: number }) {
   const legs = [...new Set(gameData.rounds.map((r) => r.leg))].sort((a, b) => a - b);
   const hasRounds = gameData.rounds.length > 0;
   const { homeAvg, awayAvg, playerAverages } = computeAverages(gameData.rounds, gameData.isAppTeamHome);
+
+  const legsToWin = Math.ceil(maxLegsPerGame / 2);
+  const gameComplete = gameData.homeTeamScore >= legsToWin || gameData.awayTeamScore >= legsToWin;
 
   const homeWon = gameData.homeTeamScore > gameData.awayTeamScore;
   const awayWon = gameData.awayTeamScore > gameData.homeTeamScore;
@@ -172,11 +175,17 @@ export default function GameCard({ gameData }: { gameData: GameWithPlayers }) {
           </Button>
         </Link>
         <div className="flex gap-2">
-          <Link href={`/games/dart-tracker?id=${gameData.id}`}>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Rocket className="h-3.5 w-3.5" /> Tracker
+          {gameComplete ? (
+            <Button variant="outline" size="sm" className="gap-1.5 opacity-50 cursor-not-allowed" disabled>
+              <Rocket className="h-3.5 w-3.5" /> Game complete
             </Button>
-          </Link>
+          ) : (
+            <Link href={`/games/dart-tracker?id=${gameData.id}`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Rocket className="h-3.5 w-3.5" /> Tracker
+              </Button>
+            </Link>
+          )}
           <Link href={`/games/edit-game?id=${gameData.id}&fixtureId=${gameData.fixtureId}`}>
             <Button variant="outline" size="sm" className="gap-1.5">
               <Pencil className="h-3.5 w-3.5" /> Edit
@@ -319,11 +328,17 @@ export default function GameCard({ gameData }: { gameData: GameWithPlayers }) {
           <CardContent className="py-10 text-center">
             <Rocket className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No rounds recorded yet.</p>
-            <Link href={`/games/dart-tracker?id=${gameData.id}`} className="inline-block mt-3">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Rocket className="h-3.5 w-3.5" /> Launch Dart Tracker
+            {gameComplete ? (
+              <Button variant="outline" size="sm" className="gap-1.5 mt-3 opacity-50 cursor-not-allowed" disabled>
+                <Rocket className="h-3.5 w-3.5" /> Game complete
               </Button>
-            </Link>
+            ) : (
+              <Link href={`/games/dart-tracker?id=${gameData.id}`} className="inline-block mt-3">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Rocket className="h-3.5 w-3.5" /> Launch Dart Tracker
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       )}
