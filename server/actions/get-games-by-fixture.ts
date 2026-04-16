@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "..";
+import { team } from "../schema";
 
 export async function getGamesByFixture(fixtureId: number) {
   try {
@@ -17,7 +18,14 @@ export async function getGamesByFixture(fixtureId: number) {
       return { error: "Fixture not found" };
     }
 
-    const players = await db.query.players.findMany();
+    const [players, homeTeamRecord, awayTeamRecord] = await Promise.all([
+      db.query.players.findMany(),
+      fixture.homeTeamId ? db.query.team.findFirst({ where: eq(team.id, fixture.homeTeamId) }) : Promise.resolve(null),
+      fixture.awayTeamId ? db.query.team.findFirst({ where: eq(team.id, fixture.awayTeamId) }) : Promise.resolve(null),
+    ]);
+
+    const homeTeamName = homeTeamRecord?.name ?? fixture.homeTeam;
+    const awayTeamName = awayTeamRecord?.name ?? fixture.awayTeam;
     const gameIds = games.map((game) => game.id);
     const gamePlayers = await db.query.gamePlayers.findMany({
       where: (gamePlayer, { inArray }) => inArray(gamePlayer.gameId, gameIds),
@@ -62,16 +70,14 @@ export async function getGamesByFixture(fixtureId: number) {
       });
 
       const isDilfWin =
-        (fixture.awayTeam === "DILFS" &&
-          game.awayTeamScore > game.homeTeamScore) ||
-        (fixture.homeTeam === "DILFS" &&
-          game.homeTeamScore > game.awayTeamScore);
+        (homeTeamRecord?.isAppTeam === true && game.homeTeamScore > game.awayTeamScore) ||
+        (awayTeamRecord?.isAppTeam === true && game.awayTeamScore > game.homeTeamScore);
 
       return {
         ...game,
         matchDate,
-        homeTeam: fixture.homeTeam,
-        awayTeam: fixture.awayTeam,
+        homeTeam: homeTeamName,
+        awayTeam: awayTeamName,
         isDilfWin,
         players: playerArray,
       };

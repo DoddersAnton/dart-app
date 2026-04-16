@@ -26,8 +26,8 @@ export async function getFixture(id: number) {
             location: fixture.matchLocation ? fixture.matchLocation : (fixtureLocation.success ? fixtureLocation.success.name : undefined),
             locationAddress: fixtureLocation.success?.address ?? null,
             locationMapsLink: fixtureLocation.success?.googleMapsLink ?? null,
-            awayTeam: fixture.awayTeam ? fixture.awayTeam : (fixtureAwayTeam.success ? fixtureAwayTeam.success.name : 'Unknown Team'),
-            homeTeam: fixture.homeTeam ? fixture.homeTeam : (fixtureHomeTeam.success ? fixtureHomeTeam.success.name : 'Unknown Team'),
+            homeTeam: fixtureHomeTeam.success?.name ?? fixture.homeTeam ?? 'Unknown Team',
+            awayTeam: fixtureAwayTeam.success?.name ?? fixture.awayTeam ?? 'Unknown Team',
             isAppTeamWin: fixture.isAppTeamWin ? fixture.isAppTeamWin : (fixture.homeTeamId === 1
                 ? (fixture.homeTeamScore > fixture.awayTeamScore)
                 : (fixture.awayTeamScore > fixture.homeTeamScore))

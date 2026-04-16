@@ -1,3 +1,4 @@
+"use server";
 
 import { db } from "..";
 import { FixtureListSummary } from "@/types/fixtures-summary";
@@ -12,16 +13,20 @@ import { FixtureListSummary } from "@/types/fixtures-summary";
             return `${day}/${month}/${year}`;
         };
 
-export async function  getFixtureList() {
+export async function getFixtureList() {
  try {
-        const fixtures = await db.query.fixtures.findMany();
+        const [fixtures, games, teams] = await Promise.all([
+          db.query.fixtures.findMany(),
+          db.query.games.findMany(),
+          db.query.team.findMany(),
+        ]);
 
-        const games = await db.query.games.findMany();
-
-      
+        const teamById = new Map(teams.map((t) => [t.id, t]));
 
         const fixtureList: FixtureListSummary[] = fixtures.map((f) => ({
             ...f,
+            homeTeam: (f.homeTeamId ? teamById.get(f.homeTeamId)?.name : null) ?? f.homeTeam,
+            awayTeam: (f.awayTeamId ? teamById.get(f.awayTeamId)?.name : null) ?? f.awayTeam,
             matchDate: formatDate(f.matchDate),
             createdAt: formatDate(f.createdAt),
             updatedAt: formatDate(f.updatedAt),

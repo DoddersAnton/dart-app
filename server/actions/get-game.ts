@@ -25,9 +25,14 @@ export async function getGame(gameId: number) {
       db.query.fixtures.findFirst({ where: (f) => eq(f.id, game.fixtureId) }),
     ]);
 
-    const homeTeamRecord = fixture?.homeTeamId
-      ? await db.query.team.findFirst({ where: (t) => eq(t.id, fixture.homeTeamId!) })
-      : null;
+    const [homeTeamRecord, awayTeamRecord] = await Promise.all([
+      fixture?.homeTeamId
+        ? db.query.team.findFirst({ where: (t) => eq(t.id, fixture.homeTeamId!) })
+        : Promise.resolve(null),
+      fixture?.awayTeamId
+        ? db.query.team.findFirst({ where: (t) => eq(t.id, fixture.awayTeamId!) })
+        : Promise.resolve(null),
+    ]);
 
     const playerMap = Object.fromEntries(allPlayers.map((p) => [p.id, p]));
 
@@ -54,8 +59,8 @@ export async function getGame(gameId: number) {
 
     const gameWithPlayers: GameWithPlayers = {
       ...game,
-      homeTeam: fixture?.homeTeam ?? "Home",
-      awayTeam: fixture?.awayTeam ?? "Away",
+      homeTeam: homeTeamRecord?.name ?? fixture?.homeTeam ?? "Home",
+      awayTeam: awayTeamRecord?.name ?? fixture?.awayTeam ?? "Away",
       isAppTeamWin: game.isAppTeamWin,
       isAppTeamHome: homeTeamRecord?.isAppTeam === true,
       matchDate: fixture?.matchDate ? fixture.matchDate.toISOString() : null,
