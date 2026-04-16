@@ -5,7 +5,7 @@ import { GameWithPlayers } from "@/types/game-with-players";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -29,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Switch } from "../ui/switch";
 import { toast } from "sonner";
 import { useAction } from "next-safe-action/hooks";
 import Link from "next/link";
@@ -205,12 +207,15 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
   // Player rotation — initialise from how many rounds have already been thrown in this leg
   const shouldRotate = gameData.gameType === "Team Game" || gameData.gameType === "Doubles";
+  const isSingles = gameData.gameType === "Singles";
   const initialPlayerIndex = shouldRotate && playerOrder.length > 0
     ? init.restoredRounds.length % playerOrder.length
     : 0;
   const [playerIndex, setPlayerIndex] = useState(initialPlayerIndex);
-  const defaultPlayer = shouldRotate && playerOrder.length > 0
+  const defaultPlayer = (shouldRotate && playerOrder.length > 0)
     ? playerOrder[initialPlayerIndex].name
+    : (isSingles && playerOrder.length > 0)
+    ? playerOrder[0].name
     : undefined;
   const [currentRound, setCurrentRound] = useState<Partial<Round>>({ player: defaultPlayer });
   const [winner, setWinner] = useState<"home" | "away" | null>(null);
@@ -223,6 +228,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [playersListData, setPlayersListData] = useState<PlayerData[]>([]);
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [checkoutHintsEnabled, setCheckoutHintsEnabled] = useState(true);
+  const [autoFinesEnabled, setAutoFinesEnabled] = useState(true);
   const historyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -279,8 +286,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     const appTeamScore = gameData.isAppTeamHome ? home : away;
 
     if (typeof home === "number") {
-      // Fine only applies when it's the app team's score
-      if (typeof appTeamScore === "number" && appTeamScore <= 20 && gameData.isAppTeamHome) {
+      // Fine only applies when it's the app team's score and auto-fines are enabled
+      if (autoFinesEnabled && typeof appTeamScore === "number" && appTeamScore <= 20 && gameData.isAppTeamHome) {
         const lowFine = finesData.find((f) => f.title === "20 or under");
         if (lowFine) {
           setPendingFinePlayer(currentRound.player ?? null);
@@ -294,7 +301,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     }
 
     if (typeof away === "number") {
-      if (typeof appTeamScore === "number" && appTeamScore <= 20 && !gameData.isAppTeamHome) {
+      if (autoFinesEnabled && typeof appTeamScore === "number" && appTeamScore <= 20 && !gameData.isAppTeamHome) {
         const lowFine = finesData.find((f) => f.title === "20 or under");
         if (lowFine) {
           setPendingFinePlayer(currentRound.player ?? null);
@@ -326,6 +333,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       const nextIndex = (playerIndex + 1) % playerOrder.length;
       setPlayerIndex(nextIndex);
       setCurrentRound({ player: playerOrder[nextIndex].name });
+    } else if (isSingles && playerOrder.length > 0) {
+      setCurrentRound({ player: playerOrder[0].name });
     } else {
       setCurrentRound({});
     }
@@ -469,6 +478,30 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           <Target className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">{gameData.gameType}</span>
           <Badge variant="outline" className="text-xs">Leg {currentLeg}</Badge>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-3 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tracker settings</p>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium leading-tight">Checkout hints</p>
+                  <p className="text-xs text-muted-foreground leading-tight">Show finish suggestions</p>
+                </div>
+                <Switch checked={checkoutHintsEnabled} onCheckedChange={setCheckoutHintsEnabled} />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium leading-tight">Auto fines</p>
+                  <p className="text-xs text-muted-foreground leading-tight">Prompt fine for ≤20 score</p>
+                </div>
+                <Switch checked={autoFinesEnabled} onCheckedChange={setAutoFinesEnabled} />
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
@@ -478,7 +511,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         <div className={`rounded-xl p-4 text-center space-y-1 ${winner === "home" ? "bg-green-500/20 border-2 border-green-500" : "bg-muted/60"}`}>
           <p className="text-xs font-medium text-muted-foreground truncate">{gameData.homeTeam}</p>
           <p className="text-5xl font-black tabular-nums leading-none">{homeScore}</p>
-          {homeCheckout && homeScore <= 170 && (
+          {checkoutHintsEnabled && homeCheckout && homeScore <= 170 && (
             <p className="text-[10px] text-amber-500 font-medium leading-tight">{homeCheckout}</p>
           )}
         </div>
@@ -494,7 +527,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         <div className={`rounded-xl p-4 text-center space-y-1 ${winner === "away" ? "bg-green-500/20 border-2 border-green-500" : "bg-muted/60"}`}>
           <p className="text-xs font-medium text-muted-foreground truncate">{gameData.awayTeam}</p>
           <p className="text-5xl font-black tabular-nums leading-none">{awayScore}</p>
-          {awayCheckout && awayScore <= 170 && (
+          {checkoutHintsEnabled && awayCheckout && awayScore <= 170 && (
             <p className="text-[10px] text-amber-500 font-medium leading-tight">{awayCheckout}</p>
           )}
         </div>
@@ -675,7 +708,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         <div className="rounded-xl border p-4 space-y-3">
           <p className="text-xs font-medium text-muted-foreground">Round {rounds.length + 1}</p>
 
-          {/* Player selector */}
+          {/* Player selector — hidden for Singles (auto-selected) */}
+          {isSingles ? (
+            <p className="text-xs text-muted-foreground">
+              Player: <span className="font-medium text-foreground">{playerOrder[0]?.name}</span>
+            </p>
+          ) : (
           <div className="space-y-1">
             {shouldRotate && (
               <p className="text-xs text-muted-foreground">
@@ -711,6 +749,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
               </SelectContent>
             </Select>
           </div>
+          )}
 
           {/* Score inputs */}
           <div className="grid grid-cols-2 gap-3">
@@ -719,12 +758,13 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
               { team: gameData.awayTeam, field: "away" as const, remaining: awayScore },
             ].map(({ team, field, remaining }) => {
               const entered = currentRound[field];
-              const preview = typeof entered === "number" && entered > 0
+              const isOver180 = typeof entered === "number" && entered > 180;
+              const preview = typeof entered === "number" && entered > 0 && !isOver180
                 ? remaining - entered
                 : null;
               const isBust = preview !== null && preview < 0;
               const isCheckout = preview === 0;
-              const hint = preview !== null && !isBust && preview > 0 && preview <= 170
+              const hint = checkoutHintsEnabled && preview !== null && !isBust && preview > 0 && preview <= 170
                 ? CHECKOUT_HINTS[preview]
                 : null;
               return (
@@ -736,18 +776,21 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                     min={0}
                     max={180}
                     placeholder="0"
-                    className={`text-center text-lg font-bold h-12 ${isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
+                    className={`text-center text-lg font-bold h-12 ${isOver180 ? "border-destructive" : isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
                     value={currentRound[field] ?? ""}
                     onChange={(e) => setCurrentRound((prev) => ({ ...prev, [field]: e.target.value === "" ? undefined : Number(e.target.value) }))}
                     onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
                   />
-                  {isBust && (
+                  {isOver180 && (
+                    <p className="text-xs text-destructive text-center font-semibold">Max score is 180</p>
+                  )}
+                  {!isOver180 && isBust && (
                     <p className="text-xs text-destructive text-center font-semibold">Bust!</p>
                   )}
-                  {isCheckout && (
+                  {!isOver180 && isCheckout && (
                     <p className="text-xs text-green-600 text-center font-semibold">Checkout! 🎯</p>
                   )}
-                  {!isBust && !isCheckout && preview !== null && (
+                  {!isOver180 && !isBust && !isCheckout && preview !== null && (
                     <p className="text-xs text-muted-foreground text-center">
                       Leaves <span className={`font-semibold ${hint ? "text-amber-500" : "text-foreground"}`}>{preview}</span>
                       {hint && <span className="block text-[10px]">{hint}</span>}
