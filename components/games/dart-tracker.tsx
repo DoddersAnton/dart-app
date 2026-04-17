@@ -230,7 +230,13 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [showHistory, setShowHistory] = useState(false);
   const [checkoutHintsEnabled, setCheckoutHintsEnabled] = useState(true);
   const [autoFinesEnabled, setAutoFinesEnabled] = useState(true);
+  const [firstThrowTeam, setFirstThrowTeam] = useState<"home" | "away">("home");
+  const [currentThrowSide, setCurrentThrowSide] = useState<"home" | "away">("home");
+  const [pendingThrowApplied, setPendingThrowApplied] = useState(0);
   const historyRef = useRef<HTMLDivElement>(null);
+
+  const hasPendingThrow = currentThrowSide !== firstThrowTeam;
+  const pendingThrowScore = hasPendingThrow ? currentRound[firstThrowTeam] : undefined;
 
   useEffect(() => {
     async function fetchData() {
@@ -260,59 +266,62 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const handleSubmitRound = () => {
     if (winner) return;
 
-    const home = currentRound.home;
-    const away = currentRound.away;
+    const score = currentRound[currentThrowSide];
 
     if (!currentRound.player) {
       toast.error("Select a player for this round");
       return;
     }
-    if (typeof home !== "number" && typeof away !== "number") {
-      toast.error("Enter at least one score");
+    if (typeof score !== "number") {
+      toast.error("Enter a score");
       return;
     }
-    if ((typeof home === "number" && home > 180) || (typeof away === "number" && away > 180)) {
+    if (score > 180) {
       toast.error("Score cannot exceed 180");
       return;
     }
-    if ((typeof home === "number" && home < 0) || (typeof away === "number" && away < 0)) {
+    if (score < 0) {
       toast.error("Score cannot be negative");
       return;
     }
 
-    let newHome = homeScore;
-    let newAway = awayScore;
-
-    const appTeamScore = gameData.isAppTeamHome ? home : away;
-
-    if (typeof home === "number") {
-      // Fine only applies when it's the app team's score and auto-fines are enabled
-      if (autoFinesEnabled && typeof appTeamScore === "number" && appTeamScore <= 20 && gameData.isAppTeamHome) {
-        const lowFine = finesData.find((f) => f.title === "20 or under");
-        if (lowFine) {
-          setPendingFinePlayer(currentRound.player ?? null);
-          setPendingFineId(lowFine.title);
-          setPendingReason("Scored 20 or under");
-          setShowFineDialog(true);
-        }
+    // Auto-fine check for this throw (only the app team's throws count)
+    const isAppTeamThrow = (currentThrowSide === "home") === gameData.isAppTeamHome;
+    if (autoFinesEnabled && isAppTeamThrow && score <= 20) {
+      const lowFine = finesData.find((f) => f.title === "20 or under");
+      if (lowFine) {
+        setPendingFinePlayer(currentRound.player ?? null);
+        setPendingFineId(lowFine.title);
+        setPendingReason("Scored 20 or under");
+        setShowFineDialog(true);
       }
-      const updated = newHome - home;
-      newHome = updated >= 0 ? updated : newHome; // bust = no change
     }
 
-    if (typeof away === "number") {
-      if (autoFinesEnabled && typeof appTeamScore === "number" && appTeamScore <= 20 && !gameData.isAppTeamHome) {
-        const lowFine = finesData.find((f) => f.title === "20 or under");
-        if (lowFine) {
-          setPendingFinePlayer(currentRound.player ?? null);
-          setPendingFineId(lowFine.title);
-          setPendingReason("Scored 20 or under");
-          setShowFineDialog(true);
-        }
-      }
-      const updated = newAway - away;
-      newAway = updated >= 0 ? updated : newAway;
+    // Apply this throw's score to the scoreboard immediately
+    const remaining = currentThrowSide === "home" ? homeScore : awayScore;
+    const updated = remaining - score;
+    const newScore = updated >= 0 ? updated : remaining; // bust = no change
+    const applied = updated >= 0 ? score : 0; // track actual deduction for undo
+
+    if (currentThrowSide === "home") {
+      setHomeScore(newScore);
+    } else {
+      setAwayScore(newScore);
     }
+
+    const otherSide: "home" | "away" = currentThrowSide === "home" ? "away" : "home";
+    const otherScore = currentRound[otherSide];
+
+    if (typeof otherScore !== "number") {
+      // First throw — store applied delta and switch sides
+      setPendingThrowApplied(applied);
+      setCurrentThrowSide(otherSide);
+      return;
+    }
+
+    // Both throws done — complete the round
+    const home = currentThrowSide === "home" ? score : otherScore;
+    const away = currentThrowSide === "away" ? score : otherScore;
 
     const newRound: Round = {
       roundNumber: rounds.length + 1,
@@ -325,8 +334,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     };
 
     setRounds((prev) => [...prev, newRound]);
-    setHomeScore(newHome);
-    setAwayScore(newAway);
+    setCurrentThrowSide(firstThrowTeam);
+    setPendingThrowApplied(0);
 
     // Advance to next player in rotation
     if (shouldRotate && playerOrder.length > 0) {
@@ -339,11 +348,30 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       setCurrentRound({});
     }
 
-    if (newHome === 0) { setWinner("home"); setHomeLegs((l) => l + 1); }
-    else if (newAway === 0) { setWinner("away"); setAwayLegs((l) => l + 1); }
+    // Winner check — use computed newScore for current side, state value for other (already updated from first throw)
+    const finalHomeScore = currentThrowSide === "home" ? newScore : homeScore;
+    const finalAwayScore = currentThrowSide === "away" ? newScore : awayScore;
+    if (finalHomeScore === 0) { setWinner("home"); setHomeLegs((l) => l + 1); }
+    else if (finalAwayScore === 0) { setWinner("away"); setAwayLegs((l) => l + 1); }
   };
 
   const handleUndo = () => {
+    // If mid-round (first throw submitted, waiting for second), cancel it
+    if (hasPendingThrow) {
+      if (firstThrowTeam === "home") {
+        setHomeScore((s) => s + pendingThrowApplied);
+      } else {
+        setAwayScore((s) => s + pendingThrowApplied);
+      }
+      setPendingThrowApplied(0);
+      setCurrentThrowSide(firstThrowTeam);
+      setCurrentRound((prev) => {
+        const next = { ...prev };
+        delete (next as Record<string, unknown>)[firstThrowTeam];
+        return next;
+      });
+      return;
+    }
     if (rounds.length === 0) return;
     const last = rounds[rounds.length - 1];
     setHomeScore((s) => s + (last.home ?? 0));
@@ -411,6 +439,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setWinner(null);
         setShowHistory(false);
         setPlayerIndex(0);
+        setCurrentThrowSide(firstThrowTeam);
+        setPendingThrowApplied(0);
         setCurrentRound(shouldRotate && playerOrder.length > 0 ? { player: playerOrder[0].name } : {});
         toast.success(`Leg ${currentLeg} saved — starting leg ${nextLeg}`);
       }
@@ -706,7 +736,16 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       {/* Input area */}
       {!winner && (
         <div className="rounded-xl border p-4 space-y-3">
-          <p className="text-xs font-medium text-muted-foreground">Round {rounds.length + 1}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Round {rounds.length + 1}</p>
+            <p className="text-xs text-muted-foreground">
+              {hasPendingThrow
+                ? <span className="font-medium text-foreground">{currentThrowSide === "home" ? gameData.homeTeam : gameData.awayTeam}</span>
+                : <span className="font-medium text-foreground">{firstThrowTeam === "home" ? gameData.homeTeam : gameData.awayTeam}</span>
+              }
+              {" "}to throw
+            </p>
+          </div>
 
           {/* Player selector — hidden for Singles (auto-selected) */}
           {isSingles ? (
@@ -751,67 +790,92 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           </div>
           )}
 
-          {/* Score inputs */}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { team: gameData.homeTeam, field: "home" as const, remaining: homeScore },
-              { team: gameData.awayTeam, field: "away" as const, remaining: awayScore },
-            ].map(({ team, field, remaining }) => {
-              const entered = currentRound[field];
-              const isOver180 = typeof entered === "number" && entered > 180;
-              const preview = typeof entered === "number" && entered > 0 && !isOver180
-                ? remaining - entered
-                : null;
-              const isBust = preview !== null && preview < 0;
-              const isCheckout = preview === 0;
-              const hint = checkoutHintsEnabled && preview !== null && !isBust && preview > 0 && preview <= 170
-                ? CHECKOUT_HINTS[preview]
-                : null;
-              return (
-                <div key={field} className="space-y-1">
-                  <p className="text-xs text-muted-foreground text-center">{team}</p>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={180}
-                    placeholder="0"
-                    className={`text-center text-lg font-bold h-12 ${isOver180 ? "border-destructive" : isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
-                    value={currentRound[field] ?? ""}
-                    onChange={(e) => setCurrentRound((prev) => ({ ...prev, [field]: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
-                  />
-                  {isOver180 && (
-                    <p className="text-xs text-destructive text-center font-semibold">Max score is 180</p>
-                  )}
-                  {!isOver180 && isBust && (
-                    <p className="text-xs text-destructive text-center font-semibold">Bust!</p>
-                  )}
-                  {!isOver180 && isCheckout && (
-                    <p className="text-xs text-green-600 text-center font-semibold">Checkout! 🎯</p>
-                  )}
-                  {!isOver180 && !isBust && !isCheckout && preview !== null && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Leaves <span className={`font-semibold ${hint ? "text-amber-500" : "text-foreground"}`}>{preview}</span>
-                      {hint && <span className="block text-[10px]">{hint}</span>}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {/* Throws-first toggle — only before the first round */}
+          {rounds.length === 0 && !hasPendingThrow && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Throws first</p>
+              <div className="flex rounded-lg border overflow-hidden text-xs font-medium">
+                <button
+                  className={`px-3 py-1.5 transition-colors ${firstThrowTeam === "home" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                  onClick={() => { setFirstThrowTeam("home"); setCurrentThrowSide("home"); }}
+                >
+                  {gameData.homeTeam}
+                </button>
+                <button
+                  className={`px-3 py-1.5 transition-colors ${firstThrowTeam === "away" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                  onClick={() => { setFirstThrowTeam("away"); setCurrentThrowSide("away"); }}
+                >
+                  {gameData.awayTeam}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Pending score from first throw */}
+          {hasPendingThrow && (
+            <div className="rounded-lg bg-muted/40 px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {firstThrowTeam === "home" ? gameData.homeTeam : gameData.awayTeam} scored
+              </span>
+              <span className="text-sm font-bold tabular-nums">{pendingThrowScore}</span>
+            </div>
+          )}
+
+          {/* Score input — one team at a time */}
+          {(() => {
+            const field = currentThrowSide;
+            const remaining = currentThrowSide === "home" ? homeScore : awayScore;
+            const team = currentThrowSide === "home" ? gameData.homeTeam : gameData.awayTeam;
+            const entered = currentRound[field];
+            const isOver180 = typeof entered === "number" && entered > 180;
+            const preview = typeof entered === "number" && entered > 0 && !isOver180
+              ? remaining - entered
+              : null;
+            const isBust = preview !== null && preview < 0;
+            const isCheckout = preview === 0;
+            const hint = checkoutHintsEnabled && preview !== null && !isBust && preview > 0 && preview <= 170
+              ? CHECKOUT_HINTS[preview]
+              : null;
+            return (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground text-center font-medium">{team}</p>
+                <Input
+                  key={currentThrowSide}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={180}
+                  placeholder="0"
+                  autoFocus
+                  className={`text-center text-2xl font-bold h-14 ${isOver180 ? "border-destructive" : isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
+                  value={currentRound[field] ?? ""}
+                  onChange={(e) => setCurrentRound((prev) => ({ ...prev, [field]: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
+                />
+                {isOver180 && <p className="text-xs text-destructive text-center font-semibold">Max score is 180</p>}
+                {!isOver180 && isBust && <p className="text-xs text-destructive text-center font-semibold">Bust!</p>}
+                {!isOver180 && isCheckout && <p className="text-xs text-green-600 text-center font-semibold">Checkout! 🎯</p>}
+                {!isOver180 && !isBust && !isCheckout && preview !== null && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Leaves <span className={`font-semibold ${hint ? "text-amber-500" : "text-foreground"}`}>{preview}</span>
+                    {hint && <span className="block text-[10px]">{hint}</span>}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Actions */}
           <div className="flex gap-2">
             <Button className="flex-1" onClick={handleSubmitRound}>
-              Submit round
+              {hasPendingThrow ? "Complete round" : "Submit throw"}
             </Button>
             <Button
               variant="outline"
               size="icon"
               onClick={handleUndo}
-              disabled={rounds.length === 0}
-              title="Undo last round"
+              disabled={rounds.length === 0 && !hasPendingThrow}
+              title={hasPendingThrow ? "Cancel throw" : "Undo last round"}
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
