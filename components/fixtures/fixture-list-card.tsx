@@ -12,12 +12,15 @@ import {
 import { Badge } from "../ui/badge";
 import {
   Calendar,
+  CheckCircle2,
+  Clock,
   EyeIcon,
   HouseIcon,
   MoreHorizontal,
   Pencil,
   Plus,
   Trash,
+  XCircle,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
@@ -42,11 +45,14 @@ import {
 import {
   GamesSummary,
 } from "@/server/actions/get-player-games-summary";
+import { FixtureAvailabilitySummary } from "@/server/actions/get-fixtures-availability-summary";
 
 interface EnhancedFixtureCardProps {
   data: FixtureListSummary[];
   kpis: FixtureKpiSummary[];
   playerGameSummary: GamesSummary[];
+  availabilitySummary: FixtureAvailabilitySummary[];
+  linkedPlayerId: number | null | undefined;
 }
 
 function PlayerStatsList({ summaries }: { summaries: GamesSummary["gameTypesSummaries"] }) {
@@ -311,28 +317,56 @@ function fixtureItem({
 export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
   const [seasonFilter, setSeasonFilter] = React.useState<string | null>(null);
 
+  const availabilityByFixture = React.useMemo(() => {
+    const map = new Map<number, FixtureAvailabilitySummary>();
+    for (const a of props.availabilitySummary) {
+      map.set(a.fixtureId, a);
+    }
+    return map;
+  }, [props.availabilitySummary]);
+
+  const seasonEndDateMap = React.useMemo(() => {
+    const map = new Map<string, Date | null>();
+    for (const kpi of props.kpis) {
+      map.set(kpi.season, kpi.seasonEndDate);
+    }
+    return map;
+  }, [props.kpis]);
+
+  const bySeasonEndDateDesc = (a: string, b: string) => {
+    const da = seasonEndDateMap.get(a);
+    const db = seasonEndDateMap.get(b);
+    if (da && db) return db.getTime() - da.getTime();
+    if (da) return -1;
+    if (db) return 1;
+    return b.localeCompare(a);
+  };
+
+  const sortedSeasons = React.useMemo(
+    () => [...props.kpis].sort((a, b) => bySeasonEndDateDesc(a.season, b.season)),
+    [props.kpis, seasonEndDateMap]
+  );
+
+  const sortedPlayerSummary = React.useMemo(
+    () => [...props.playerGameSummary].sort((a, b) => bySeasonEndDateDesc(a.season, b.season)),
+    [props.playerGameSummary, seasonEndDateMap]
+  );
+
   return (
     <div className="w-full lg:w-[50%] mx-auto">
       <h1 className="text-3xl font-bold mb-6">Fixtures</h1>
       <div className="flex justify-between items-center gap-2">
         <div>
-          <Link href="/fixtures/add-fixture" className="">
+          <Link href="/fixtures/add-fixture">
             <Button size="sm" className="mb-0" variant="outline">
               Add Match <Plus className="ml-2" size={16} />
             </Button>
           </Link>
         </div>
         <div>
-          {/* Placeholder for future filters or actions */}
           <Select
             key={seasonFilter ?? "all-seasons"}
-            onValueChange={(value) => {
-              if (value === "all-seasons") {
-                setSeasonFilter(null);
-              } else {
-                setSeasonFilter(value);
-              }
-            }}
+            onValueChange={(value) => setSeasonFilter(value === "all-seasons" ? null : value)}
             value={seasonFilter ?? "all-seasons"}
             defaultValue="all-seasons"
           >
@@ -343,7 +377,7 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
               <SelectGroup>
                 <SelectLabel>Seasons</SelectLabel>
                 <SelectItem value="all-seasons">All Seasons</SelectItem>
-                {props.kpis.map((kpi) => (
+                {sortedSeasons.map((kpi) => (
                   <SelectItem key={kpi.season} value={kpi.season}>
                     {kpi.season}
                   </SelectItem>
@@ -354,68 +388,106 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full mt-2">
+      <Tabs defaultValue="matches" className="w-full mt-2">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
-           <TabsTrigger value="stats">Player Stats</TabsTrigger>
-          {/** <TabsTrigger value="stats">Stats</TabsTrigger>
-          <TabsTrigger value="charts">Charts</TabsTrigger>
-          */}
+          <TabsTrigger value="matches">Matches</TabsTrigger>
+          <TabsTrigger value="overview">Season Overview</TabsTrigger>
+          <TabsTrigger value="stats">Player Stats</TabsTrigger>
+          <TabsTrigger value="availability">Availability</TabsTrigger>
         </TabsList>
-        <TabsContent value="overview">
-          {props.kpis &&
-            props.kpis
-              .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
-              //.sort((a, b) => b..localeCompare(a.season))
-              .map((fixtureKpi) => (
-                <div
-                  key={fixtureKpi.season}
-                  className="mb-4 mx-auto flex-col gap-2"
-                >
-                  {seasonKpiItem({ fixtureKpi, key: fixtureKpi.season })}
-                </div>
-              ))}
-        </TabsContent>
-        <TabsContent value="details">
+
+        {/* Matches */}
+        <TabsContent value="matches">
           {props.data
             .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
             .sort((a, b) => {
-              const dateA = a.matchDate
-                ? Date.parse(a.matchDate.split("/").reverse().join("-"))
-                : 0;
-              const dateB = b.matchDate
-                ? Date.parse(b.matchDate.split("/").reverse().join("-"))
-                : 0;
+              const dateA = a.matchDate ? Date.parse(a.matchDate.split("/").reverse().join("-")) : 0;
+              const dateB = b.matchDate ? Date.parse(b.matchDate.split("/").reverse().join("-")) : 0;
               return dateB - dateA;
-            }) // Sort by matchDate in descending order
+            })
             .map((fixture) => (
               <div key={fixture.id} className="mb-4 mx-auto">
                 {fixtureItem({ fixtureData: fixture, key: fixture.id })}
               </div>
             ))}
         </TabsContent>
-        <TabsContent value="stats">
-            {props.playerGameSummary && props.playerGameSummary
-              .filter((f) =>
-                seasonFilter ? f.season === seasonFilter : true
-              )
-              .map((playerSummary) => (
-                <div
-                  key={playerSummary.season}
-                  className="mb-4 mx-auto flex-col gap-2"
-                >
-                  {seasonPlayerListItem({
-                    data: playerSummary,
-                    key: playerSummary.season,
-                  })}
-                </div>
-              ))}
 
-
-
+        {/* Season Overview */}
+        <TabsContent value="overview">
+          {sortedSeasons
+            .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
+            .map((fixtureKpi) => (
+              <div key={fixtureKpi.season} className="mb-4 mx-auto flex-col gap-2">
+                {seasonKpiItem({ fixtureKpi, key: fixtureKpi.season })}
+              </div>
+            ))}
         </TabsContent>
-        <TabsContent value="charts"></TabsContent>
+
+        {/* Player Stats */}
+        <TabsContent value="stats">
+          {sortedPlayerSummary
+            .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
+            .map((playerSummary) => (
+              <div key={playerSummary.season} className="mb-4 mx-auto flex-col gap-2">
+                {seasonPlayerListItem({ data: playerSummary, key: playerSummary.season })}
+              </div>
+            ))}
+        </TabsContent>
+
+        {/* Availability */}
+        <TabsContent value="availability">
+          <div className="space-y-3 mt-2">
+            {props.linkedPlayerId && (
+              <div className="flex justify-end">
+                <Link href={`/player/${props.linkedPlayerId}/availability`}>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">Your availability</Button>
+                </Link>
+              </div>
+            )}
+            {props.data
+              .filter((f) => (seasonFilter ? f.season === seasonFilter : true))
+              .sort((a, b) => {
+                const dateA = a.matchDate ? Date.parse(a.matchDate.split("/").reverse().join("-")) : 0;
+                const dateB = b.matchDate ? Date.parse(b.matchDate.split("/").reverse().join("-")) : 0;
+                return dateB - dateA;
+              })
+              .map((fixture) => {
+                const avail = availabilityByFixture.get(fixture.id);
+                return (
+                  <Link key={fixture.id} href={`/fixtures/${fixture.id}`} className="block">
+                    <Card className="hover:bg-muted/40 transition-colors">
+                      <CardContent className="py-3 px-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{fixture.homeTeam} vs {fixture.awayTeam}</p>
+                            <p className="text-xs text-muted-foreground">{fixture.matchDate} · {fixture.matchLocation}</p>
+                          </div>
+                          {avail && avail.total > 0 ? (
+                            <div className="flex items-center gap-3 shrink-0 text-xs">
+                              <span className="flex items-center gap-1 text-green-600">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {avail.going}
+                              </span>
+                              <span className="flex items-center gap-1 text-destructive">
+                                <XCircle className="h-3.5 w-3.5" />
+                                {avail.notGoing}
+                              </span>
+                              <span className="flex items-center gap-1 text-amber-500">
+                                <Clock className="h-3.5 w-3.5" />
+                                {avail.pending}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground shrink-0">No responses</span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
