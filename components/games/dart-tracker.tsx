@@ -5,7 +5,7 @@ import { GameWithPlayers } from "@/types/game-with-players";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -227,7 +227,9 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [finesData, setFinesData] = useState<FineData[]>([]);
   const [playersListData, setPlayersListData] = useState<PlayerData[]>([]);
   const [saving, setSaving] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
+  const [editingRoundIdx, setEditingRoundIdx] = useState<number | null>(null);
+  const [editValues, setEditValues] = useState<{ home: string; away: string }>({ home: "", away: "" });
   const [checkoutHintsEnabled, setCheckoutHintsEnabled] = useState(true);
   const [autoFinesEnabled, setAutoFinesEnabled] = useState(true);
   const [firstThrowTeam, setFirstThrowTeam] = useState<"home" | "away">("home");
@@ -285,9 +287,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       return;
     }
 
-    // Auto-fine check for this throw (only the app team's throws count)
+    // Apply this throw's score to the scoreboard immediately
+    const remaining = currentThrowSide === "home" ? homeScore : awayScore;
+
+    // Auto-fine check — skip if the player is on a checkout (remaining ≤ 170)
     const isAppTeamThrow = (currentThrowSide === "home") === gameData.isAppTeamHome;
-    if (autoFinesEnabled && isAppTeamThrow && score <= 20) {
+    if (autoFinesEnabled && isAppTeamThrow && score <= 20 && remaining > 170) {
       const lowFine = finesData.find((f) => f.title === "20 or under");
       if (lowFine) {
         setPendingFinePlayer(currentRound.player ?? null);
@@ -296,9 +301,6 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setShowFineDialog(true);
       }
     }
-
-    // Apply this throw's score to the scoreboard immediately
-    const remaining = currentThrowSide === "home" ? homeScore : awayScore;
     const updated = remaining - score;
     const newScore = updated >= 0 ? updated : remaining; // bust = no change
     const applied = updated >= 0 ? score : 0; // track actual deduction for undo
@@ -392,6 +394,42 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     const fine = finesData.find((f) => f.title === pendingFineId);
     if (!player || !fine) { toast.error("Player or fine not found"); return; }
     executeFine({ playerId: player.id, fineId: fine.id, matchDate: new Date(), quantity: 1, notes: `Fine during ${gameData.gameType}` });
+    setShowFineDialog(false);
+  };
+
+  const handleSaveEdit = (idx: number) => {
+    const newHome = editValues.home === "" ? undefined : Number(editValues.home);
+    const newAway = editValues.away === "" ? undefined : Number(editValues.away);
+
+    if (newHome !== undefined && (isNaN(newHome) || newHome < 0 || newHome > 180)) {
+      toast.error("Home score must be between 0 and 180");
+      return;
+    }
+    if (newAway !== undefined && (isNaN(newAway) || newAway < 0 || newAway > 180)) {
+      toast.error("Away score must be between 0 and 180");
+      return;
+    }
+
+    const updatedRounds = rounds.map((r, i) =>
+      i === idx ? { ...r, home: newHome, away: newAway } : r
+    );
+
+    // Recompute scores and winner from scratch for this leg
+    let h = INITIAL_SCORE;
+    let a = INITIAL_SCORE;
+    let newWinner: "home" | "away" | null = null;
+    for (const r of updatedRounds) {
+      if (typeof r.home === "number") { const u = h - r.home; h = u >= 0 ? u : h; }
+      if (typeof r.away === "number") { const u = a - r.away; a = u >= 0 ? u : a; }
+      if (h === 0) newWinner = "home";
+      else if (a === 0) newWinner = "away";
+    }
+
+    setRounds(updatedRounds);
+    setHomeScore(h);
+    setAwayScore(a);
+    if (newWinner !== winner) setWinner(newWinner);
+    setEditingRoundIdx(null);
   };
 
   const saveAndAdvance = async (finish: boolean) => {
@@ -441,7 +479,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setPlayerIndex(0);
         setCurrentThrowSide(firstThrowTeam);
         setPendingThrowApplied(0);
-        setCurrentRound(shouldRotate && playerOrder.length > 0 ? { player: playerOrder[0].name } : {});
+        setCurrentRound((shouldRotate || isSingles) && playerOrder.length > 0 ? { player: playerOrder[0].name } : {});
         toast.success(`Leg ${currentLeg} saved — starting leg ${nextLeg}`);
       }
     } catch {
@@ -716,15 +754,70 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                 </thead>
                 <tbody>
                   {rounds.map((r, idx) => (
-                    <tr key={idx} className="border-t border-border/50">
-                      <td className="py-1.5 px-2 text-muted-foreground">{idx + 1}</td>
-                      <td className="py-1.5 px-2 font-medium truncate max-w-[80px]">{r.player?.split(" ")[0] ?? "–"}</td>
-                      <td className="py-1.5 px-2 text-center tabular-nums">{r.home ?? "–"}</td>
-                      <td className="py-1.5 px-2 text-center tabular-nums">{r.away ?? "–"}</td>
-                      <td className="py-1.5 px-2 text-center">
-                        {r.fineAdded && <Flag className="h-3 w-3 text-red-500 inline" />}
-                      </td>
-                    </tr>
+                    editingRoundIdx === idx ? (
+                      <tr key={idx} className="border-t border-border/50 bg-muted/20">
+                        <td className="py-1.5 px-2 text-muted-foreground">{idx + 1}</td>
+                        <td className="py-1.5 px-2 font-medium truncate max-w-[80px]">{r.player?.split(" ")[0] ?? "–"}</td>
+                        <td className="py-1 px-1">
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={180}
+                            className="h-7 w-14 text-center text-xs px-1"
+                            value={editValues.home}
+                            onChange={(e) => setEditValues((v) => ({ ...v, home: e.target.value }))}
+                          />
+                        </td>
+                        <td className="py-1 px-1">
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={180}
+                            className="h-7 w-14 text-center text-xs px-1"
+                            value={editValues.away}
+                            onChange={(e) => setEditValues((v) => ({ ...v, away: e.target.value }))}
+                          />
+                        </td>
+                        <td className="py-1 px-1">
+                          <div className="flex items-center gap-1 justify-center">
+                            <button onClick={() => handleSaveEdit(idx)} className="text-green-600 hover:text-green-700">
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => setEditingRoundIdx(null)} className="text-muted-foreground hover:text-foreground">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={idx} className="border-t border-border/50">
+                        <td className="py-1.5 px-2 text-muted-foreground">{idx + 1}</td>
+                        <td className="py-1.5 px-2 font-medium truncate max-w-[80px]">{r.player?.split(" ")[0] ?? "–"}</td>
+                        <td className="py-1.5 px-2 text-center tabular-nums">{r.home ?? "–"}</td>
+                        <td className="py-1.5 px-2 text-center tabular-nums">{r.away ?? "–"}</td>
+                        <td className="py-1.5 px-2 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {r.fineAdded && <Flag className="h-3 w-3 text-red-500" />}
+                            {!hasPendingThrow && (
+                              <button
+                                onClick={() => {
+                                  setEditingRoundIdx(idx);
+                                  setEditValues({
+                                    home: r.home !== undefined ? String(r.home) : "",
+                                    away: r.away !== undefined ? String(r.away) : "",
+                                  });
+                                }}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
                   ))}
                 </tbody>
               </table>
