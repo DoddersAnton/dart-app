@@ -23,6 +23,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,13 +46,13 @@ import {
 import {
   GamesSummary,
 } from "@/server/actions/get-player-games-summary";
-import { FixtureAvailabilitySummary } from "@/server/actions/get-fixtures-availability-summary";
+import { FixtureAvailabilityDetail } from "@/server/actions/get-fixtures-availability-summary";
 
 interface EnhancedFixtureCardProps {
   data: FixtureListSummary[];
   kpis: FixtureKpiSummary[];
   playerGameSummary: GamesSummary[];
-  availabilitySummary: FixtureAvailabilitySummary[];
+  availabilitySummary: FixtureAvailabilityDetail[];
   linkedPlayerId: number | null | undefined;
 }
 
@@ -318,7 +319,7 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
   const [seasonFilter, setSeasonFilter] = React.useState<string | null>(null);
 
   const availabilityByFixture = React.useMemo(() => {
-    const map = new Map<number, FixtureAvailabilitySummary>();
+    const map = new Map<number, FixtureAvailabilityDetail>();
     for (const a of props.availabilitySummary) {
       map.set(a.fixtureId, a);
     }
@@ -389,11 +390,11 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
       </div>
 
       <Tabs defaultValue="matches" className="w-full mt-2">
-        <TabsList>
-          <TabsTrigger value="matches">Matches</TabsTrigger>
-          <TabsTrigger value="overview">Season Overview</TabsTrigger>
-          <TabsTrigger value="stats">Player Stats</TabsTrigger>
-          <TabsTrigger value="availability">Availability</TabsTrigger>
+        <TabsList className="w-full">
+          <TabsTrigger value="matches" className="flex-1 text-xs">Matches</TabsTrigger>
+          <TabsTrigger value="overview" className="flex-1 text-xs">Season</TabsTrigger>
+          <TabsTrigger value="stats" className="flex-1 text-xs">Stats</TabsTrigger>
+          <TabsTrigger value="availability" className="flex-1 text-xs">Availability</TabsTrigger>
         </TabsList>
 
         {/* Matches */}
@@ -453,37 +454,71 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
               })
               .map((fixture) => {
                 const avail = availabilityByFixture.get(fixture.id);
+                const hasResponses = avail && (avail.going.length + avail.notGoing.length + avail.pending.length) > 0;
                 return (
-                  <Link key={fixture.id} href={`/fixtures/${fixture.id}`} className="block">
-                    <Card className="hover:bg-muted/40 transition-colors">
-                      <CardContent className="py-3 px-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{fixture.homeTeam} vs {fixture.awayTeam}</p>
-                            <p className="text-xs text-muted-foreground">{fixture.matchDate} · {fixture.matchLocation}</p>
-                          </div>
-                          {avail && avail.total > 0 ? (
-                            <div className="flex items-center gap-3 shrink-0 text-xs">
-                              <span className="flex items-center gap-1 text-green-600">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                {avail.going}
-                              </span>
-                              <span className="flex items-center gap-1 text-destructive">
-                                <XCircle className="h-3.5 w-3.5" />
-                                {avail.notGoing}
-                              </span>
-                              <span className="flex items-center gap-1 text-amber-500">
-                                <Clock className="h-3.5 w-3.5" />
-                                {avail.pending}
-                              </span>
-                            </div>
+                  <Card key={fixture.id}>
+                    <CardContent className="py-3 px-3">
+                      <div className="flex flex-col gap-2">
+                        <Link href={`/fixtures/${fixture.id}`} className="block">
+                          <p className="text-sm font-medium leading-tight">
+                            {fixture.homeTeam}
+                            <span className="text-muted-foreground font-normal"> vs </span>
+                            {fixture.awayTeam}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{fixture.matchDate} · {fixture.matchLocation}</p>
+                        </Link>
+                        <div>
+                          {hasResponses ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-muted transition-colors text-xs">
+                                  <span className="flex items-center gap-1 text-green-600">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />{avail!.going.length}
+                                  </span>
+                                  <span className="flex items-center gap-1 text-destructive">
+                                    <XCircle className="h-3.5 w-3.5" />{avail!.notGoing.length}
+                                  </span>
+                                  <span className="flex items-center gap-1 text-amber-500">
+                                    <Clock className="h-3.5 w-3.5" />{avail!.pending.length}
+                                  </span>
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-52 p-3 space-y-3" align="end">
+                                <div>
+                                  <p className="flex items-center gap-1.5 text-xs font-semibold text-green-600 mb-1.5">
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Going ({avail!.going.length})
+                                  </p>
+                                  {avail!.going.length > 0
+                                    ? avail!.going.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                                    : <p className="text-xs text-muted-foreground pl-5">None yet</p>}
+                                </div>
+                                <Separator />
+                                <div>
+                                  <p className="flex items-center gap-1.5 text-xs font-semibold text-destructive mb-1.5">
+                                    <XCircle className="h-3.5 w-3.5" /> Not going ({avail!.notGoing.length})
+                                  </p>
+                                  {avail!.notGoing.length > 0
+                                    ? avail!.notGoing.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                                    : <p className="text-xs text-muted-foreground pl-5">None</p>}
+                                </div>
+                                <Separator />
+                                <div>
+                                  <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 mb-1.5">
+                                    <Clock className="h-3.5 w-3.5" /> Pending ({avail!.pending.length})
+                                  </p>
+                                  {avail!.pending.length > 0
+                                    ? avail!.pending.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                                    : <p className="text-xs text-muted-foreground pl-5">None</p>}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           ) : (
-                            <span className="text-xs text-muted-foreground shrink-0">No responses</span>
+                            <span className="text-xs text-muted-foreground px-2">No responses</span>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
           </div>

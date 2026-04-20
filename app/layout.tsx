@@ -27,7 +27,7 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
           
           <body
-            className="font-sans antialiased"
+            className="font-sans antialiased overflow-x-hidden"
           >
              <SidebarProvider>
             <NavWrapper />
