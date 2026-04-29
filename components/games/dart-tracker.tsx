@@ -5,7 +5,7 @@ import { GameWithPlayers } from "@/types/game-with-players";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -39,6 +39,9 @@ import { createGame } from "@/server/actions/create-game";
 import { createPlayerFine } from "@/server/actions/create-player-fine";
 import { getFines } from "@/server/actions/get-fines";
 import { getPlayers } from "@/server/actions/get-players";
+import { saveRoundAuto } from "@/server/actions/save-round-auto";
+import { deleteLastRound } from "@/server/actions/delete-last-round";
+import { broadcastGameState } from "@/server/actions/broadcast-game-state";
 import CreateFineAlert from "./create-fine-alert";
 import CreateRoundFine from "./create-round-fine";
 
@@ -233,6 +236,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [checkoutHintsEnabled, setCheckoutHintsEnabled] = useState(true);
   const [autoFinesEnabled, setAutoFinesEnabled] = useState(true);
   const [firstThrowTeam, setFirstThrowTeam] = useState<"home" | "away">("home");
+  // savedRoundCount tracks how many completed rounds are persisted in DB for the current leg
+  const [savedRoundCount, setSavedRoundCount] = useState(init.restoredRounds.length);
   const [currentThrowSide, setCurrentThrowSide] = useState<"home" | "away">("home");
   const [pendingThrowApplied, setPendingThrowApplied] = useState(0);
   const historyRef = useRef<HTMLDivElement>(null);
@@ -318,6 +323,23 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       // First throw — store applied delta and switch sides
       setPendingThrowApplied(applied);
       setCurrentThrowSide(otherSide);
+      broadcastGameState(gameData.id, {
+        homeScore: currentThrowSide === "home" ? newScore : homeScore,
+        awayScore: currentThrowSide === "away" ? newScore : awayScore,
+        homeLegs,
+        awayLegs,
+        currentLeg,
+        winner: null,
+        rounds: rounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+        pendingRound: {
+          roundNumber: rounds.length + 1,
+          player: currentRound.player,
+          home: currentThrowSide === "home" ? score : undefined,
+          away: currentThrowSide === "away" ? score : undefined,
+        },
+        homeTeam: gameData.homeTeam,
+        awayTeam: gameData.awayTeam,
+      });
       return;
     }
 
@@ -325,19 +347,35 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     const home = currentThrowSide === "home" ? score : otherScore;
     const away = currentThrowSide === "away" ? score : otherScore;
 
+    const roundNumber = rounds.length + 1;
+    const playerId = playerOrder.find((p) => p.name === currentRound.player)?.id;
+
     const newRound: Round = {
-      roundNumber: rounds.length + 1,
+      roundNumber,
       gameId: gameData.id,
       player: currentRound.player,
-      playerId: playerOrder.find((p) => p.name === currentRound.player)?.id,
+      playerId,
       home,
       away,
       fineAdded: false,
     };
 
-    setRounds((prev) => [...prev, newRound]);
+    const updatedRounds = [...rounds, newRound];
+    setRounds(updatedRounds);
     setCurrentThrowSide(firstThrowTeam);
     setPendingThrowApplied(0);
+
+    // Auto-save this round to DB
+    if (playerId) {
+      saveRoundAuto({
+        gameId: gameData.id,
+        leg: currentLeg,
+        roundNumber,
+        playerId,
+        homeScore: home,
+        awayScore: away,
+      }).then(() => setSavedRoundCount((c) => c + 1));
+    }
 
     // Advance to next player in rotation
     if (shouldRotate && playerOrder.length > 0) {
@@ -353,8 +391,22 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     // Winner check — use computed newScore for current side, state value for other (already updated from first throw)
     const finalHomeScore = currentThrowSide === "home" ? newScore : homeScore;
     const finalAwayScore = currentThrowSide === "away" ? newScore : awayScore;
-    if (finalHomeScore === 0) { setWinner("home"); setHomeLegs((l) => l + 1); }
-    else if (finalAwayScore === 0) { setWinner("away"); setAwayLegs((l) => l + 1); }
+    const roundWinner = finalHomeScore === 0 ? "home" : finalAwayScore === 0 ? "away" : null;
+    if (roundWinner === "home") { setWinner("home"); setHomeLegs((l) => l + 1); }
+    else if (roundWinner === "away") { setWinner("away"); setAwayLegs((l) => l + 1); }
+
+    // Broadcast updated state to display mode viewers
+    broadcastGameState(gameData.id, {
+      homeScore: finalHomeScore,
+      awayScore: finalAwayScore,
+      homeLegs: roundWinner === "home" ? homeLegs + 1 : homeLegs,
+      awayLegs: roundWinner === "away" ? awayLegs + 1 : awayLegs,
+      currentLeg,
+      winner: roundWinner,
+      rounds: updatedRounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+      homeTeam: gameData.homeTeam,
+      awayTeam: gameData.awayTeam,
+    });
   };
 
   const handleUndo = () => {
@@ -378,8 +430,29 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     const last = rounds[rounds.length - 1];
     setHomeScore((s) => s + (last.home ?? 0));
     setAwayScore((s) => s + (last.away ?? 0));
-    setRounds((prev) => prev.slice(0, -1));
+    const updatedRounds = rounds.slice(0, -1);
+    setRounds(updatedRounds);
     setWinner(null);
+
+    // Delete from DB if this round was auto-saved
+    if (savedRoundCount >= rounds.length) {
+      deleteLastRound({ gameId: gameData.id, leg: currentLeg, roundNumber: last.roundNumber });
+      setSavedRoundCount((c) => Math.max(0, c - 1));
+    }
+
+    // Broadcast undo to display mode viewers
+    broadcastGameState(gameData.id, {
+      homeScore: homeScore + (last.home ?? 0),
+      awayScore: awayScore + (last.away ?? 0),
+      homeLegs,
+      awayLegs,
+      currentLeg,
+      winner: null,
+      rounds: updatedRounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+      homeTeam: gameData.homeTeam,
+      awayTeam: gameData.awayTeam,
+    });
+
     // Step back one in the rotation
     if (shouldRotate && playerOrder.length > 0) {
       const prevIndex = (playerIndex - 1 + playerOrder.length) % playerOrder.length;
@@ -435,16 +508,20 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const saveAndAdvance = async (finish: boolean) => {
     setSaving(true);
     try {
-      await createGameRounds({
-        gameId: gameData.id,
-        gameRounds: rounds.map((r, idx) => ({
-          roundNo: idx + 1,
-          roundLeg: currentLeg,
-          homeTeamScore: r.home ?? 0,
-          awayTeamScore: r.away ?? 0,
-          playerId: r.playerId,
-        })),
-      });
+      // Rounds are auto-saved per throw — only save any that slipped through (e.g. no playerId)
+      const unsavedRounds = rounds.slice(savedRoundCount);
+      if (unsavedRounds.length > 0) {
+        await createGameRounds({
+          gameId: gameData.id,
+          gameRounds: unsavedRounds.map((r, idx) => ({
+            roundNo: savedRoundCount + idx + 1,
+            roundLeg: currentLeg,
+            homeTeamScore: r.home ?? 0,
+            awayTeamScore: r.away ?? 0,
+            playerId: r.playerId,
+          })),
+        });
+      }
 
       const playerIds = gameData.players.map((p) => p.id);
       if (playerIds.length > 0) {
@@ -479,6 +556,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setPlayerIndex(0);
         setCurrentThrowSide(firstThrowTeam);
         setPendingThrowApplied(0);
+        setSavedRoundCount(0);
         setCurrentRound((shouldRotate || isSingles) && playerOrder.length > 0 ? { player: playerOrder[0].name } : {});
         toast.success(`Leg ${currentLeg} saved — starting leg ${nextLeg}`);
       }
@@ -546,6 +624,11 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           <Target className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">{gameData.gameType}</span>
           <Badge variant="outline" className="text-xs">Leg {currentLeg}</Badge>
+          <Link href={`/games/${gameData.id}/display`} target="_blank">
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Open display mode">
+              <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </Link>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -731,7 +814,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       )}
 
       {/* Round history (collapsible) */}
-      {rounds.length > 0 && (
+      {(rounds.length > 0 || hasPendingThrow) && (
         <div className="rounded-lg border overflow-hidden">
           <button
             className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium bg-muted/40 hover:bg-muted/60"
@@ -753,6 +836,19 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                   </tr>
                 </thead>
                 <tbody>
+                  {hasPendingThrow && (
+                    <tr className="border-t border-border/50 opacity-50 italic">
+                      <td className="py-1.5 px-2 text-muted-foreground">{rounds.length + 1}</td>
+                      <td className="py-1.5 px-2 font-medium truncate max-w-[80px]">{currentRound.player?.split(" ")[0] ?? "–"}</td>
+                      <td className="py-1.5 px-2 text-center tabular-nums">
+                        {firstThrowTeam === "home" ? pendingThrowScore : "…"}
+                      </td>
+                      <td className="py-1.5 px-2 text-center tabular-nums">
+                        {firstThrowTeam === "away" ? pendingThrowScore : "…"}
+                      </td>
+                      <td />
+                    </tr>
+                  )}
                   {rounds.map((r, idx) => (
                     editingRoundIdx === idx ? (
                       <tr key={idx} className="border-t border-border/50 bg-muted/20">

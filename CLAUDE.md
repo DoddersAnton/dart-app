@@ -86,5 +86,5 @@ export const actionName = actionClient
 ### Environment Variables
 Required in `.env.local`:
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — Clerk auth
-- `NEXT_PUBLIC_DATABASE_URL` — Neon PostgreSQL connection string
+- `DATABASE_URL` — Neon PostgreSQL connection string
 - `NEXT_PUBLIC_PUBLISH_KEY` / `STRIPE_SECRET` — Stripe

@@ -1,9 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher(['/fines(.*)', '/players(.*)', '/teams(.*)', '/fixtures(.*)', '/dashboard(.*)', '/subscriptions(.*)', '/reports(.*)', '/settings(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) await auth.protect()
+  if (isProtectedRoute(req)) await auth.protect();
+  const response = NextResponse.next();
+  response.headers.set('x-pathname', req.nextUrl.pathname);
+  return response;
 })
 
 export const config = {

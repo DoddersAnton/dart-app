@@ -5,7 +5,7 @@ dotenv.config({
     path: '.env.local',
 })
 
-console.log(process.env.NEXT_PUBLIC_DATABASE_URL);
+console.log(process.env.DATABASE_URL);
 
 export default defineConfig({
   schema: './server/schema.ts',
@@ -13,6 +13,6 @@ export default defineConfig({
   dialect: 'postgresql',
   //driver: 'pg',
   dbCredentials: {
-    url: process.env.NEXT_PUBLIC_DATABASE_URL!,
+    url: process.env.DATABASE_URL!,
   },
 })
