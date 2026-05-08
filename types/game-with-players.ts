@@ -7,6 +7,7 @@ export type GameRound = {
   playerName: string;
   homeScore: number;
   awayScore: number;
+  dartsUsed: number;
   fineAdded: boolean;
 };
 

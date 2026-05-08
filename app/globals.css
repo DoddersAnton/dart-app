@@ -10,6 +10,15 @@
   animation: flash-yellow 0.9s ease-out forwards;
 }
 
+@keyframes active-border {
+  0%, 100% { box-shadow: 0 0 0 2px rgb(251 191 36), 0 0 12px 3px rgb(251 191 36 / 0.35); }
+  50%       { box-shadow: 0 0 0 2px rgb(251 191 36 / 0.35), 0 0 4px 0 transparent; }
+}
+
+.animate-active-border {
+  animation: active-border 1.4s ease-in-out infinite;
+}
+
 :root {
   --color-wins: hsl(140, 70%, 45%);
   --color-losses: hsl(0, 70%, 55%);

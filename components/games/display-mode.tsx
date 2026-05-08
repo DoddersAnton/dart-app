@@ -1,11 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { getPusherClient } from "@/lib/pusher-client";
 import { GameStateBroadcast } from "@/server/actions/broadcast-game-state";
 import { GameWithPlayers } from "@/types/game-with-players";
 import { Badge } from "@/components/ui/badge";
-import { Target } from "lucide-react";
+import { Target, UserIcon, Users2Icon, UsersIcon } from "lucide-react";
+
+type SiblingGame = {
+  id: number;
+  gameType: string;
+  homeTeamScore: number;
+  awayTeamScore: number;
+};
+
+const gameTypeIcon: Record<string, React.ReactNode> = {
+  "Team Game": <Users2Icon className="h-3.5 w-3.5" />,
+  Doubles: <UsersIcon className="h-3.5 w-3.5" />,
+  Singles: <UserIcon className="h-3.5 w-3.5" />,
+};
 
 const CHECKOUT_HINTS: Record<number, string> = {
   170: "T20 T20 Bull", 167: "T20 T19 Bull", 164: "T20 T18 Bull", 161: "T20 T17 Bull",
@@ -86,6 +100,11 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
     }
   }
 
+  const shouldRotate = gameData.gameType === "Team Game" || gameData.gameType === "Doubles";
+  const currentPlayerIdx = shouldRotate && gameData.players.length > 0
+    ? currentRounds.length % gameData.players.length
+    : 0;
+
   return {
     homeScore,
     awayScore,
@@ -96,10 +115,14 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
     rounds: currentRounds,
     homeTeam: gameData.homeTeam,
     awayTeam: gameData.awayTeam,
+    appPlayers: gameData.players.map((p, i) => ({
+      name: p.name,
+      isNext: shouldRotate ? i === currentPlayerIdx : i === 0,
+    })),
   };
 }
 
-export default function DisplayMode({ gameData }: { gameData: GameWithPlayers }) {
+export default function DisplayMode({ gameData, siblingGames = [] }: { gameData: GameWithPlayers; siblingGames?: SiblingGame[] }) {
   const [state, setState] = useState<GameStateBroadcast>(() => buildInitialState(gameData));
   const [flashHome, setFlashHome] = useState(false);
   const [flashAway, setFlashAway] = useState(false);
@@ -119,6 +142,20 @@ export default function DisplayMode({ gameData }: { gameData: GameWithPlayers })
       channel.unbind_all();
       pusher.unsubscribe(`game-${gameData.id}`);
     };
+  }, [gameData.id]);
+
+  // Seed opposing players from localStorage (same key the tracker uses)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`opposing-players-${gameData.id}`);
+      if (stored) {
+        const parsed: Array<{ id: string; name: string }> = JSON.parse(stored);
+        setState((prev) => ({
+          ...prev,
+          opposingPlayers: parsed.map((p, i) => ({ name: p.name, isNext: i === 0 })),
+        }));
+      }
+    } catch {}
   }, [gameData.id]);
 
   useEffect(() => {
@@ -191,93 +228,215 @@ export default function DisplayMode({ gameData }: { gameData: GameWithPlayers })
       <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8 w-full max-w-3xl mx-auto">
         {/* Winner banner */}
         {state.winner && (
-          <div className="w-full rounded-2xl bg-green-500/10 border-2 border-green-500 p-6 text-center">
+          <div className="w-full rounded-2xl bg-green-500/10 border-2 border-green-500 p-6 text-center space-y-2">
             <p className="text-4xl font-black text-green-600">
-              {state.winner === "home" ? state.homeTeam : state.awayTeam} wins!
+              {state.winner === "home" ? state.homeTeam : state.awayTeam}{" "}
+              {state.isGameDecided ? "wins the game!" : `wins leg ${state.currentLeg}!`}
             </p>
+            {!state.isGameDecided && (
+              <p className="text-sm text-muted-foreground animate-pulse">Awaiting next leg...</p>
+            )}
           </div>
         )}
 
         {/* Scoreboard — two score cards with legs in the middle */}
-        <div className="w-full grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
-          {/* Home */}
-          <div className={`rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2 min-w-0 ${state.winner === "home" ? "bg-green-500/20 border-2 border-green-500" : "bg-muted/60"}`}>
-            <p className="text-base font-semibold text-muted-foreground leading-tight truncate w-full">{state.homeTeam}</p>
-            <p key={state.homeScore} className={`text-[clamp(3rem,10vw,6rem)] font-black tabular-nums leading-none rounded-lg px-2 ${flashHome ? "flash-yellow" : ""}`}>{state.homeScore}</p>
-            {homeCheckout && state.homeScore <= 170 && (
-              <p className="text-sm text-amber-500 font-semibold leading-tight">{homeCheckout}</p>
-            )}
-            {homeAvg && (
-              <p className="text-xs text-blue-500 font-medium">avg {homeAvg}</p>
-            )}
-          </div>
-
-          {/* Legs */}
-          <div className="flex flex-col items-center justify-center gap-1 px-3">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legs</p>
-            <p className="text-[clamp(2rem,6vw,3.5rem)] font-black tabular-nums whitespace-nowrap leading-none">
-              {state.homeLegs}
-              <span className="text-muted-foreground mx-1 font-light">–</span>
-              {state.awayLegs}
-            </p>
-          </div>
-
-          {/* Away */}
-          <div className={`rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2 min-w-0 ${state.winner === "away" ? "bg-green-500/20 border-2 border-green-500" : "bg-muted/60"}`}>
-            <p className="text-base font-semibold text-muted-foreground leading-tight truncate w-full">{state.awayTeam}</p>
-            <p key={state.awayScore} className={`text-[clamp(3rem,10vw,6rem)] font-black tabular-nums leading-none rounded-lg px-2 ${flashAway ? "flash-yellow" : ""}`}>{state.awayScore}</p>
-            {awayCheckout && state.awayScore <= 170 && (
-              <p className="text-sm text-amber-500 font-semibold leading-tight">{awayCheckout}</p>
-            )}
-            {awayAvg && (
-              <p className="text-xs text-blue-500 font-medium">avg {awayAvg}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Round history */}
-        {(state.rounds.length > 0 || state.pendingRound) && (
-          <div className="w-full rounded-xl border overflow-hidden">
-            <div className="px-4 py-2 bg-muted/40 border-b">
-              <p className="text-sm font-medium">Round history ({state.rounds.length})</p>
-            </div>
-            <div className="max-h-64 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/20 sticky top-0">
-                  <tr>
-                    <th className="py-2 px-3 text-left font-medium text-muted-foreground">R</th>
-                    <th className="py-2 px-3 text-left font-medium text-muted-foreground">Player</th>
-                    <th className="py-2 px-3 text-center font-medium text-muted-foreground">{state.homeTeam}</th>
-                    <th className="py-2 px-3 text-center font-medium text-muted-foreground">{state.awayTeam}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.pendingRound && (
-                    <tr className={`border-t border-border/50 opacity-50 italic ${flashPending ? "flash-yellow" : ""}`}>
-                      <td className="py-2 px-3 text-muted-foreground">{state.pendingRound.roundNumber}</td>
-                      <td className="py-2 px-3 font-medium">{state.pendingRound.player?.split(" ")[0] ?? "–"}</td>
-                      <td className="py-2 px-3 text-center tabular-nums">{state.pendingRound.home ?? "…"}</td>
-                      <td className="py-2 px-3 text-center tabular-nums">{state.pendingRound.away ?? "…"}</td>
-                    </tr>
+        {(() => {
+          // Use explicit currentThrowSide when available, fall back to pendingRound inference
+          let homeActive = false;
+          let awayActive = false;
+          if (!state.winner) {
+            if (state.currentThrowSide) {
+              homeActive = state.currentThrowSide === "home";
+              awayActive = state.currentThrowSide === "away";
+            } else if (state.pendingRound) {
+              homeActive = state.pendingRound.away !== undefined && state.pendingRound.home === undefined;
+              awayActive = state.pendingRound.home !== undefined && state.pendingRound.away === undefined;
+            }
+          }
+          const homePlayers = gameData.isAppTeamHome ? state.appPlayers : state.opposingPlayers;
+          const awayPlayers = gameData.isAppTeamHome ? state.opposingPlayers : state.appPlayers;
+          return (
+            <div className="w-full space-y-3">
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
+                {/* Home */}
+                <div className={`rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2 min-w-0 transition-shadow ${
+                  state.winner === "home" ? "bg-green-500/20 border-2 border-green-500" :
+                  homeActive ? "bg-muted/60 animate-active-border" :
+                  "bg-muted/60"
+                }`}>
+                  <p className="text-base font-semibold text-muted-foreground leading-tight truncate w-full">{state.homeTeam}</p>
+                  <p key={state.homeScore} className={`text-[clamp(3rem,10vw,6rem)] font-black tabular-nums leading-none rounded-lg px-2 ${flashHome ? "flash-yellow" : ""}`}>{state.homeScore}</p>
+                  {homeCheckout && state.homeScore <= 170 && (
+                    <p className="text-sm text-amber-500 font-semibold leading-tight">{homeCheckout}</p>
                   )}
-                  {[...state.rounds].reverse().map((r) => (
-                    <tr key={r.roundNumber} className={`border-t border-border/50 ${newRounds.has(r.roundNumber) ? "flash-yellow" : ""}`}>
-                      <td className="py-2 px-3 text-muted-foreground">{r.roundNumber}</td>
-                      <td className="py-2 px-3 font-medium">{r.player?.split(" ")[0] ?? "–"}</td>
-                      <td className="py-2 px-3 text-center tabular-nums">{r.home ?? "–"}</td>
-                      <td className="py-2 px-3 text-center tabular-nums">{r.away ?? "–"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  {homeAvg && (
+                    <p className="text-xs text-blue-500 font-medium">avg {homeAvg}</p>
+                  )}
+                </div>
+
+                {/* Legs */}
+                <div className="flex flex-col items-center justify-center gap-1 px-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legs</p>
+                  <p className="text-[clamp(2rem,6vw,3.5rem)] font-black tabular-nums whitespace-nowrap leading-none">
+                    {state.homeLegs}
+                    <span className="text-muted-foreground mx-1 font-light">–</span>
+                    {state.awayLegs}
+                  </p>
+                </div>
+
+                {/* Away */}
+                <div className={`rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2 min-w-0 transition-shadow ${
+                  state.winner === "away" ? "bg-green-500/20 border-2 border-green-500" :
+                  awayActive ? "bg-muted/60 animate-active-border" :
+                  "bg-muted/60"
+                }`}>
+                  <p className="text-base font-semibold text-muted-foreground leading-tight truncate w-full">{state.awayTeam}</p>
+                  <p key={state.awayScore} className={`text-[clamp(3rem,10vw,6rem)] font-black tabular-nums leading-none rounded-lg px-2 ${flashAway ? "flash-yellow" : ""}`}>{state.awayScore}</p>
+                  {awayCheckout && state.awayScore <= 170 && (
+                    <p className="text-sm text-amber-500 font-semibold leading-tight">{awayCheckout}</p>
+                  )}
+                  {awayAvg && (
+                    <p className="text-xs text-blue-500 font-medium">avg {awayAvg}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Player name rows */}
+              {(homePlayers?.length || awayPlayers?.length) ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {homePlayers?.map((p, i) => (
+                      <div key={i} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 border text-sm transition-all ${
+                        p.isNext
+                          ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-1 ring-amber-400"
+                          : "bg-muted/50 border-border"
+                      }`}>
+                        <span className="font-medium leading-tight">{p.name || <span className="italic text-muted-foreground">?</span>}</span>
+                        {p.isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide">Next</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {awayPlayers?.map((p, i) => (
+                      <div key={i} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 border text-sm transition-all ${
+                        p.isNext
+                          ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-1 ring-amber-400"
+                          : "bg-muted/50 border-border"
+                      }`}>
+                        <span className="font-medium leading-tight">{p.name || <span className="italic text-muted-foreground">?</span>}</span>
+                        {p.isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide">Next</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          </div>
-        )}
+          );
+        })()}
+
+        {/* Round history — column layout */}
+        {(state.rounds.length > 0 || state.pendingRound) && (() => {
+          const INIT = gameData.gameType === "Team Game" ? 801 : gameData.gameType === "Doubles" ? 601 : 501;
+          let homeRem = INIT;
+          let awayRem = INIT;
+          const ordered = [...state.rounds].sort((a, b) => a.roundNumber - b.roundNumber);
+          const enriched = ordered.map((r) => {
+            homeRem = Math.max(0, homeRem - (r.home ?? 0));
+            awayRem = Math.max(0, awayRem - (r.away ?? 0));
+            return { ...r, homeRem, awayRem };
+          });
+          const displayRounds = [...enriched].reverse();
+          return (
+            <div className="w-full rounded-xl border overflow-hidden">
+              <div className="px-4 py-2 bg-muted/40 border-b">
+                <p className="text-sm font-medium">Round history ({state.rounds.length})</p>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {/* Column headers */}
+                <div className="grid grid-cols-2 divide-x border-b bg-muted/20 sticky top-0">
+                  <p className="py-2 px-4 text-xs font-semibold text-muted-foreground text-center uppercase tracking-wide truncate">{state.homeTeam}</p>
+                  <p className="py-2 px-4 text-xs font-semibold text-muted-foreground text-center uppercase tracking-wide truncate">{state.awayTeam}</p>
+                </div>
+                {/* Pending round */}
+                {state.pendingRound && (() => {
+                  const pendingOppName = state.opposingPlayers?.find((p) => p.isNext)?.name;
+                  const pendingHomeName = gameData.isAppTeamHome ? state.pendingRound.player : pendingOppName;
+                  const pendingAwayName = gameData.isAppTeamHome ? pendingOppName : state.pendingRound.player;
+                  return (
+                    <div className={`grid grid-cols-2 divide-x border-t border-border/50 opacity-60 italic ${flashPending ? "flash-yellow" : ""}`}>
+                      <div className="py-2 px-4 text-center">
+                        <p className="text-sm tabular-nums">{state.pendingRound.home ?? "…"}</p>
+                        {pendingHomeName && <p className="text-[10px] text-muted-foreground truncate">{pendingHomeName}</p>}
+                      </div>
+                      <div className="py-2 px-4 text-center">
+                        <p className="text-sm tabular-nums">{state.pendingRound.away ?? "…"}</p>
+                        {pendingAwayName && <p className="text-[10px] text-muted-foreground truncate">{pendingAwayName}</p>}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* Completed rounds (newest first) */}
+                {displayRounds.map((r) => {
+                  const oppName = state.opposingPlayers?.length
+                    ? state.opposingPlayers[(r.roundNumber - 1) % state.opposingPlayers.length]?.name
+                    : undefined;
+                  const homeName = gameData.isAppTeamHome ? r.player : oppName;
+                  const awayName = gameData.isAppTeamHome ? oppName : r.player;
+                  return (
+                    <div key={r.roundNumber} className={`grid grid-cols-2 divide-x border-t border-border/50 ${newRounds.has(r.roundNumber) ? "flash-yellow" : ""}`}>
+                      <div className="py-2 px-4 text-center">
+                        <div className="flex items-baseline gap-2 justify-center">
+                          <span className="text-sm font-semibold tabular-nums">{r.home ?? "–"}</span>
+                          <span className={`text-xs tabular-nums ${r.homeRem <= 170 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>{r.homeRem}</span>
+                        </div>
+                        {homeName && <p className="text-[10px] text-muted-foreground truncate">{homeName}</p>}
+                      </div>
+                      <div className="py-2 px-4 text-center">
+                        <div className="flex items-baseline gap-2 justify-center">
+                          <span className="text-sm font-semibold tabular-nums">{r.away ?? "–"}</span>
+                          <span className={`text-xs tabular-nums ${r.awayRem <= 170 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>{r.awayRem}</span>
+                        </div>
+                        {awayName && <p className="text-[10px] text-muted-foreground truncate">{awayName}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {state.rounds.length === 0 && !state.pendingRound && !state.winner && (
           <p className="text-muted-foreground text-sm">Waiting for the first round...</p>
         )}
       </div>
+
+      {/* Game navigation — shown when there are sibling games */}
+      {siblingGames.length > 1 && (
+        <div className="border-t px-4 py-3">
+          <div className="flex items-center gap-2 justify-center flex-wrap max-w-3xl mx-auto">
+            <span className="text-xs text-muted-foreground mr-1">Games:</span>
+            {siblingGames.map((g) => {
+              const isCurrent = g.id === gameData.id;
+              return (
+                <Link key={g.id} href={`/games/${g.id}/display`}>
+                  <div
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium border transition-colors ${
+                      isCurrent
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border-border"
+                    }`}
+                  >
+                    {gameTypeIcon[g.gameType] ?? <Target className="h-3.5 w-3.5" />}
+                    <span>{g.gameType}</span>
+                    <span className="tabular-nums text-xs opacity-80">{g.homeTeamScore}–{g.awayTeamScore}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

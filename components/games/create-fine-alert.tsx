@@ -26,7 +26,7 @@ export default function CreateFineAlert({
       open={PopupProps.showFineDialog}
       onOpenChange={PopupProps.setShowFineDialog}
     >
-      <DialogContent>
+      <DialogContent onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle>Fine {PopupProps.player ? PopupProps.player : "this player"}?</DialogTitle>
         </DialogHeader>

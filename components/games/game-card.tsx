@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -9,15 +9,20 @@ import {
   Flag,
   Pencil,
   Rocket,
+  Trash2,
   UserIcon,
   Users2Icon,
   UsersIcon,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useAction } from "next-safe-action/hooks";
 
 import { GameWithPlayers, GameRound } from "@/types/game-with-players";
+import { deleteGameRounds } from "@/server/actions/delete-game-rounds";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import { Separator } from "../ui/separator";
 
 const INITIAL_SCORE: Record<string, number> = {
@@ -155,6 +160,15 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
   const legsToWin = Math.ceil(maxLegsPerGame / 2);
   const gameComplete = gameData.homeTeamScore >= legsToWin || gameData.awayTeamScore >= legsToWin;
 
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { execute: execDeleteRounds, status: deleteStatus } = useAction(deleteGameRounds, {
+    onSuccess: (data) => {
+      if (data.data?.error) toast.error(data.data.error);
+      else { toast.success("Rounds cleared"); setShowDeleteDialog(false); }
+    },
+    onError: () => toast.error("Failed to delete rounds"),
+  });
+
   const homeWon = gameData.homeTeamScore > gameData.awayTeamScore;
   const awayWon = gameData.awayTeamScore > gameData.homeTeamScore;
   const isDraw = !homeWon && !awayWon && gameData.homeTeamScore === gameData.awayTeamScore;
@@ -191,6 +205,11 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
               <Pencil className="h-3.5 w-3.5" /> Edit
             </Button>
           </Link>
+          {hasRounds && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Delete rounds
+            </Button>
+          )}
         </div>
       </div>
 
@@ -342,6 +361,29 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete all rounds?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove all {gameData.rounds.length} round{gameData.rounds.length !== 1 ? "s" : ""} for this game and reset the score to 0–0. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleteStatus === "executing"}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteStatus === "executing"}
+              onClick={() => execDeleteRounds({ gameId: gameData.id })}
+            >
+              {deleteStatus === "executing" ? "Deleting..." : "Delete rounds"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -9,6 +9,7 @@ export type GameStateBroadcast = {
   awayLegs: number;
   currentLeg: number;
   winner: "home" | "away" | null;
+  isGameDecided?: boolean;
   rounds: Array<{
     roundNumber: number;
     player?: string;
@@ -23,6 +24,9 @@ export type GameStateBroadcast = {
   };
   homeTeam: string;
   awayTeam: string;
+  currentThrowSide?: "home" | "away";
+  appPlayers?: Array<{ name: string; isNext: boolean }>;
+  opposingPlayers?: Array<{ name: string; isNext: boolean }>;
 };
 
 export async function broadcastGameState(

@@ -54,6 +54,7 @@ export async function getGame(gameId: number) {
       playerName: playerMap[r.playerId]?.name ?? "Unknown",
       homeScore: r.homeScore,
       awayScore: r.awayScore,
+      dartsUsed: r.dartsUsed,
       fineAdded: r.fineAdded,
     }));
 

@@ -82,6 +82,7 @@ export const players = pgTable("players", {
     }),
     homeScore: integer("home_score").default(0).notNull(),
     awayScore: integer("away_score").default(0).notNull(),
+    dartsUsed: integer("darts_used").default(3).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     fineAdded: boolean("fine_added").default(false).notNull(),
