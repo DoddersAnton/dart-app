@@ -32,7 +32,7 @@ type Record = {
   locationMapsLink: string | null;
 };
 
-type PlayerEntry = { id: number; name: string };
+type PlayerEntry = { id: number; name: string; note?: string | null };
 type FixtureCounts = { going: PlayerEntry[]; notGoing: PlayerEntry[]; pending: PlayerEntry[] };
 
 function FixtureAvailabilityCard({
@@ -98,13 +98,18 @@ function FixtureAvailabilityCard({
                   </span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-3 space-y-3" align="start">
+              <PopoverContent className="w-64 p-3 space-y-3" align="start">
                 <div>
                   <p className="flex items-center gap-1.5 text-xs font-semibold text-green-600 mb-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Going ({counts.going.length})
                   </p>
                   {counts.going.length > 0
-                    ? counts.going.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                    ? counts.going.map((p) => (
+                        <div key={p.id} className="pl-5 mb-1">
+                          <p className="text-xs text-muted-foreground">{p.name}</p>
+                          {p.note && <p className="text-xs text-muted-foreground/70 italic">{p.note}</p>}
+                        </div>
+                      ))
                     : <p className="text-xs text-muted-foreground pl-5">None yet</p>}
                 </div>
                 <Separator />
@@ -113,7 +118,12 @@ function FixtureAvailabilityCard({
                     <XCircle className="h-3.5 w-3.5" /> Not going ({counts.notGoing.length})
                   </p>
                   {counts.notGoing.length > 0
-                    ? counts.notGoing.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                    ? counts.notGoing.map((p) => (
+                        <div key={p.id} className="pl-5 mb-1">
+                          <p className="text-xs text-muted-foreground">{p.name}</p>
+                          {p.note && <p className="text-xs text-muted-foreground/70 italic">{p.note}</p>}
+                        </div>
+                      ))
                     : <p className="text-xs text-muted-foreground pl-5">None</p>}
                 </div>
                 <Separator />
@@ -122,7 +132,11 @@ function FixtureAvailabilityCard({
                     <Clock className="h-3.5 w-3.5" /> Pending ({counts.pending.length})
                   </p>
                   {counts.pending.length > 0
-                    ? counts.pending.map((p) => <p key={p.id} className="text-xs text-muted-foreground pl-5">{p.name}</p>)
+                    ? counts.pending.map((p) => (
+                        <div key={p.id} className="pl-5 mb-1">
+                          <p className="text-xs text-muted-foreground">{p.name}</p>
+                        </div>
+                      ))
                     : <p className="text-xs text-muted-foreground pl-5">None</p>}
                 </div>
               </PopoverContent>

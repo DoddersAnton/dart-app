@@ -26,7 +26,6 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Separator } from "../ui/separator";
 import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
 import GameFormPopup from "./add-game-popup";
@@ -63,26 +62,36 @@ function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-function PlayerAvatar({ player }: { player: { playerName: string; playerImgUrl: string | null } }) {
+function PlayerAvatar({ player }: { player: AvailabilityRecord }) {
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex items-start gap-2.5 py-2.5">
       {player.playerImgUrl ? (
         <Image
           src={player.playerImgUrl}
           alt={player.playerName}
-          width={36}
-          height={36}
+          width={28}
+          height={28}
           unoptimized
-          className="h-9 w-9 rounded-full object-cover border"
+          className="h-7 w-7 rounded-full object-cover border shrink-0 mt-0.5"
         />
       ) : (
-        <div className="h-9 w-9 rounded-full border bg-muted flex items-center justify-center text-xs font-semibold">
+        <div className="h-7 w-7 rounded-full border bg-muted flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
           {getInitials(player.playerName)}
         </div>
       )}
-      <span className="text-[10px] text-muted-foreground text-center leading-tight max-w-[52px] truncate">
-        {player.playerName.split(" ")[0]}
-      </span>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium">{player.playerName}</span>
+        {player.note && (
+          <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{player.note}</p>
+        )}
+      </div>
+      {player.attending === true ? (
+        <Badge className="bg-green-600 hover:bg-green-600 text-xs shrink-0 mt-0.5">Going</Badge>
+      ) : player.attending === false ? (
+        <Badge variant="destructive" className="text-xs shrink-0 mt-0.5">Not going</Badge>
+      ) : (
+        <Badge variant="outline" className="text-amber-500 border-amber-400 text-xs shrink-0 mt-0.5">Pending</Badge>
+      )}
     </div>
   );
 }
@@ -175,6 +184,10 @@ export default function FixtureCard({
   const going = availability.filter((r) => r.attending === true);
   const notGoing = availability.filter((r) => r.attending === false);
   const pending = availability.filter((r) => r.attending === null);
+
+  const [goingOpen, setGoingOpen] = useState(false);
+  const [notGoingOpen, setNotGoingOpen] = useState(false);
+  const [pendingOpen, setPendingOpen] = useState(false);
 
   const matchDate = fixtureData.matchDate ? new Date(fixtureData.matchDate) : null;
 
@@ -352,49 +365,68 @@ export default function FixtureCard({
               )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-0 divide-y">
             {/* Going */}
             <div>
-              <div className="flex items-center gap-1.5 mb-3">
-                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                <span className="text-xs font-semibold text-green-600">Going ({going.length})</span>
-              </div>
-              {going.length > 0 ? (
-                <div className="flex flex-wrap gap-3">
-                  {going.map((r) => <PlayerAvatar key={r.playerId} player={r} />)}
+              <button
+                className="flex items-center justify-between w-full py-2.5 text-left"
+                onClick={() => setGoingOpen((v) => !v)}
+              >
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                  <span className="text-xs font-semibold text-green-600">Going ({going.length})</span>
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${goingOpen ? "rotate-180" : ""}`} />
+              </button>
+              {goingOpen && (
+                <div className="divide-y pb-1">
+                  {going.length > 0
+                    ? going.map((r) => <PlayerAvatar key={r.playerId} player={r} />)
+                    : <p className="text-xs text-muted-foreground py-2 pl-5">No one confirmed yet</p>}
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No one confirmed yet</p>
               )}
             </div>
-
-            <Separator />
 
             {/* Not going */}
             <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <XCircle className="h-3.5 w-3.5 text-destructive" />
-                <span className="text-xs font-semibold text-destructive">Not going ({notGoing.length})</span>
-              </div>
-              {notGoing.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {notGoing.map((r) => (
-                    <Badge key={r.playerId} variant="outline" className="text-xs text-muted-foreground">
-                      {r.playerName}
-                    </Badge>
-                  ))}
+              <button
+                className="flex items-center justify-between w-full py-2.5 text-left"
+                onClick={() => setNotGoingOpen((v) => !v)}
+              >
+                <span className="flex items-center gap-1.5">
+                  <XCircle className="h-3.5 w-3.5 text-destructive" />
+                  <span className="text-xs font-semibold text-destructive">Not going ({notGoing.length})</span>
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${notGoingOpen ? "rotate-180" : ""}`} />
+              </button>
+              {notGoingOpen && (
+                <div className="divide-y pb-1">
+                  {notGoing.length > 0
+                    ? notGoing.map((r) => <PlayerAvatar key={r.playerId} player={r} />)
+                    : <p className="text-xs text-muted-foreground py-2 pl-5">None</p>}
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">None</p>
               )}
             </div>
 
-            <Separator />
-
             {/* Pending */}
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-amber-500" />
-              <span className="text-xs font-semibold text-amber-500">Awaiting response ({pending.length})</span>
+            <div>
+              <button
+                className="flex items-center justify-between w-full py-2.5 text-left"
+                onClick={() => setPendingOpen((v) => !v)}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-xs font-semibold text-amber-500">Awaiting response ({pending.length})</span>
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${pendingOpen ? "rotate-180" : ""}`} />
+              </button>
+              {pendingOpen && (
+                <div className="divide-y pb-1">
+                  {pending.length > 0
+                    ? pending.map((r) => <PlayerAvatar key={r.playerId} player={r} />)
+                    : <p className="text-xs text-muted-foreground py-2 pl-5">None</p>}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

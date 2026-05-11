@@ -40,7 +40,7 @@ export default async function PlayerAvailabilityPage({
   const fixtureCounts = fixtureIds.reduce<Record<number, FixtureAttendance>>(
     (acc, fid) => {
       const rows = allAttendance.filter((a) => a.fixtureId === fid);
-      const toEntry = (a: typeof rows[0]) => ({ id: a.playerId, name: playerMap[a.playerId] ?? "Unknown" });
+      const toEntry = (a: typeof rows[0]) => ({ id: a.playerId, name: playerMap[a.playerId] ?? "Unknown", note: a.note });
       acc[fid] = {
         going: rows.filter((a) => a.attending === true).map(toEntry),
         notGoing: rows.filter((a) => a.attending === false).map(toEntry),
