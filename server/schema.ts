@@ -228,3 +228,52 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
       references: [fines.id],
     }),
   }));
+
+// ── Practice mode ──────────────────────────────────────────────────────────
+
+export const practiceGames = pgTable("practice_games", {
+  id: serial("id").primaryKey(),
+  gameType: varchar("game_type", { length: 50 }).notNull(),
+  legs: integer("legs").default(3).notNull(),
+  status: varchar("status", { length: 50 }).default("in_progress").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const practicePlayers = pgTable("practice_players", {
+  id: serial("id").primaryKey(),
+  practiceGameId: integer("practice_game_id").notNull().references(() => practiceGames.id, { onDelete: "cascade" }),
+  playerId: integer("player_id").references(() => players.id, { onDelete: "set null" }),
+  guestName: varchar("guest_name", { length: 255 }),
+  orderIndex: integer("order_index").notNull(),
+  legsWon: integer("legs_won").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const practiceRounds = pgTable("practice_rounds", {
+  id: serial("id").primaryKey(),
+  practiceGameId: integer("practice_game_id").notNull().references(() => practiceGames.id, { onDelete: "cascade" }),
+  practicePlyrId: integer("practice_plyr_id").notNull().references(() => practicePlayers.id, { onDelete: "cascade" }),
+  leg: integer("leg").default(1).notNull(),
+  throwNumber: integer("throw_number").notNull(),
+  score: integer("score").notNull(),
+  remainingScore: integer("remaining_score").notNull(),
+  dartsUsed: integer("darts_used").default(3).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const practiceGamesRelations = relations(practiceGames, ({ many }) => ({
+  players: many(practicePlayers),
+  rounds: many(practiceRounds),
+}));
+
+export const practicePlayersRelations = relations(practicePlayers, ({ one, many }) => ({
+  game: one(practiceGames, { fields: [practicePlayers.practiceGameId], references: [practiceGames.id] }),
+  player: one(players, { fields: [practicePlayers.playerId], references: [players.id] }),
+  rounds: many(practiceRounds),
+}));
+
+export const practiceRoundsRelations = relations(practiceRounds, ({ one }) => ({
+  game: one(practiceGames, { fields: [practiceRounds.practiceGameId], references: [practiceGames.id] }),
+  practicePlayer: one(practicePlayers, { fields: [practiceRounds.practicePlyrId], references: [practicePlayers.id] }),
+}));

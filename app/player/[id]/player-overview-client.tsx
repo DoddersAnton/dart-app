@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Camera, ImageUp, Link2, CheckCircle2, Target, PoundSterling, TrendingUp } from "lucide-react";
+import { Camera, ImageUp, Link2, CheckCircle2, Target, PoundSterling, TrendingUp, Dumbbell } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart } from "recharts";
 
 import { updatePlayerImageUrl } from "@/server/actions/update-player-img";
@@ -123,7 +123,13 @@ export function PlayerOverviewClient(props: Props) {
             </div>
           </div>
 
-          <div className="flex">
+          <div className="flex items-center gap-2">
+            <Link href={`/practice/new?playerId=${props.player.id}`}>
+              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                <Dumbbell className="h-3.5 w-3.5" /> Practice
+              </Button>
+            </Link>
+            <div className="flex">
             <Button variant="outline" size="icon" aria-label="Link player" onClick={handleLinkPlayer} disabled={linking || linked}
               className={`rounded-r-none border-r-0 ${linked ? "border-green-500 text-green-500" : ""}`}>
               {linked ? <CheckCircle2 className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
@@ -141,6 +147,7 @@ export function PlayerOverviewClient(props: Props) {
                 <UploadThingImageUploader onUploadComplete={updatePlayerAvatar} />
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </CardHeader>
       </Card>
