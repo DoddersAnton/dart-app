@@ -117,11 +117,15 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
               <tr key={r.id} className={`border-t border-border/50 ${idx % 2 === 0 ? "" : "bg-muted/20"}`}>
                 <td className="py-1.5 px-3 text-muted-foreground tabular-nums">{r.roundNumber}</td>
                 <td className="py-1.5 px-3 font-medium max-w-[80px] truncate">{r.playerName.split(" ")[0]}</td>
-                <td className="py-1.5 px-3 text-center tabular-nums font-medium">{r.homeScore}</td>
+                <td className="py-1.5 px-3 text-center tabular-nums">
+                  <span className={r.homeScore === 180 ? "font-black text-amber-500 underline decoration-2 underline-offset-2" : r.homeScore >= 100 ? "font-bold text-orange-500 underline underline-offset-2" : "font-medium"}>{r.homeScore}</span>
+                </td>
                 <td className={`py-1.5 px-3 text-center tabular-nums text-xs ${r.homeRemaining <= 170 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
                   {r.homeRemaining}
                 </td>
-                <td className="py-1.5 px-3 text-center tabular-nums font-medium">{r.awayScore}</td>
+                <td className="py-1.5 px-3 text-center tabular-nums">
+                  <span className={r.awayScore === 180 ? "font-black text-amber-500 underline decoration-2 underline-offset-2" : r.awayScore >= 100 ? "font-bold text-orange-500 underline underline-offset-2" : "font-medium"}>{r.awayScore}</span>
+                </td>
                 <td className={`py-1.5 px-3 text-center tabular-nums text-xs ${r.awayRemaining <= 170 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
                   {r.awayRemaining}
                 </td>

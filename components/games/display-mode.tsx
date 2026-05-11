@@ -385,15 +385,15 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
                   return (
                     <div key={r.roundNumber} className={`grid grid-cols-2 divide-x border-t border-border/50 ${newRounds.has(r.roundNumber) ? "flash-yellow" : ""}`}>
                       <div className="py-2 px-4 text-center">
-                        <div className="flex items-baseline gap-2 justify-center">
-                          <span className="text-sm font-semibold tabular-nums">{r.home ?? "–"}</span>
+                        <div className="flex items-baseline gap-2 justify-center flex-wrap">
+                          <span className={`text-sm tabular-nums ${r.home === 180 ? "font-black text-amber-500 underline decoration-2 underline-offset-2" : (r.home ?? 0) >= 100 ? "font-bold text-orange-500 underline underline-offset-2" : "font-semibold"}`}>{r.home ?? "–"}</span>
                           <span className={`text-xs tabular-nums ${r.homeRem <= 170 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>{r.homeRem}</span>
                         </div>
                         {homeName && <p className="text-[10px] text-muted-foreground truncate">{homeName}</p>}
                       </div>
                       <div className="py-2 px-4 text-center">
-                        <div className="flex items-baseline gap-2 justify-center">
-                          <span className="text-sm font-semibold tabular-nums">{r.away ?? "–"}</span>
+                        <div className="flex items-baseline gap-2 justify-center flex-wrap">
+                          <span className={`text-sm tabular-nums ${r.away === 180 ? "font-black text-amber-500 underline decoration-2 underline-offset-2" : (r.away ?? 0) >= 100 ? "font-bold text-orange-500 underline underline-offset-2" : "font-semibold"}`}>{r.away ?? "–"}</span>
                           <span className={`text-xs tabular-nums ${r.awayRem <= 170 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>{r.awayRem}</span>
                         </div>
                         {awayName && <p className="text-[10px] text-muted-foreground truncate">{awayName}</p>}
