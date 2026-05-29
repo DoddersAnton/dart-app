@@ -9,6 +9,7 @@ export type PracticeGameFull = {
   gameType: string;
   legs: number;
   status: string;
+  gameMode: string;
   createdAt: Date | null;
   players: Array<{
     id: number;
@@ -18,6 +19,7 @@ export type PracticeGameFull = {
     orderIndex: number;
     legsWon: number;
     imgUrl: string | null;
+    team: string | null;
   }>;
   rounds: Array<{
     id: number;
@@ -43,6 +45,7 @@ export async function getPracticeGame(id: number): Promise<PracticeGameFull | nu
       guestName: practicePlayers.guestName,
       orderIndex: practicePlayers.orderIndex,
       legsWon: practicePlayers.legsWon,
+      team: practicePlayers.team,
       playerName: players.name,
       playerImgUrl: players.imgUrl,
     })
@@ -62,6 +65,7 @@ export async function getPracticeGame(id: number): Promise<PracticeGameFull | nu
     gameType: game.gameType,
     legs: game.legs,
     status: game.status,
+    gameMode: game.gameMode ?? "singles",
     createdAt: game.createdAt,
     players: pPlayers.map((p) => ({
       id: p.id,
@@ -71,6 +75,7 @@ export async function getPracticeGame(id: number): Promise<PracticeGameFull | nu
       orderIndex: p.orderIndex,
       legsWon: p.legsWon,
       imgUrl: p.playerImgUrl,
+      team: p.team ?? null,
     })),
     rounds: rounds.map((r) => ({
       id: r.id,

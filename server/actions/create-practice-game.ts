@@ -6,12 +6,13 @@ import { practiceGames, practicePlayers } from "../schema";
 export async function createPracticeGame(params: {
   gameType: string;
   legs: number;
-  players: Array<{ playerId?: number; guestName?: string }>;
+  gameMode?: string;
+  players: Array<{ playerId?: number; guestName?: string; team?: string }>;
 }): Promise<{ id: number } | { error: string }> {
   try {
     const [game] = await db
       .insert(practiceGames)
-      .values({ gameType: params.gameType, legs: params.legs })
+      .values({ gameType: params.gameType, legs: params.legs, gameMode: params.gameMode ?? "singles" })
       .returning({ id: practiceGames.id });
 
     await db.insert(practicePlayers).values(
@@ -20,6 +21,7 @@ export async function createPracticeGame(params: {
         playerId: p.playerId ?? null,
         guestName: p.guestName ?? null,
         orderIndex: i,
+        team: p.team ?? null,
       }))
     );
 

@@ -113,6 +113,13 @@
       "when": 1780056095539,
       "tag": "0015_nappy_raza",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780068325395,
+      "tag": "0016_modern_shaman",
+      "breakpoints": true
     }
   ]
 }

@@ -12,7 +12,6 @@ import { deleteLastPracticeThrow } from "@/server/actions/delete-last-practice-t
 import { completePracticeGame } from "@/server/actions/complete-practice-game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 // ── Checkout hints ──────────────────────────────────────────────────────────
@@ -56,12 +55,21 @@ function scoreClass(score: number) {
   return "";
 }
 
+function calc3DartAvg(throws: LocalThrow[], practicePlyrId: number): number | null {
+  const pt = throws.filter((t) => t.practicePlyrId === practicePlyrId);
+  if (!pt.length) return null;
+  const totalScore = pt.reduce((s, t) => s + t.score, 0);
+  const totalDarts = pt.reduce((s, t) => s + t.dartsUsed, 0);
+  return totalDarts > 0 ? (totalScore / totalDarts) * 3 : null;
+}
+
 // ── Initial state ───────────────────────────────────────────────────────────
 function computeInitialState(
   players: PracticePlayer[],
   rounds: PracticeGameFull["rounds"],
   initialScore: number,
-  maxLegs: number
+  maxLegs: number,
+  gameMode: string
 ) {
   const legsWon = players.map(() => 0);
   let currentLeg = 1;
@@ -78,8 +86,13 @@ function computeInitialState(
 
     const winnerThrow = legThrows.find((t) => t.remainingScore === 0);
     if (winnerThrow) {
-      const idx = players.findIndex((p) => p.id === winnerThrow.practicePlyrId);
-      if (idx >= 0) legsWon[idx]++;
+      const winnerPlayer = players.find((p) => p.id === winnerThrow.practicePlyrId);
+      if (gameMode === "teams") {
+        players.forEach((p, i) => { if (p.team === winnerPlayer?.team) legsWon[i]++; });
+      } else {
+        const idx = players.findIndex((p) => p.id === winnerThrow.practicePlyrId);
+        if (idx >= 0) legsWon[idx]++;
+      }
       allCompletedThrows.push(...legThrows);
       currentLeg = leg + 1;
     } else {
@@ -88,26 +101,27 @@ function computeInitialState(
     }
   }
 
-  const scores = players.map((p) => {
-    const playerThrows = currentLegThrows.filter((t) => t.practicePlyrId === p.id);
-    return playerThrows.length > 0
-      ? playerThrows[playerThrows.length - 1].remainingScore
-      : initialScore;
-  });
+  let scores: number[];
+  if (gameMode === "teams") {
+    scores = players.map((p) => {
+      const teamThrows = currentLegThrows.filter((t) => {
+        const tp = players.find((pl) => pl.id === t.practicePlyrId);
+        return tp?.team === p.team;
+      });
+      return teamThrows.length > 0 ? teamThrows[teamThrows.length - 1].remainingScore : initialScore;
+    });
+  } else {
+    scores = players.map((p) => {
+      const pt = currentLegThrows.filter((t) => t.practicePlyrId === p.id);
+      return pt.length > 0 ? pt[pt.length - 1].remainingScore : initialScore;
+    });
+  }
 
   const currentPlayerIdx = currentLegThrows.length % players.length;
   const legsToWin = Math.ceil(maxLegs / 2);
   const winnerIdx = legsWon.findIndex((l) => l >= legsToWin);
 
-  return {
-    legsWon,
-    currentLeg,
-    currentLegThrows,
-    allCompletedThrows,
-    scores,
-    currentPlayerIdx,
-    winnerIdx: winnerIdx >= 0 ? winnerIdx : null,
-  };
+  return { legsWon, currentLeg, currentLegThrows, allCompletedThrows, scores, currentPlayerIdx, winnerIdx: winnerIdx >= 0 ? winnerIdx : null };
 }
 
 // ── Player score card ───────────────────────────────────────────────────────
@@ -118,6 +132,7 @@ function PlayerCard({
   maxLegs,
   isActive,
   isWinner,
+  avg,
 }: {
   player: PracticePlayer;
   score: number;
@@ -125,7 +140,10 @@ function PlayerCard({
   maxLegs: number;
   isActive: boolean;
   isWinner: boolean;
+  avg: number | null;
 }) {
+  const teamColor = player.team === "A" ? "bg-blue-500" : player.team === "B" ? "bg-red-500" : null;
+
   return (
     <div
       className={`relative rounded-xl border-2 p-3 text-center transition-all ${
@@ -136,18 +154,14 @@ function PlayerCard({
           : "border-border"
       }`}
     >
-      {isWinner && (
-        <Trophy className="absolute top-2 right-2 h-4 w-4 text-yellow-500" />
+      {isWinner && <Trophy className="absolute top-2 right-2 h-4 w-4 text-yellow-500" />}
+      {teamColor && (
+        <span className={`absolute top-2 left-2 ${teamColor} text-white text-[10px] font-bold px-1.5 py-0.5 rounded`}>
+          {player.team}
+        </span>
       )}
       {player.imgUrl ? (
-        <Image
-          src={player.imgUrl}
-          alt={player.name}
-          width={36}
-          height={36}
-          unoptimized
-          className="h-9 w-9 rounded-full object-cover border mx-auto mb-1"
-        />
+        <Image src={player.imgUrl} alt={player.name} width={36} height={36} unoptimized className="h-9 w-9 rounded-full object-cover border mx-auto mb-1" />
       ) : (
         <div className="h-9 w-9 rounded-full border bg-muted flex items-center justify-center text-xs font-semibold mx-auto mb-1">
           {getInitials(player.name)}
@@ -159,12 +173,14 @@ function PlayerCard({
       </p>
       <div className="flex justify-center gap-1 mt-1.5">
         {Array.from({ length: maxLegs }).map((_, i) => (
-          <span
-            key={i}
-            className={`h-2 w-2 rounded-full ${i < legsWon ? "bg-primary" : "bg-muted"}`}
-          />
+          <span key={i} className={`h-2 w-2 rounded-full ${i < legsWon ? "bg-primary" : "bg-muted"}`} />
         ))}
       </div>
+      {avg !== null && (
+        <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-1 tabular-nums">
+          avg {avg.toFixed(1)}
+        </p>
+      )}
     </div>
   );
 }
@@ -172,7 +188,9 @@ function PlayerCard({
 // ── Main component ──────────────────────────────────────────────────────────
 export default function PracticeTracker({ gameData }: { gameData: PracticeGameFull }) {
   const initialScore = gameData.gameType === "801" ? 801 : gameData.gameType === "601" ? 601 : 501;
-  const init = computeInitialState(gameData.players, gameData.rounds, initialScore, gameData.legs);
+  const gameMode = gameData.gameMode ?? "singles";
+  const isTeams = gameMode === "teams";
+  const init = computeInitialState(gameData.players, gameData.rounds, initialScore, gameData.legs, gameMode);
 
   const [scores, setScores] = useState(init.scores);
   const [legsWon, setLegsWon] = useState(init.legsWon);
@@ -197,6 +215,7 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
   const players = gameData.players;
   const legsToWin = Math.ceil(gameData.legs / 2);
   const currentPlayer = players[currentPlayerIdx];
+  const currentTeam = isTeams ? currentPlayer?.team : null;
 
   const score = parseInt(inputValue);
   const remaining = scores[currentPlayerIdx];
@@ -205,29 +224,21 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
   const isCheckout = preview === 0;
   const hint = remaining <= 170 && CHECKOUT_HINTS[remaining] ? CHECKOUT_HINTS[remaining] : null;
 
+  const allThrows = [...allCompletedThrows, ...currentLegThrows];
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (saving || winner !== null) return;
 
     const s = parseInt(inputValue);
-    if (isNaN(s) || s < 0 || s > 180) {
-      toast.error("Enter a valid score (0–180)");
-      return;
-    }
+    if (isNaN(s) || s < 0 || s > 180) { toast.error("Enter a valid score (0–180)"); return; }
 
     const rem = scores[currentPlayerIdx];
     const newRem = rem - s;
-
-    if (newRem < 0 || newRem === 1) {
-      toast.error("Bust!");
-      setInputValue("");
-      return;
-    }
+    if (newRem < 0 || newRem === 1) { toast.error("Bust!"); setInputValue(""); return; }
 
     setLowScoreWarning(null);
-    if (s <= 20 && rem > 170) {
-      setLowScoreWarning(`Low score: ${s}`);
-    }
+    if (s <= 20 && rem > 170) setLowScoreWarning(`Low score: ${s}`);
 
     setSaving(true);
     const throwNumber = currentLegThrows.length + 1;
@@ -257,23 +268,27 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
       const updatedLegThrows = [...currentLegThrows, newThrow];
 
       if (newRem === 0) {
-        // Leg won
         setSelectedDarts(3);
         const newLegsWon = [...legsWon];
-        newLegsWon[currentPlayerIdx]++;
+        if (isTeams) {
+          players.forEach((p, i) => { if (p.team === currentTeam) newLegsWon[i]++; });
+        } else {
+          newLegsWon[currentPlayerIdx]++;
+        }
         setLegsWon(newLegsWon);
         setAllCompletedThrows((prev) => [...prev, ...updatedLegThrows]);
 
         if (newLegsWon[currentPlayerIdx] >= legsToWin) {
-          // Game over
           setWinner(currentPlayerIdx);
           await completePracticeGame(
             gameData.id,
             players.map((p, i) => ({ practicePlyrId: p.id, legs: newLegsWon[i] }))
           );
-          toast.success(`${currentPlayer.name} wins!`);
+          const winMsg = isTeams ? `Team ${currentTeam} wins!` : `${currentPlayer.name} wins!`;
+          toast.success(winMsg);
         } else {
-          toast.success(`${currentPlayer.name} wins leg ${currentLeg}!`);
+          const legMsg = isTeams ? `Team ${currentTeam} wins leg ${currentLeg}!` : `${currentPlayer.name} wins leg ${currentLeg}!`;
+          toast.success(legMsg);
           setCurrentLeg((l) => l + 1);
           setCurrentLegThrows([]);
           setScores(players.map(() => initialScore));
@@ -281,7 +296,11 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
         }
       } else {
         const newScores = [...scores];
-        newScores[currentPlayerIdx] = newRem;
+        if (isTeams) {
+          players.forEach((p, i) => { if (p.team === currentTeam) newScores[i] = newRem; });
+        } else {
+          newScores[currentPlayerIdx] = newRem;
+        }
         setScores(newScores);
         setCurrentLegThrows(updatedLegThrows);
         setCurrentPlayerIdx((prev) => (prev + 1) % players.length);
@@ -303,6 +322,13 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
       const newThrows = currentLegThrows.slice(0, -1);
       setCurrentLegThrows(newThrows);
       const newScores = players.map((p) => {
+        if (isTeams) {
+          const teamThrows = newThrows.filter((t) => {
+            const tp = players.find((pl) => pl.id === t.practicePlyrId);
+            return tp?.team === p.team;
+          });
+          return teamThrows.length > 0 ? teamThrows[teamThrows.length - 1].remainingScore : initialScore;
+        }
         const pt = newThrows.filter((t) => t.practicePlyrId === p.id);
         return pt.length > 0 ? pt[pt.length - 1].remainingScore : initialScore;
       });
@@ -317,7 +343,6 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
     }
   };
 
-  // Group history by leg for display
   const historyLegs = (() => {
     const legMap = new Map<number, LocalThrow[]>();
     for (const t of [...allCompletedThrows, ...currentLegThrows]) {
@@ -326,6 +351,10 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
     }
     return Array.from(legMap.entries()).sort(([a], [b]) => b - a);
   })();
+
+  const modeBadge = isTeams
+    ? <span className="text-xs bg-muted px-2 py-0.5 rounded font-medium">Teams</span>
+    : null;
 
   return (
     <div className="space-y-4">
@@ -338,21 +367,18 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
             </Button>
           </Link>
           <div>
-            <p className="text-xs text-muted-foreground">Practice · {gameData.gameType} · Best of {gameData.legs}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground">Practice · {gameData.gameType} · Best of {gameData.legs}</p>
+              {modeBadge}
+            </div>
             {gameData.createdAt && (
               <p className="text-xs text-muted-foreground">{format(gameData.createdAt, "d MMM yyyy")}</p>
             )}
           </div>
         </div>
         {winner === null && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleUndo}
-            disabled={currentLegThrows.length === 0 || saving}
-            title="Undo last throw"
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUndo}
+            disabled={currentLegThrows.length === 0 || saving} title="Undo last throw">
             <RotateCcw className="h-4 w-4" />
           </Button>
         )}
@@ -368,7 +394,8 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
             legsWon={legsWon[i]}
             maxLegs={gameData.legs}
             isActive={!winner && i === currentPlayerIdx}
-            isWinner={winner === i}
+            isWinner={winner === i || (isTeams && winner !== null && players[winner]?.team === p.team)}
+            avg={calc3DartAvg(allThrows, p.id)}
           />
         ))}
       </div>
@@ -378,10 +405,21 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
         <Card className="border-yellow-400 bg-yellow-50 dark:bg-yellow-950/20">
           <CardContent className="py-4 text-center space-y-3">
             <Trophy className="h-8 w-8 mx-auto text-yellow-500" />
-            <p className="text-lg font-bold">{players[winner].name} wins!</p>
-            <p className="text-sm text-muted-foreground">
-              {legsWon[winner]}–{Math.max(...legsWon.filter((_, i) => i !== winner))}
-            </p>
+            {isTeams ? (
+              <>
+                <p className="text-lg font-bold">Team {players[winner].team} wins!</p>
+                <p className="text-sm text-muted-foreground">
+                  {legsWon[winner]}–{Math.max(...legsWon.filter((_, i) => players[i].team !== players[winner].team))}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-bold">{players[winner].name} wins!</p>
+                <p className="text-sm text-muted-foreground">
+                  {legsWon[winner]}–{Math.max(...legsWon.filter((_, i) => i !== winner))}
+                </p>
+              </>
+            )}
             <Link href={`/practice/new${players[winner]?.playerId ? `?playerId=${players[winner].playerId}` : ""}`}>
               <Button variant="outline" size="sm" className="gap-1.5">
                 <Target className="h-4 w-4" /> Play again
@@ -396,6 +434,11 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
         <div className="space-y-3">
           <p className="text-sm font-semibold text-center">
             {currentPlayer.name}&apos;s throw
+            {isTeams && currentTeam && (
+              <span className={`ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded text-white ${currentTeam === "A" ? "bg-blue-500" : "bg-red-500"}`}>
+                Team {currentTeam}
+              </span>
+            )}
             <span className="text-xs font-normal text-muted-foreground ml-1.5">· Leg {currentLeg}</span>
           </p>
 
@@ -437,9 +480,7 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
                 Remaining: <span className="font-semibold">{preview}</span>
               </p>
             )}
-            {isBust && (
-              <p className="text-xs text-center text-destructive font-semibold">Bust!</p>
-            )}
+            {isBust && <p className="text-xs text-center text-destructive font-semibold">Bust!</p>}
 
             {isCheckout && (
               <div className="space-y-1.5">
@@ -447,14 +488,10 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
                 <div className="flex items-center gap-2 justify-center">
                   <p className="text-xs text-muted-foreground">Darts used:</p>
                   {([1, 2, 3] as const).map((n) => (
-                    <Button
-                      key={n}
-                      type="button"
-                      size="sm"
+                    <Button key={n} type="button" size="sm"
                       variant={selectedDarts === n ? "default" : "outline"}
                       className="h-8 w-10 font-bold text-sm"
-                      onClick={() => setSelectedDarts(n)}
-                    >
+                      onClick={() => setSelectedDarts(n)}>
                       {n}
                     </Button>
                   ))}
@@ -478,38 +515,69 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
 
           {showHistory && (
             <div className="space-y-3">
-              {historyLegs.map(([leg, throws]) => (
-                <div key={leg}>
-                  <p className="text-xs font-semibold text-muted-foreground mb-1">Leg {leg}</p>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-muted-foreground border-b">
-                        <th className="text-left pb-1 font-medium w-6">#</th>
-                        <th className="text-left pb-1 font-medium">Player</th>
-                        <th className="text-right pb-1 font-medium">Score</th>
-                        <th className="text-right pb-1 font-medium">Rem.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {throws.map((t) => {
-                        const p = players.find((pl) => pl.id === t.practicePlyrId);
-                        return (
-                          <tr key={t.throwNumber} className="border-b border-border/50 last:border-0">
-                            <td className="py-1 text-muted-foreground">{t.throwNumber}</td>
-                            <td className="py-1 font-medium">{p?.name.split(" ")[0] ?? "?"}</td>
-                            <td className="py-1 text-right tabular-nums">
-                              <span className={scoreClass(t.score)}>{t.score}</span>
-                            </td>
-                            <td className="py-1 text-right tabular-nums text-muted-foreground">
-                              {t.remainingScore}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
+              {historyLegs.map(([leg, throws]) => {
+                // Per-player avg for this leg
+                const legPlayerIds = [...new Set(throws.map((t) => t.practicePlyrId))];
+                const legAvgs = legPlayerIds.map((pid) => {
+                  const pt = throws.filter((t) => t.practicePlyrId === pid);
+                  const total = pt.reduce((s, t) => s + t.score, 0);
+                  const darts = pt.reduce((s, t) => s + t.dartsUsed, 0);
+                  const p = players.find((pl) => pl.id === pid);
+                  return { name: p?.name.split(" ")[0] ?? "?", avg: darts > 0 ? (total / darts) * 3 : null };
+                });
+
+                return (
+                  <div key={leg}>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Leg {leg}</p>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-muted-foreground border-b">
+                          <th className="text-left pb-1 font-medium w-6">#</th>
+                          <th className="text-left pb-1 font-medium">Player</th>
+                          <th className="text-right pb-1 font-medium">D</th>
+                          <th className="text-right pb-1 font-medium">Score</th>
+                          <th className="text-right pb-1 font-medium">Rem.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {throws.map((t) => {
+                          const p = players.find((pl) => pl.id === t.practicePlyrId);
+                          return (
+                            <tr key={t.throwNumber} className="border-b border-border/50 last:border-0">
+                              <td className="py-1 text-muted-foreground">{t.throwNumber}</td>
+                              <td className="py-1 font-medium">
+                                {p?.name.split(" ")[0] ?? "?"}
+                                {isTeams && p?.team && (
+                                  <span className={`ml-1 text-[9px] font-bold px-1 rounded text-white ${p.team === "A" ? "bg-blue-500" : "bg-red-500"}`}>
+                                    {p.team}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-1 text-right tabular-nums text-muted-foreground">{t.dartsUsed}</td>
+                              <td className="py-1 text-right tabular-nums">
+                                <span className={scoreClass(t.score)}>{t.score}</span>
+                              </td>
+                              <td className="py-1 text-right tabular-nums text-muted-foreground">{t.remainingScore}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="border-t border-border">
+                        <tr>
+                          <td colSpan={2} className="pt-1 text-muted-foreground">3-dart avg</td>
+                          <td colSpan={3} className="pt-1 text-right">
+                            {legAvgs.map((la, i) => (
+                              <span key={i} className="ml-2 text-blue-600 dark:text-blue-400 font-semibold tabular-nums">
+                                {la.name} {la.avg !== null ? la.avg.toFixed(1) : "–"}
+                              </span>
+                            ))}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

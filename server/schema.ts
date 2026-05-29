@@ -277,6 +277,7 @@ export const practiceGames = pgTable("practice_games", {
   gameType: varchar("game_type", { length: 50 }).notNull(),
   legs: integer("legs").default(3).notNull(),
   status: varchar("status", { length: 50 }).default("in_progress").notNull(),
+  gameMode: varchar("game_mode", { length: 20 }).default("singles").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -288,6 +289,7 @@ export const practicePlayers = pgTable("practice_players", {
   guestName: varchar("guest_name", { length: 255 }),
   orderIndex: integer("order_index").notNull(),
   legsWon: integer("legs_won").default(0).notNull(),
+  team: varchar("team", { length: 1 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
