@@ -171,7 +171,7 @@ function PlayerCard({
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function PracticeTracker({ gameData }: { gameData: PracticeGameFull }) {
-  const initialScore = gameData.gameType === "701" ? 701 : gameData.gameType === "301" ? 301 : 501;
+  const initialScore = gameData.gameType === "801" ? 801 : gameData.gameType === "601" ? 601 : 501;
   const init = computeInitialState(gameData.players, gameData.rounds, initialScore, gameData.legs);
 
   const [scores, setScores] = useState(init.scores);

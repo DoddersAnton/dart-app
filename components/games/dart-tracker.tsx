@@ -289,10 +289,14 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [editValues, setEditValues] = useState<{ home: string; away: string }>({ home: "", away: "" });
   const [checkoutHintsEnabled, setCheckoutHintsEnabled] = useState(true);
   const [autoFinesEnabled, setAutoFinesEnabled] = useState(true);
-  const [firstThrowTeam, setFirstThrowTeam] = useState<"home" | "away">("home");
+  const [firstThrowTeam, setFirstThrowTeam] = useState<"home" | "away">(
+    (init.currentLeg - 1) % 2 === 0 ? "home" : "away"
+  );
   // savedRoundCount tracks how many completed rounds are persisted in DB for the current leg
   const [savedRoundCount, setSavedRoundCount] = useState(init.restoredRounds.length);
-  const [currentThrowSide, setCurrentThrowSide] = useState<"home" | "away">("home");
+  const [currentThrowSide, setCurrentThrowSide] = useState<"home" | "away">(
+    (init.currentLeg - 1) % 2 === 0 ? "home" : "away"
+  );
   const [pendingThrowApplied, setPendingThrowApplied] = useState(0);
   const [opposingPlayers, setOpposingPlayers] = useState<OpposingPlayer[]>([]);
   const [opposingPlayerIndex, setOpposingPlayerIndex] = useState(0);
@@ -667,6 +671,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           window.location.href = `/fixtures/${gameData.fixtureId}`;
           return;
         }
+        const nextFirstThrowTeam: "home" | "away" = firstThrowTeam === "home" ? "away" : "home";
         setCurrentLeg(nextLeg);
         setHomeScore(INITIAL_SCORE);
         setAwayScore(INITIAL_SCORE);
@@ -675,7 +680,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setShowHistory(false);
         setPlayerIndex(0);
         setOpposingPlayerIndex(0);
-        setCurrentThrowSide(firstThrowTeam);
+        setFirstThrowTeam(nextFirstThrowTeam);
+        setCurrentThrowSide(nextFirstThrowTeam);
         setPendingThrowApplied(0);
         setSavedRoundCount(0);
         setCurrentRound((shouldRotate || isSingles) && playerOrder.length > 0 ? { player: playerOrder[0].name } : {});
@@ -689,7 +695,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           rounds: [],
           homeTeam: gameData.homeTeam,
           awayTeam: gameData.awayTeam,
-          currentThrowSide: firstThrowTeam,
+          currentThrowSide: nextFirstThrowTeam,
           appPlayers: playerOrder.map((p, i) => ({ name: p.name, isNext: i === 0 })),
           opposingPlayers: opposingPlayers.map((p, i) => ({ name: p.name, isNext: i === 0 })),
         });

@@ -89,9 +89,9 @@ export default function PracticeSetup({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="301">301</SelectItem>
                   <SelectItem value="501">501</SelectItem>
-                  <SelectItem value="701">701</SelectItem>
+                  <SelectItem value="601">601</SelectItem>
+                  <SelectItem value="801">801</SelectItem>
                 </SelectContent>
               </Select>
             </div>
