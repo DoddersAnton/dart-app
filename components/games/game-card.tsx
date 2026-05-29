@@ -41,36 +41,52 @@ function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-function avg(scores: number[]): number | null {
+function arithmeticAvg(scores: number[]): number | null {
   const valid = scores.filter((s) => s > 0);
   if (valid.length === 0) return null;
   return valid.reduce((a, b) => a + b, 0) / valid.length;
 }
 
-function computeAverages(rounds: GameRound[], isAppTeamHome: boolean) {
-  const homeAvg = avg(rounds.map((r) => r.homeScore));
-  const awayAvg = avg(rounds.map((r) => r.awayScore));
+function threeDartAvg(totalScore: number, totalDarts: number): number | null {
+  if (totalDarts === 0) return null;
+  return (totalScore / totalDarts) * 3;
+}
 
-  // Per-player averages: player tracked is the app team's thrower
-  const playerMap = new Map<number, { name: string; total: number; count: number }>();
+function computeAverages(rounds: GameRound[], isAppTeamHome: boolean) {
+  if (rounds.length === 0) return { homeAvg: null, awayAvg: null, playerAverages: [] };
+
+  const totalDarts = rounds.reduce((sum, r) => sum + r.dartsUsed, 0);
+  const totalHomeScore = rounds.reduce((sum, r) => sum + r.homeScore, 0);
+  const totalAwayScore = rounds.reduce((sum, r) => sum + r.awayScore, 0);
+
+  // 3-dart avg for app team (darts tracked); arithmetic mean for opposing side
+  const appAvg = threeDartAvg(isAppTeamHome ? totalHomeScore : totalAwayScore, totalDarts);
+  const otherAvg = arithmeticAvg(isAppTeamHome ? rounds.map((r) => r.awayScore) : rounds.map((r) => r.homeScore));
+
+  const homeAvg = isAppTeamHome ? appAvg : otherAvg;
+  const awayAvg = isAppTeamHome ? otherAvg : appAvg;
+
+  // Per-player 3-dart avg
+  const playerMap = new Map<number, { name: string; total: number; darts: number }>();
   for (const r of rounds) {
     const score = isAppTeamHome ? r.homeScore : r.awayScore;
-    const entry = playerMap.get(r.playerId) ?? { name: r.playerName, total: 0, count: 0 };
-    playerMap.set(r.playerId, { name: entry.name, total: entry.total + score, count: entry.count + 1 });
+    const entry = playerMap.get(r.playerId) ?? { name: r.playerName, total: 0, darts: 0 };
+    playerMap.set(r.playerId, { name: entry.name, total: entry.total + score, darts: entry.darts + r.dartsUsed });
   }
   const playerAverages = [...playerMap.values()]
-    .map((p) => ({ name: p.name, avg: p.count > 0 ? p.total / p.count : 0 }))
+    .map((p) => ({ name: p.name, avg: threeDartAvg(p.total, p.darts) ?? 0 }))
     .sort((a, b) => b.avg - a.avg);
 
   return { homeAvg, awayAvg, playerAverages };
 }
 
-function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
+function LegTable({ leg, rounds, homeTeam, awayTeam, gameType, isAppTeamHome }: {
   leg: number;
   rounds: GameRound[];
   homeTeam: string;
   awayTeam: string;
   gameType: string;
+  isAppTeamHome: boolean;
 }) {
   const startScore = INITIAL_SCORE[gameType] ?? 501;
   let homeRemaining = startScore;
@@ -85,8 +101,19 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
   const homeWon = homeRemaining === 0;
   const awayWon = awayRemaining === 0;
 
-  const legHomeAvg = avg(rounds.map((r) => r.homeScore));
-  const legAwayAvg = avg(rounds.map((r) => r.awayScore));
+  const totalDarts = rounds.reduce((sum, r) => sum + r.dartsUsed, 0);
+  const totalAppScore = isAppTeamHome
+    ? rounds.reduce((sum, r) => sum + r.homeScore, 0)
+    : rounds.reduce((sum, r) => sum + r.awayScore, 0);
+  const totalOtherScore = isAppTeamHome
+    ? rounds.reduce((sum, r) => sum + r.awayScore, 0)
+    : rounds.reduce((sum, r) => sum + r.homeScore, 0);
+
+  const legAppAvg = threeDartAvg(totalAppScore, totalDarts);
+  const legOtherAvg = arithmeticAvg(isAppTeamHome ? rounds.map((r) => r.awayScore) : rounds.map((r) => r.homeScore));
+
+  const legHomeAvg = isAppTeamHome ? legAppAvg : legOtherAvg;
+  const legAwayAvg = isAppTeamHome ? legOtherAvg : legAppAvg;
 
   return (
     <div className="space-y-2">
@@ -99,12 +126,13 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
         )}
       </div>
 
-      <div className="rounded-lg border overflow-hidden">
+      <div className="rounded-lg border overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-muted/40">
             <tr>
               <th className="py-2 px-3 text-left font-medium text-muted-foreground">R</th>
               <th className="py-2 px-3 text-left font-medium text-muted-foreground">Player</th>
+              <th className="py-2 px-2 text-center font-medium text-muted-foreground">D</th>
               <th className="py-2 px-3 text-center font-medium text-muted-foreground">{homeTeam}</th>
               <th className="py-2 px-3 text-center font-medium text-muted-foreground">Left</th>
               <th className="py-2 px-3 text-center font-medium text-muted-foreground">{awayTeam}</th>
@@ -116,7 +144,13 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
             {rows.map((r, idx) => (
               <tr key={r.id} className={`border-t border-border/50 ${idx % 2 === 0 ? "" : "bg-muted/20"}`}>
                 <td className="py-1.5 px-3 text-muted-foreground tabular-nums">{r.roundNumber}</td>
-                <td className="py-1.5 px-3 font-medium max-w-[80px] truncate">{r.playerName.split(" ")[0]}</td>
+                <td className="py-1.5 px-3 min-w-[90px]">
+                  <span className="font-medium">{r.playerName}</span>
+                  {r.playerNickname && (
+                    <span className="block text-[10px] text-muted-foreground leading-tight">{r.playerNickname}</span>
+                  )}
+                </td>
+                <td className="py-1.5 px-2 text-center tabular-nums text-muted-foreground">{r.dartsUsed}</td>
                 <td className="py-1.5 px-3 text-center tabular-nums">
                   <span className={r.homeScore === 180 ? "font-black text-amber-500 underline decoration-2 underline-offset-2" : r.homeScore >= 100 ? "font-bold text-orange-500 underline underline-offset-2" : "font-medium"}>{r.homeScore}</span>
                 </td>
@@ -138,7 +172,7 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
           {(legHomeAvg !== null || legAwayAvg !== null) && (
             <tfoot className="border-t border-border bg-muted/30">
               <tr>
-                <td colSpan={2} className="py-1.5 px-3 text-xs font-semibold text-muted-foreground">Leg avg</td>
+                <td colSpan={3} className="py-1.5 px-3 text-xs font-semibold text-muted-foreground">3-dart avg</td>
                 <td className="py-1.5 px-3 text-center text-xs font-semibold tabular-nums text-blue-600 dark:text-blue-400">
                   {legHomeAvg !== null ? legHomeAvg.toFixed(1) : "–"}
                 </td>
@@ -268,14 +302,14 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
                   <p className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">
                     {homeAvg !== null ? homeAvg.toFixed(1) : "–"}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">avg/round</p>
+                  <p className="text-[10px] text-muted-foreground">3-dart avg</p>
                 </div>
                 <p className="text-xs text-muted-foreground">avg</p>
                 <div className="text-center min-w-[4rem]">
                   <p className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">
                     {awayAvg !== null ? awayAvg.toFixed(1) : "–"}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">avg/round</p>
+                  <p className="text-[10px] text-muted-foreground">3-dart avg</p>
                 </div>
               </div>
             )}
@@ -341,6 +375,7 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
                   homeTeam={gameData.homeTeam}
                   awayTeam={gameData.awayTeam}
                   gameType={gameData.gameType}
+                  isAppTeamHome={gameData.isAppTeamHome}
                 />
               </React.Fragment>
             ))}

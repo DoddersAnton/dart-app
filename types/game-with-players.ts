@@ -5,6 +5,7 @@ export type GameRound = {
   leg: number;
   playerId: number;
   playerName: string;
+  playerNickname: string | null;
   homeScore: number;
   awayScore: number;
   dartsUsed: number;

@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { db } from ".."
 import { GameWithPlayers } from "@/types/game-with-players";
-import { rounds, team } from "../schema";
+import { rounds } from "../schema";
 
 export async function getGame(gameId: number) {
   try {
@@ -52,6 +52,7 @@ export async function getGame(gameId: number) {
       leg: r.leg,
       playerId: r.playerId,
       playerName: playerMap[r.playerId]?.name ?? "Unknown",
+      playerNickname: playerMap[r.playerId]?.nickname ?? null,
       homeScore: r.homeScore,
       awayScore: r.awayScore,
       dartsUsed: r.dartsUsed,
