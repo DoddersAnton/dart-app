@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Plus, FilterIcon, EraserIcon, LayoutDashboard, Table2, ChartColumn } from "lucide-react";
+import { Plus, FilterIcon, EraserIcon, LayoutDashboard, Table2, ChartColumn, Download } from "lucide-react";
+import { exportToCsv } from "@/lib/export-csv";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,6 +135,19 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryP
             My Fines
           </Button>
         )}
+        <Button variant="outline" size="sm" onClick={() => {
+          exportToCsv("fines-export", filteredFines.map((f) => ({
+            Player: f.player,
+            "Fine Type": f.fine,
+            "Amount (£)": f.amount.toFixed(2),
+            Status: f.status ?? "Unpaid",
+            "Match Date": f.matchDate ? new Date(f.matchDate).toLocaleDateString("en-GB") : "",
+            Notes: f.notes ?? "",
+            "Created At": f.createdAt ? new Date(f.createdAt).toLocaleDateString("en-GB") : "",
+          })));
+        }}>
+          <Download className="h-4 w-4 mr-1" /> Export CSV
+        </Button>
         <Link href="/fines/add-fine" className="block">
           <Button variant="outline">
             Add Fine <Plus className="ml-2 h-4 w-4" />

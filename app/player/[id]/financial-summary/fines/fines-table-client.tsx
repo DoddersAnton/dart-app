@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 
+import { Download } from "lucide-react";
 import PaymentDrawer from "@/components/players/pay-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { exportToCsv } from "@/lib/export-csv";
 
 type Fine = {
   id: number;
@@ -71,6 +73,7 @@ export function FinesTableClient({ fines, playerId }: { fines: Fine[]; playerId:
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Fine details</CardTitle>
+        <div className="flex items-center gap-2">
           <select
             className="rounded-md border bg-background px-2 py-1 text-sm"
             value={statusFilter}
@@ -83,6 +86,17 @@ export function FinesTableClient({ fines, playerId }: { fines: Fine[]; playerId:
             <option value="paid">Paid</option>
             <option value="unpaid">Unpaid</option>
           </select>
+          <Button variant="outline" size="sm" onClick={() => {
+            exportToCsv("player-fines", filtered.map((f) => ({
+              "Fine Type": f.title,
+              Status: f.status ?? "Unpaid",
+              "Amount (£)": f.amount.toFixed(2),
+              Date: f.createdAt ? new Date(f.createdAt).toLocaleDateString("en-GB") : "",
+            })));
+          }}>
+            <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {selectedFineIds.length > 0 ? (

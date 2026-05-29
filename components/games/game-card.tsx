@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import {
   ArrowLeft,
   CalendarDays,
+  Download,
   Flag,
   Pencil,
   Rocket,
@@ -14,6 +15,7 @@ import {
   Users2Icon,
   UsersIcon,
 } from "lucide-react";
+import { exportToCsv } from "@/lib/export-csv";
 import { toast } from "sonner";
 import { useAction } from "next-safe-action/hooks";
 
@@ -360,7 +362,34 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
       {hasRounds ? (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Round breakdown</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Round breakdown</CardTitle>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={() => {
+                const startScore = INITIAL_SCORE[gameData.gameType] ?? 501;
+                const rows = legs.flatMap((leg) => {
+                  let homeRem = startScore;
+                  let awayRem = startScore;
+                  return gameData.rounds.filter((r) => r.leg === leg).map((r) => {
+                    homeRem = Math.max(0, homeRem - r.homeScore);
+                    awayRem = Math.max(0, awayRem - r.awayScore);
+                    return {
+                      Leg: leg,
+                      Round: r.roundNumber,
+                      Player: r.playerName,
+                      Nickname: r.playerNickname ?? "",
+                      Darts: r.dartsUsed,
+                      [`${gameData.homeTeam} Score`]: r.homeScore,
+                      [`${gameData.homeTeam} Remaining`]: homeRem,
+                      [`${gameData.awayTeam} Score`]: r.awayScore,
+                      [`${gameData.awayTeam} Remaining`]: awayRem,
+                    };
+                  });
+                });
+                exportToCsv(`game-${gameData.id}-rounds`, rows);
+              }}>
+                <Download className="h-3.5 w-3.5" /> Export CSV
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-5">
             {legs.map((leg, idx) => (
