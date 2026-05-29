@@ -43,6 +43,7 @@ const navLinks = [
       { titleEng: "Locations", descriptionEng: "Manage match locations", href: "/settings/locations" },
       { titleEng: "Teams", descriptionEng: "Manage teams", href: "/settings/teams" },
       { titleEng: "Seasons", descriptionEng: "Manage seasons", href: "/settings/seasons" },
+      { titleEng: "Award Types", descriptionEng: "Manage player award types", href: "/settings/award-types" },
       { titleEng: "App Settings", descriptionEng: "Game rules and app configuration", href: "/settings/app-settings" },
     ],
   },
