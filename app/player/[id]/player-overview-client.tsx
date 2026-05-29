@@ -2,17 +2,27 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Camera, ImageUp, Link2, CheckCircle2, Target, PoundSterling, TrendingUp, Dumbbell } from "lucide-react";
+import { Camera, ImageUp, Link2, CheckCircle2, Target, PoundSterling, TrendingUp, Dumbbell, Pencil } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart } from "recharts";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAction } from "next-safe-action/hooks";
+import { toast } from "sonner";
 
 import { updatePlayerImageUrl } from "@/server/actions/update-player-img";
 import { linkPlayerUser } from "@/server/actions/link-player-user";
+import { createPlayer } from "@/server/actions/create-player";
+import { playerSchema, zPlayerSchema } from "@/types/add-player-schema";
 import { UploadThingImageUploader } from "@/components/players/uploadthing-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -29,6 +39,10 @@ type Props = {
     nickname: string | null;
     imgUrl: string | null;
     userid: string | null;
+    bio: string | null;
+    dartsUsed: string | null;
+    dartsWeight: number | null;
+    dateOfBirth: string | null;
   };
   clerkUserId: string | null;
   totalFinesIssuedValue: number;
@@ -78,11 +92,40 @@ function WinBar({ wins, losses }: { wins: number; losses: number }) {
 }
 
 export function PlayerOverviewClient(props: Props) {
+  const router = useRouter();
   const [avatarUrl, setAvatarUrl] = useState(props.player.imgUrl || "");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [linking, setLinking] = useState(false);
   const isLinked = props.clerkUserId !== null && props.player.userid === props.clerkUserId;
   const [linked, setLinked] = useState(isLinked);
+
+  const editForm = useForm<zPlayerSchema>({
+    resolver: zodResolver(playerSchema),
+    defaultValues: {
+      id: props.player.id,
+      name: props.player.name,
+      nickname: props.player.nickname ?? "",
+      bio: props.player.bio ?? "",
+      dartsUsed: props.player.dartsUsed ?? "",
+      dartsWeight: props.player.dartsWeight ?? undefined,
+      dateOfBirth: props.player.dateOfBirth
+        ? new Date(props.player.dateOfBirth).toISOString().slice(0, 10)
+        : "",
+    },
+  });
+
+  const { execute: execEdit, status: editStatus } = useAction(createPlayer, {
+    onSuccess: (data) => {
+      if (data.data?.error) { toast.error(data.data.error); return; }
+      if (data.data?.success) {
+        toast.success(data.data.success);
+        setEditOpen(false);
+        router.refresh();
+      }
+    },
+    onExecute: () => toast.info("Saving player..."),
+  });
 
   const formatChartData = [
     { format: "Singles", wins: props.singles.wins, losses: props.singles.losses },
@@ -120,6 +163,18 @@ export function PlayerOverviewClient(props: Props) {
             <div>
               <CardTitle className="text-2xl">{props.player.name}</CardTitle>
               {props.player.nickname && <p className="text-sm text-muted-foreground">{props.player.nickname}</p>}
+              {props.player.dateOfBirth && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  DOB: {new Date(props.player.dateOfBirth).toLocaleDateString("en-GB")}
+                  {" · "}Age: {Math.floor((Date.now() - new Date(props.player.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365.25))}
+                </p>
+              )}
+              {(props.player.dartsUsed || props.player.dartsWeight) && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {[props.player.dartsUsed, props.player.dartsWeight ? `${props.player.dartsWeight}g` : null]
+                    .filter(Boolean).join(" · ")}
+                </p>
+              )}
             </div>
           </div>
 
@@ -129,6 +184,70 @@ export function PlayerOverviewClient(props: Props) {
                 <Dumbbell className="h-3.5 w-3.5" /> Practice
               </Button>
             </Link>
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Player</DialogTitle>
+                </DialogHeader>
+                <Form {...editForm}>
+                  <form onSubmit={editForm.handleSubmit((v) => execEdit(v))} className="space-y-4">
+                    <FormField control={editForm.control} name="name" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={editForm.control} name="nickname" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nickname</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={editForm.control} name="dateOfBirth" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <FormControl><Input type="date" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={editForm.control} name="dartsUsed" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Darts Used</FormLabel>
+                          <FormControl><Input {...field} placeholder="e.g. Target 22g" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={editForm.control} name="dartsWeight" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Darts Weight (g)</FormLabel>
+                          <FormControl><Input type="number" step="0.5" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                    <FormField control={editForm.control} name="bio" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bio</FormLabel>
+                        <FormControl><Textarea rows={4} {...field} placeholder="A short bio about the player" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                      <Button type="submit" disabled={editStatus === "executing"}>Save</Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
             <div className="flex">
             <Button variant="outline" size="icon" aria-label="Link player" onClick={handleLinkPlayer} disabled={linking || linked}
               className={`rounded-r-none border-r-0 ${linked ? "border-green-500 text-green-500" : ""}`}>
@@ -151,6 +270,14 @@ export function PlayerOverviewClient(props: Props) {
           </div>
         </CardHeader>
       </Card>
+
+      {/* Bio */}
+      {props.player.bio && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground">About</CardTitle></CardHeader>
+          <CardContent><p className="text-sm">{props.player.bio}</p></CardContent>
+        </Card>
+      )}
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

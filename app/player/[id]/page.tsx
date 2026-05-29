@@ -85,6 +85,10 @@ export default async function PlayerOverviewPage({
         nickname: data.player.nickname,
         imgUrl: data.player.imgUrl,
         userid: data.player.userid ?? null,
+        bio: data.player.bio ?? null,
+        dartsUsed: data.player.dartsUsed ?? null,
+        dartsWeight: data.player.dartsWeight ?? null,
+        dateOfBirth: data.player.dateOfBirth ? data.player.dateOfBirth.toISOString() : null,
       }}
       clerkUserId={clerkUserId}
       totalFinesIssuedValue={data.totalFinesIssuedValue}

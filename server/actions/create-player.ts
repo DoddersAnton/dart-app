@@ -11,9 +11,9 @@ const actionClient = createSafeActionClient();
 
 export const createPlayer = actionClient
 .schema(playerSchema)
-.action(async ({ parsedInput: { id, name, nickname, team  } }) => {
+.action(async ({ parsedInput: { id, name, nickname, team, bio, dartsUsed, dartsWeight, dateOfBirth } }) => {
     try {
-      
+      const dob = dateOfBirth ? new Date(dateOfBirth) : undefined;
 
     if(id) {
 
@@ -21,28 +21,36 @@ export const createPlayer = actionClient
           .update(players)
           .set({
             name: name ?? "",
-            nickname: nickname ?? "",
-            team: team ?? "",
-            createdAt: new Date()
+            nickname: nickname ?? undefined,
+            team: team ?? undefined,
+            bio: bio ?? undefined,
+            dartsUsed: dartsUsed ?? undefined,
+            dartsWeight: dartsWeight ?? undefined,
+            dateOfBirth: dob,
           })
-          .where(id ? eq(players.id, id) : undefined)
+          .where(eq(players.id, id))
           .returning();
 
         revalidatePath("/players/add-player");
+        revalidatePath(`/player/${id}`);
         return { success: `Player ${name} has been updated` };
       }
 
       await db
       .insert(players)
       .values({
-       name: name ?? "(Unknown)",
-            nickname: nickname ?? "",
-            team: team ?? "",
-        createdAt: new Date()
+        name: name ?? "(Unknown)",
+        nickname: nickname ?? undefined,
+        team: team ?? undefined,
+        bio: bio ?? undefined,
+        dartsUsed: dartsUsed ?? undefined,
+        dartsWeight: dartsWeight ?? undefined,
+        dateOfBirth: dob,
+        createdAt: new Date(),
       })
       .returning();
 
-      revalidatePath("/fines/add-player");
+      revalidatePath("/players");
     return { success: `Player ${name} has been created` };
     } catch (error) {
       console.error(error);

@@ -16,6 +16,7 @@ export default async function GetFineTypePage() {
   const players = (await db.query.players.findMany()).map((player) => ({
     ...player,
     createdAt: player.createdAt ? player.createdAt.toISOString() : null,
+    dateOfBirth: player.dateOfBirth ? player.dateOfBirth.toISOString() : null,
   }));
 
   const total = players.length; // Calculate all players

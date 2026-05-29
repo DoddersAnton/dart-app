@@ -12,6 +12,10 @@ export const players = pgTable("players", {
     imgUrl: varchar("img_url", { length: 500 }),
     userid: varchar("user_id", { length: 255 }),
     userEmail: varchar("user_email", { length: 255 }),
+    bio: varchar("bio", { length: 1000 }),
+    dartsUsed: varchar("darts_used", { length: 255 }),
+    dartsWeight: real("darts_weight"),
+    dateOfBirth: timestamp("date_of_birth"),
   });
 
   export const fines = pgTable("fines", {
@@ -212,6 +216,7 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
 
   export const playersRelations = relations(players, ({ many }) => ({
     playerFines: many(playerFines),
+    playerAwards: many(playerAwards),
   }));
 
   export const finesRelations = relations(fines, ({ many }) => ({
@@ -228,6 +233,42 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
       references: [fines.id],
     }),
   }));
+
+export const awards = pgTable("awards", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: varchar("description", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const playerAwards = pgTable("player_awards", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  awardId: integer("award_id").notNull().references(() => awards.id, { onDelete: "cascade" }),
+  seasonId: integer("season_id").references(() => seasons.id, { onDelete: "set null" }),
+  notes: varchar("notes", { length: 500 }),
+  awardedAt: timestamp("awarded_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const awardsRelations = relations(awards, ({ many }) => ({
+  playerAwards: many(playerAwards),
+}));
+
+export const playerAwardsRelations = relations(playerAwards, ({ one }) => ({
+  player: one(players, {
+    fields: [playerAwards.playerId],
+    references: [players.id],
+  }),
+  award: one(awards, {
+    fields: [playerAwards.awardId],
+    references: [awards.id],
+  }),
+  season: one(seasons, {
+    fields: [playerAwards.seasonId],
+    references: [seasons.id],
+  }),
+}));
 
 // ── Practice mode ──────────────────────────────────────────────────────────
 

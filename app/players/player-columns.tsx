@@ -22,6 +22,9 @@ export type PlayerColumn = {
   name: string;
   nickname: string | null;
   team: string | null;
+  dateOfBirth: string | null;
+  dartsUsed: string | null;
+  dartsWeight: number | null;
   createdAt: string | null;
 }
 
@@ -94,6 +97,26 @@ export const playerColumns: ColumnDef<PlayerColumn>[] = [
   {
     accessorKey: "team",
     header: "Team",
+  },
+  {
+    accessorKey: "dateOfBirth",
+    header: "Date of Birth",
+    cell: ({ row }) => {
+      const dob = row.getValue("dateOfBirth") as string | null;
+      if (!dob) return <span className="text-muted-foreground text-xs">—</span>;
+      const age = Math.floor((Date.now() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+      return <div className="text-xs">{new Date(dob).toLocaleDateString("en-GB")} <span className="text-muted-foreground">({age})</span></div>;
+    },
+  },
+  {
+    accessorKey: "dartsUsed",
+    header: "Darts",
+    cell: ({ row }) => {
+      const darts = row.getValue("dartsUsed") as string | null;
+      const weight = row.original.dartsWeight;
+      if (!darts && !weight) return <span className="text-muted-foreground text-xs">—</span>;
+      return <div className="text-xs">{[darts, weight ? `${weight}g` : null].filter(Boolean).join(" · ")}</div>;
+    },
   },
   {
     accessorKey: "createdAt",

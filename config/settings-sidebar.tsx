@@ -1,5 +1,5 @@
 import { SidebarItem } from "@/components/ui/app-sidebar";
-import { Banknote, CalendarSync, Home, Locate, Plus, Settings, Sun, Users } from "lucide-react";
+import { Banknote, CalendarSync, Home, Locate, Plus, Settings, Sun, Trophy, Users } from "lucide-react";
 
 export const settingsSidebarItems: SidebarItem[] = [
   {
@@ -74,6 +74,23 @@ export const settingsSidebarItems: SidebarItem[] = [
         icon: <Plus className="h-4 w-4" />,
       },
     ]
+  },
+  {
+    label: "Award Types",
+    href: "/settings/award-types",
+    icon: <Trophy className="h-4 w-4" />,
+    children: [
+      {
+        label: "All Award Types",
+        href: "/settings/award-types",
+        icon: <Trophy className="h-4 w-4" />,
+      },
+      {
+        label: "Add Award Type",
+        href: "/settings/add-award-type",
+        icon: <Plus className="h-4 w-4" />,
+      },
+    ],
   },
   {
     label: "App Settings",

@@ -23,6 +23,7 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
+import { Textarea } from "../ui/textarea";
 import { useAction } from "next-safe-action/hooks";
 import { Input } from "../ui/input";
 import { getPlayer } from "@/server/actions/get-player";
@@ -57,6 +58,12 @@ export default function PlayerForm() {
             form.setValue("name", data.success.name ?? "");
             form.setValue("nickname", data.success.nickname ?? "");
             form.setValue("team", data.success.team ?? "");
+            form.setValue("bio", data.success.bio ?? "");
+            form.setValue("dartsUsed", data.success.dartsUsed ?? "");
+            form.setValue("dartsWeight", data.success.dartsWeight ?? undefined);
+            form.setValue("dateOfBirth", data.success.dateOfBirth
+              ? new Date(data.success.dateOfBirth).toISOString().slice(0, 10)
+              : "");
           }
         }
       };
@@ -183,8 +190,61 @@ export default function PlayerForm() {
                     </FormItem>
                   )}
                 />
-    
-               
+                <FormField
+                  control={form.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="dartsUsed"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Darts Used</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g. Target Adrian Lewis" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dartsWeight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Darts Weight (g)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.5" placeholder="e.g. 22" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="bio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bio</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="A short bio about the player" rows={4} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <CardFooter className="flex justify-between">
                   <Button variant="outline">Cancel</Button>
                   <Button
