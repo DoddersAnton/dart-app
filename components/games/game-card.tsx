@@ -73,8 +73,8 @@ function computeAverages(rounds: GameRound[], isAppTeamHome: boolean) {
     const entry = playerMap.get(r.playerId) ?? { name: r.playerName, total: 0, darts: 0 };
     playerMap.set(r.playerId, { name: entry.name, total: entry.total + score, darts: entry.darts + r.dartsUsed });
   }
-  const playerAverages = [...playerMap.values()]
-    .map((p) => ({ name: p.name, avg: threeDartAvg(p.total, p.darts) ?? 0 }))
+  const playerAverages = [...playerMap.entries()]
+    .map(([id, p]) => ({ id, name: p.name, avg: threeDartAvg(p.total, p.darts) ?? 0 }))
     .sort((a, b) => b.avg - a.avg);
 
   return { homeAvg, awayAvg, playerAverages };
@@ -105,9 +105,6 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType, isAppTeamHome }: 
   const totalAppScore = isAppTeamHome
     ? rounds.reduce((sum, r) => sum + r.homeScore, 0)
     : rounds.reduce((sum, r) => sum + r.awayScore, 0);
-  const totalOtherScore = isAppTeamHome
-    ? rounds.reduce((sum, r) => sum + r.awayScore, 0)
-    : rounds.reduce((sum, r) => sum + r.homeScore, 0);
 
   const legAppAvg = threeDartAvg(totalAppScore, totalDarts);
   const legOtherAvg = arithmeticAvg(isAppTeamHome ? rounds.map((r) => r.awayScore) : rounds.map((r) => r.homeScore));
@@ -330,7 +327,7 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Players</p>
                 <div className="flex flex-wrap gap-2">
                   {gameData.players.map((p) => {
-                    const pAvg = playerAverages.find((pa) => pa.name === p.name);
+                    const pAvg = playerAverages.find((pa) => pa.id === p.id);
                     return (
                       <div key={p.id} className="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1">
                         {p.imgUrl ? (
