@@ -3,16 +3,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { RotateCcw, ChevronDown, Target, ArrowLeft, Trophy } from "lucide-react";
+import { RotateCcw, ChevronDown, Target, ArrowLeft, Trophy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PracticeGameFull } from "@/server/actions/get-practice-game";
 import { savePracticeThrow } from "@/server/actions/save-practice-throw";
 import { deleteLastPracticeThrow } from "@/server/actions/delete-last-practice-throw";
 import { completePracticeGame } from "@/server/actions/complete-practice-game";
+import { deletePracticeGame } from "@/server/actions/delete-practice-game";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // ── Checkout hints ──────────────────────────────────────────────────────────
 const CHECKOUT_HINTS: Record<number, string> = {
@@ -124,7 +127,7 @@ function computeInitialState(
   return { legsWon, currentLeg, currentLegThrows, allCompletedThrows, scores, currentPlayerIdx, winnerIdx: winnerIdx >= 0 ? winnerIdx : null };
 }
 
-// ── Player score card ───────────────────────────────────────────────────────
+// ── Player card (identity only in teams mode) ───────────────────────────────
 function PlayerCard({
   player,
   score,
@@ -135,7 +138,7 @@ function PlayerCard({
   avg,
 }: {
   player: PracticePlayer;
-  score: number;
+  score: number | null;
   legsWon: number;
   maxLegs: number;
   isActive: boolean;
@@ -168,9 +171,11 @@ function PlayerCard({
         </div>
       )}
       <p className="text-xs font-medium truncate mb-1">{player.name.split(" ")[0]}</p>
-      <p className={`text-3xl font-extrabold tabular-nums leading-tight ${isActive ? "text-primary" : ""}`}>
-        {score}
-      </p>
+      {score !== null && (
+        <p className={`text-3xl font-extrabold tabular-nums leading-tight ${isActive ? "text-primary" : ""}`}>
+          {score}
+        </p>
+      )}
       <div className="flex justify-center gap-1 mt-1.5">
         {Array.from({ length: maxLegs }).map((_, i) => (
           <span key={i} className={`h-2 w-2 rounded-full ${i < legsWon ? "bg-primary" : "bg-muted"}`} />
@@ -187,6 +192,7 @@ function PlayerCard({
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function PracticeTracker({ gameData }: { gameData: PracticeGameFull }) {
+  const router = useRouter();
   const initialScore = gameData.gameType === "801" ? 801 : gameData.gameType === "601" ? 601 : 501;
   const gameMode = gameData.gameMode ?? "singles";
   const isTeams = gameMode === "teams";
@@ -205,6 +211,8 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
   const [lowScoreWarning, setLowScoreWarning] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -284,11 +292,9 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
             gameData.id,
             players.map((p, i) => ({ practicePlyrId: p.id, legs: newLegsWon[i] }))
           );
-          const winMsg = isTeams ? `Team ${currentTeam} wins!` : `${currentPlayer.name} wins!`;
-          toast.success(winMsg);
+          toast.success(isTeams ? `Team ${currentTeam} wins!` : `${currentPlayer.name} wins!`);
         } else {
-          const legMsg = isTeams ? `Team ${currentTeam} wins leg ${currentLeg}!` : `${currentPlayer.name} wins leg ${currentLeg}!`;
-          toast.success(legMsg);
+          toast.success(isTeams ? `Team ${currentTeam} wins leg ${currentLeg}!` : `${currentPlayer.name} wins leg ${currentLeg}!`);
           setCurrentLeg((l) => l + 1);
           setCurrentLegThrows([]);
           setScores(players.map(() => initialScore));
@@ -343,6 +349,18 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deletePracticeGame(gameData.id);
+      toast.success("Practice session deleted");
+      router.push("/practice/new");
+    } catch {
+      toast.error("Failed to delete session");
+      setDeleting(false);
+    }
+  };
+
   const historyLegs = (() => {
     const legMap = new Map<number, LocalThrow[]>();
     for (const t of [...allCompletedThrows, ...currentLegThrows]) {
@@ -352,9 +370,34 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
     return Array.from(legMap.entries()).sort(([a], [b]) => b - a);
   })();
 
-  const modeBadge = isTeams
-    ? <span className="text-xs bg-muted px-2 py-0.5 rounded font-medium">Teams</span>
-    : null;
+  // Team score boxes (teams mode only)
+  const teamScoreBox = (team: "A" | "B") => {
+    const idx = players.findIndex((p) => p.team === team);
+    const teamScore = idx >= 0 ? scores[idx] : initialScore;
+    const teamLegs = idx >= 0 ? legsWon[idx] : 0;
+    const isActiveTeam = players[currentPlayerIdx]?.team === team;
+    const isWinnerTeam = winner !== null && players[winner]?.team === team;
+    return (
+      <div key={team} className={`rounded-xl border-2 p-4 text-center transition-all ${
+        isWinnerTeam ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-950/20"
+        : isActiveTeam ? "border-primary animate-active-border"
+        : "border-border"
+      }`}>
+        {isWinnerTeam && <Trophy className="h-4 w-4 text-yellow-500 mx-auto mb-1" />}
+        <span className={`inline-block px-2 py-0.5 rounded text-white text-xs font-bold mb-2 ${team === "A" ? "bg-blue-500" : "bg-red-500"}`}>
+          Team {team}
+        </span>
+        <p className={`text-5xl font-black tabular-nums leading-none ${isActiveTeam ? "text-primary" : ""}`}>
+          {teamScore}
+        </p>
+        <div className="flex justify-center gap-1 mt-2">
+          {Array.from({ length: gameData.legs }).map((_, i) => (
+            <span key={i} className={`h-2 w-2 rounded-full ${i < teamLegs ? "bg-primary" : "bg-muted"}`} />
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -369,28 +412,42 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
           <div>
             <div className="flex items-center gap-1.5">
               <p className="text-xs text-muted-foreground">Practice · {gameData.gameType} · Best of {gameData.legs}</p>
-              {modeBadge}
+              {isTeams && <span className="text-xs bg-muted px-2 py-0.5 rounded font-medium">Teams</span>}
             </div>
             {gameData.createdAt && (
               <p className="text-xs text-muted-foreground">{format(gameData.createdAt, "d MMM yyyy")}</p>
             )}
           </div>
         </div>
-        {winner === null && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUndo}
-            disabled={currentLegThrows.length === 0 || saving} title="Undo last throw">
-            <RotateCcw className="h-4 w-4" />
+        <div className="flex items-center gap-1">
+          {winner === null && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUndo}
+              disabled={currentLegThrows.length === 0 || saving} title="Undo last throw">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={() => setShowDeleteDialog(true)} title="Delete session">
+            <Trash2 className="h-4 w-4" />
           </Button>
-        )}
+        </div>
       </div>
 
-      {/* Score cards */}
+      {/* Teams mode: shared score boxes */}
+      {isTeams && (
+        <div className="grid grid-cols-2 gap-3">
+          {teamScoreBox("A")}
+          {teamScoreBox("B")}
+        </div>
+      )}
+
+      {/* Player cards */}
       <div className={`grid gap-3 ${players.length <= 2 ? "grid-cols-2" : "grid-cols-3"}`}>
         {players.map((p, i) => (
           <PlayerCard
             key={p.id}
             player={p}
-            score={scores[i]}
+            score={isTeams ? null : scores[i]}
             legsWon={legsWon[i]}
             maxLegs={gameData.legs}
             isActive={!winner && i === currentPlayerIdx}
@@ -516,7 +573,6 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
           {showHistory && (
             <div className="space-y-3">
               {historyLegs.map(([leg, throws]) => {
-                // Per-player avg for this leg
                 const legPlayerIds = [...new Set(throws.map((t) => t.practicePlyrId))];
                 const legAvgs = legPlayerIds.map((pid) => {
                   const pt = throws.filter((t) => t.practicePlyrId === pid);
@@ -582,6 +638,26 @@ export default function PracticeTracker({ gameData }: { gameData: PracticeGameFu
           )}
         </div>
       )}
+
+      {/* Delete confirmation */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete practice session?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove all throws and results for this session. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
