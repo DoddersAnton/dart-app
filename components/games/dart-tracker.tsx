@@ -280,7 +280,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [showRoundFineDialog, setShowRoundFineDialog] = useState(false);
   const [pendingFinePlayer, setPendingFinePlayer] = useState<string | null>(null);
   const [pendingFineOffer, setPendingFineOffer] = useState<{ player: string; fineTitle: string } | null>(null);
-  const [selectedDarts, setSelectedDarts] = useState<1 | 2 | 3>(3);
+  const [selectedDarts, setSelectedDarts] = useState<1 | 2 | 3 | null>(null);
   const [finesData, setFinesData] = useState<FineData[]>([]);
   const [playersListData, setPlayersListData] = useState<PlayerData[]>([]);
   const [saving, setSaving] = useState(false);
@@ -397,8 +397,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       player: string | undefined, playerId: number | undefined,
       finalHomeScore: number, finalAwayScore: number, roundWinner: "home" | "away",
     ) => {
-      const dartsUsed = selectedDarts;
-      setSelectedDarts(3);
+      const dartsUsed = selectedDarts ?? 3;
+      setSelectedDarts(null);
       setCurrentThrowSide(firstThrowTeam);
       setPendingThrowApplied(0);
       const newRound: Round = { roundNumber, gameId: gameData.id, player, playerId, home, away, fineAdded: false, dartsUsed };
@@ -434,6 +434,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     if (typeof otherScore !== "number") {
       // First throw path
       if (newScore === 0) {
+        if (selectedDarts === null) { toast.error("Select darts used for the checkout"); return; }
         // Checkout on first throw — end round immediately, other team doesn't throw
         const home = currentThrowSide === "home" ? score : 0;
         const away = currentThrowSide === "away" ? score : 0;
@@ -476,6 +477,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     const roundWinner = finalHomeScore === 0 ? "home" : finalAwayScore === 0 ? "away" : null;
 
     if (roundWinner) {
+      if (selectedDarts === null) { toast.error("Select darts used for the checkout"); return; }
       finishCheckout(home, away, roundNumber, currentRound.player, playerId, finalHomeScore, finalAwayScore, roundWinner);
       return;
     }
@@ -1264,11 +1266,13 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                   <div className="space-y-1.5">
                     <p className="text-xs text-green-600 text-center font-semibold">Checkout! 🎯</p>
                     <div className="flex items-center gap-2 justify-center">
-                      <p className="text-xs text-muted-foreground">Darts used:</p>
+                      <p className={`text-xs font-medium ${selectedDarts === null ? "text-amber-500" : "text-muted-foreground"}`}>
+                        {selectedDarts === null ? "Select darts used:" : "Darts used:"}
+                      </p>
                       {([1, 2, 3] as const).map((n) => (
                         <Button key={n} type="button" size="sm"
                           variant={selectedDarts === n ? "default" : "outline"}
-                          className="h-8 w-10 font-bold text-sm"
+                          className={`h-8 w-10 font-bold text-sm ${selectedDarts === null ? "border-amber-400" : ""}`}
                           onClick={() => setSelectedDarts(n)}
                         >{n}</Button>
                       ))}
@@ -1287,7 +1291,9 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
           {/* Actions */}
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={handleSubmitRound}>
+            <Button className="flex-1" onClick={handleSubmitRound}
+              disabled={(() => { const f = currentThrowSide === "home" ? currentRound.home : currentRound.away; const rem = currentThrowSide === "home" ? homeScore : awayScore; return typeof f === "number" && rem - f === 0 && selectedDarts === null; })()}
+            >
               {hasPendingThrow ? "Complete round" : "Submit throw"}
             </Button>
             <Button
