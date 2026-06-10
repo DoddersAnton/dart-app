@@ -40,6 +40,7 @@ export const players = pgTable("players", {
     gameId: integer("game_id").references(() => games.id, { onDelete: "set null" }),
     roundNo: integer("round_no"),
     roundLeg: integer("round_leg"),
+    teamId: integer("team_id").references(() => team.id, { onDelete: "set null" }),
   });
 
   export const fixtures = pgTable("fixtures", {
@@ -57,6 +58,7 @@ export const players = pgTable("players", {
     season: varchar("season", { length: 255 }).notNull(),
     seasonsId: integer("seasons_id").references(() => seasons.id, { onDelete: "set null" }),
     matchStatus: varchar("match_status", { length: 255 }).notNull(),
+    // @deprecated — use homeTeamId/awayTeamId + activeTeamId to derive win/loss dynamically. Remove once multi-team is fully live.
     isAppTeamWin: boolean("is_app_team_win").default(false).notNull(),
     notes: varchar("notes", { length: 1055 }),
     createdAt: timestamp("created_at").defaultNow(),
@@ -69,6 +71,7 @@ export const players = pgTable("players", {
     homeTeamScore: integer("home_team_score").default(0).notNull(),
     awayTeamScore: integer("away_team_score").default(0).notNull(),
     gameType: varchar("game_type", { length: 255 }).notNull(),
+    // @deprecated — derive from fixture homeTeamId/awayTeamId + activeTeamId. Remove once multi-team is fully live.
     isAppTeamWin: boolean("is_app_team_win").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
@@ -134,8 +137,23 @@ export const players = pgTable("players", {
     name: varchar("name", { length: 255 }).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     defaultLocationId: integer("default_location_id").references(() => locations.id, { onDelete: "set null" }),
+    // @deprecated — replaced by player_teams + activeTeamId context. Remove once multi-team is fully live.
     isAppTeam: boolean("is_app_team").default(false).notNull(),
   });
+
+// Player ↔ Team membership (one player can belong to multiple teams)
+export const playerTeams = pgTable("player_teams", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  teamId: integer("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const playerTeamsRelations = relations(playerTeams, ({ one }) => ({
+  player: one(players, { fields: [playerTeams.playerId], references: [players.id] }),
+  team: one(team, { fields: [playerTeams.teamId], references: [team.id] }),
+}));
 
 
   export const locations = pgTable("locations", {

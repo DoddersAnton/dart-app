@@ -120,6 +120,13 @@
       "when": 1780068325395,
       "tag": "0016_modern_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1781088538615,
+      "tag": "0017_previous_old_lace",
+      "breakpoints": true
     }
   ]
 }

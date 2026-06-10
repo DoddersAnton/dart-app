@@ -5,9 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { ChevronDown, Menu, User, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Menu, User, X } from "lucide-react";
+import { PlayerTeamEntry } from "@/server/actions/get-player-teams";
+import { useTeam } from "@/contexts/team-context";
 
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -59,9 +67,22 @@ function NavText({ title }: { title: string }) {
 
 type LinkedPlayer = { id: number; name: string } | null;
 
-export function Nav({ linkedPlayer, isSignedIn }: { linkedPlayer?: LinkedPlayer; isSignedIn?: boolean }) {
+export function Nav({
+  linkedPlayer,
+  isSignedIn,
+  playerTeams = [],
+  activeTeamId,
+}: {
+  linkedPlayer?: LinkedPlayer;
+  isSignedIn?: boolean;
+  playerTeams?: PlayerTeamEntry[];
+  activeTeamId?: number | null;
+}) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
+  const { switchTeam, isPending } = useTeam();
+
+  const activeTeam = playerTeams.find((t) => t.teamId === activeTeamId);
 
   return (
     <header
@@ -118,6 +139,40 @@ export function Nav({ linkedPlayer, isSignedIn }: { linkedPlayer?: LinkedPlayer;
         </NavigationMenu>
 
         <div className="flex items-center gap-3">
+          {/* Team switcher — shown when player belongs to multiple teams */}
+          {playerTeams.length > 0 && (
+            <div className="hidden md:flex items-center">
+              {playerTeams.length === 1 ? (
+                <span className="text-xs font-medium px-2 py-1 rounded-md bg-muted text-muted-foreground">
+                  {activeTeam?.teamName}
+                </span>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      disabled={isPending}
+                      className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-muted hover:bg-muted/80 transition-colors text-muted-foreground"
+                    >
+                      {activeTeam?.teamName ?? "Select team"}
+                      <ChevronRight className="h-3 w-3 rotate-90" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {playerTeams.map((t) => (
+                      <DropdownMenuItem
+                        key={t.teamId}
+                        className={`cursor-pointer ${t.teamId === activeTeamId ? "font-semibold" : ""}`}
+                        onClick={() => switchTeam(t.teamId)}
+                      >
+                        {t.teamName}
+                        {t.isDefault && <span className="ml-1 text-[10px] text-muted-foreground">(default)</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
           <SignedOut>
             <div className="text-sm">
               <SignInButton />

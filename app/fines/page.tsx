@@ -1,13 +1,19 @@
 import { db } from "@/server";
 import { auth } from "@clerk/nextjs/server";
 
-import { desc, eq } from "drizzle-orm";
-import { players as playersTable } from "@/server/schema";
+import { desc, eq, or, isNull } from "drizzle-orm";
+import { players as playersTable, playerFines } from "@/server/schema";
 import { PlayerFinesSummary } from "./player-fines-summary";
+import { cookies } from "next/headers";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const { userId: clerkUserId } = await auth();
+
+  const cookieStore = await cookies();
+  const activeTeamId = cookieStore.get("active-team-id")?.value
+    ? parseInt(cookieStore.get("active-team-id")!.value)
+    : null;
 
   const [players, linkedPlayer] = await Promise.all([
     db.query.players.findMany(),
@@ -17,11 +23,11 @@ export default async function Page() {
   ]);
   const fines = await db.query.fines.findMany();
 
+  // Filter fines by active team if set; include legacy fines (no teamId) in all views
   const dataTable = await db.query.playerFines.findMany({
-    /* with: {
-      players: true,
-      fine: true,
-    },*/
+    where: activeTeamId
+      ? or(eq(playerFines.teamId, activeTeamId), isNull(playerFines.teamId))
+      : undefined,
     orderBy: (f) => [desc(f.createdAt)],
   });
 
@@ -31,7 +37,7 @@ export default async function Page() {
     const playerName = player?.name ?? "";
     const nickname = player?.nickname;
     const displayName = nickname ? `${playerName} (${nickname})` : playerName;
-    
+
     return {
       id: item.id,
       player: displayName,
