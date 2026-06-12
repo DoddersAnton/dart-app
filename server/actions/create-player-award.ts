@@ -1,5 +1,5 @@
 "use server";
-import { requireCaptain } from "@/lib/permissions";
+import { requireTeamAdmin } from "@/lib/permissions";
 import { createSafeActionClient } from "next-safe-action";
 import { createPlayerAwardSchema } from "@/types/add-player-award-schema";
 import { db } from "..";

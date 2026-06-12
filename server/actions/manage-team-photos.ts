@@ -4,6 +4,7 @@ import { db } from "..";
 import { eq } from "drizzle-orm";
 import { teamPhotos } from "../schema";
 import { revalidatePath } from "next/cache";
+import { requireTeamAdmin } from "@/lib/permissions";
 
 export async function addTeamPhoto(
   teamId: number,
@@ -11,6 +12,7 @@ export async function addTeamPhoto(
   caption?: string
 ): Promise<{ success: true } | { error: string }> {
   try {
+    await requireTeamAdmin();
     const existing = await db.query.teamPhotos.findMany({ where: eq(teamPhotos.teamId, teamId) });
     await db.insert(teamPhotos).values({ teamId, url, caption: caption ?? null, orderIndex: existing.length });
     revalidatePath("/");
@@ -24,6 +26,7 @@ export async function addTeamPhoto(
 
 export async function deleteTeamPhoto(photoId: number): Promise<{ success: true } | { error: string }> {
   try {
+    await requireTeamAdmin();
     await db.delete(teamPhotos).where(eq(teamPhotos.id, photoId));
     revalidatePath("/");
     revalidatePath("/settings/team-settings");

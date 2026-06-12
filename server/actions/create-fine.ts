@@ -1,5 +1,5 @@
 "use server";
-import { requireCaptain } from "@/lib/permissions";
+import { requireFinanceAccess } from "@/lib/permissions";
 import { createSafeActionClient } from "next-safe-action";
 import { createFineSchema } from "@/types/add-fine-type-schema";
 //import { currentUser } from "@clerk/nextjs/server";

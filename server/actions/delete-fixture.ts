@@ -1,5 +1,5 @@
 "use server";
-import { requireCaptain } from "@/lib/permissions";
+import { requireTeamAdmin } from "@/lib/permissions";
 import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
 import { fixtures } from "../schema";
@@ -15,7 +15,7 @@ export const deleteFixture = actionClient
     .schema(z.object({ id: z.number() }))
     .action(async ({ parsedInput: { id } }) => {
       try {
-        await requireCaptain();
+        await requireTeamAdmin();
 
         const fixture = await db.query.fixtures.findFirst({
           where: eq(fixtures.id, id),

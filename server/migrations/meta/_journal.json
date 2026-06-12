@@ -155,6 +155,13 @@
       "when": 1781246510581,
       "tag": "0021_lonely_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781267343380,
+      "tag": "0022_slippery_beast",
+      "breakpoints": true
     }
   ]
 }

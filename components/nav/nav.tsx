@@ -68,6 +68,18 @@ function NavText({ title }: { title: string }) {
 
 type LinkedPlayer = { id: number; name: string } | null;
 
+const ROLE_LABELS: Record<string, string> = {
+  player: "Player",
+  vice_captain: "Vice Captain",
+  treasurer: "Treasurer",
+  secretary: "Secretary",
+  captain: "Captain",
+};
+
+function formatRole(role: string) {
+  return ROLE_LABELS[role] ?? role.replace(/_/g, " ");
+}
+
 export function Nav({
   linkedPlayer,
   isSignedIn,
@@ -79,7 +91,7 @@ export function Nav({
   isSignedIn?: boolean;
   playerTeams?: PlayerTeamEntry[];
   activeTeamId?: number | null;
-  userRole?: "captain" | "player" | null;
+  userRole?: string | null;
 }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
@@ -197,7 +209,7 @@ export function Nav({
                 <span className="text-sm">{linkedPlayer ? linkedPlayer.name : "My Profile"}</span>
               </div>
               {userRole && (
-                <span className="text-[10px] text-muted-foreground capitalize">{userRole}</span>
+                <span className="text-[10px] text-muted-foreground">{formatRole(userRole)}</span>
               )}
             </Link>
           )}

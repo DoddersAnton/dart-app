@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { players } from "../schema";
 import { playerSchema } from "../../types/add-player-schema";
+import { requireTeamAdmin, canEditPlayerProfile } from "@/lib/permissions";
 
 const actionClient = createSafeActionClient();
 
@@ -16,6 +17,10 @@ export const createPlayer = actionClient
       const dob = dateOfBirth ? new Date(dateOfBirth) : undefined;
 
     if(id) {
+        // Editing an existing profile: own profile, captain, or league admin.
+        if (!(await canEditPlayerProfile(id))) {
+          return { error: "You don't have permission to edit this player's profile" };
+        }
 
         await db
           .update(players)
@@ -36,6 +41,9 @@ export const createPlayer = actionClient
         return { success: `Player ${name} has been updated` };
       }
 
+      // Creating a new profile: captain, secretary, or league admin only.
+      await requireTeamAdmin();
+
       await db
       .insert(players)
       .values({
@@ -53,6 +61,9 @@ export const createPlayer = actionClient
       revalidatePath("/players");
     return { success: `Player ${name} has been created` };
     } catch (error) {
+      if (error instanceof Error && error.message.includes("Permission denied")) {
+        return { error: error.message };
+      }
       console.error(error);
       return { error: JSON.stringify(error) };
     }

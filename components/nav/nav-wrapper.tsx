@@ -31,7 +31,7 @@ export async function NavWrapper() {
   }
 
   const userRole = activeTeamId
-    ? (playerTeams.find((t) => t.teamId === activeTeamId)?.role as "captain" | "player" | undefined) ?? null
+    ? playerTeams.find((t) => t.teamId === activeTeamId)?.role ?? null
     : null;
 
   return (

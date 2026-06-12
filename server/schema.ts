@@ -16,6 +16,9 @@ export const players = pgTable("players", {
     dartsUsed: varchar("darts_used", { length: 255 }),
     dartsWeight: real("darts_weight"),
     dateOfBirth: timestamp("date_of_birth"),
+    // App-wide league administrator. Set directly in the DB for now (no UI).
+    // Grants full access across all teams in the permission helpers.
+    isLeagueAdmin: boolean("is_league_admin").default(false).notNull(),
   });
 
   export const fines = pgTable("fines", {
@@ -178,7 +181,12 @@ export const playerTeams = pgTable("player_teams", {
   playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
   teamId: integer("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
   isDefault: boolean("is_default").default(false).notNull(),
-  // "captain" = full team management; "player" = view/issue fines + own profile only
+  // Role on this team. One of:
+  //   "player"        — view/issue fines + edit own profile only
+  //   "vice_captain"  — same access as player
+  //   "treasurer"     — player + manage fines & payment records
+  //   "secretary"     — team admin (fixtures/fines/players) but cannot edit other profiles
+  //   "captain"       — full team management incl. roles, edit/delete others
   role: varchar("role", { length: 20 }).default("player").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -186,6 +194,25 @@ export const playerTeams = pgTable("player_teams", {
 export const playerTeamsRelations = relations(playerTeams, ({ one }) => ({
   player: one(players, { fields: [playerTeams.playerId], references: [players.id] }),
   team: one(team, { fields: [playerTeams.teamId], references: [team.id] }),
+}));
+
+// Player requests to join a team — captain/secretary approves or rejects.
+// Players never self-add to a team; membership is created on approval.
+export const teamJoinRequests = pgTable("team_join_requests", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  teamId: integer("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
+  // "pending" | "approved" | "rejected"
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  note: varchar("note", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedByPlayerId: integer("resolved_by_player_id").references(() => players.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const teamJoinRequestsRelations = relations(teamJoinRequests, ({ one }) => ({
+  player: one(players, { fields: [teamJoinRequests.playerId], references: [players.id] }),
+  team: one(team, { fields: [teamJoinRequests.teamId], references: [team.id] }),
 }));
 
 

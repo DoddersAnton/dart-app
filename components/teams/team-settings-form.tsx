@@ -7,21 +7,41 @@ import { updateTeamSettings } from "@/server/actions/update-team-settings";
 import { addTeamPhoto, deleteTeamPhoto } from "@/server/actions/manage-team-photos";
 import { upsertTeamSponsor, deleteTeamSponsor } from "@/server/actions/manage-team-sponsors";
 import { updatePlayerTeamRole } from "@/server/actions/update-player-team-role";
+import { resolveJoinRequest } from "@/server/actions/resolve-join-request";
+import { TeamJoinRequest } from "@/server/actions/get-team-join-requests";
+import { TeamRole } from "@/lib/permissions";
 import { UploadThingImageUploader } from "@/components/players/uploadthing-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageUp, Instagram, MoreHorizontal, Plus, Shield, Trash2, Users } from "lucide-react";
+import { Check, ImageUp, Info, Instagram, MoreHorizontal, Plus, Shield, Trash2, UserPlus, Users, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TeamHomepageData } from "@/server/actions/get-team-homepage-data";
 
 type Photo = TeamHomepageData["photos"][number];
 type Sponsor = TeamHomepageData["sponsors"][number];
-type Member = { playerId: number; teamId: number; name: string; imgUrl: string | null; role: "captain" | "player" };
+type Member = { playerId: number; teamId: number; name: string; imgUrl: string | null; role: TeamRole };
+
+const ROLE_OPTIONS: { value: TeamRole; label: string }[] = [
+  { value: "player", label: "Player" },
+  { value: "vice_captain", label: "Vice Captain" },
+  { value: "treasurer", label: "Treasurer" },
+  { value: "secretary", label: "Secretary" },
+  { value: "captain", label: "Captain" },
+];
+
+const ROLE_HELP: { label: string; desc: string }[] = [
+  { label: "Player", desc: "View team data, issue and pay fines, and edit their own profile." },
+  { label: "Vice Captain", desc: "Same access as a player." },
+  { label: "Treasurer", desc: "Player access plus managing fines and payment records." },
+  { label: "Secretary", desc: "Team admin — manage fixtures, fines and players — but cannot edit other players' profiles." },
+  { label: "Captain", desc: "Full team management, including member roles and editing or deleting other profiles." },
+];
 
 function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
@@ -29,6 +49,7 @@ function getInitials(name: string) {
 
 export function TeamSettingsForm({
   teamId, teamName, initialFinesEnabled, initialLogoUrl, initialDescription, initialInstagramUrl, initialPhotos, initialSponsors, members: initialMembers,
+  canManageRoles, joinRequests: initialJoinRequests,
 }: {
   teamId: number;
   teamName: string;
@@ -39,6 +60,8 @@ export function TeamSettingsForm({
   initialPhotos: Photo[];
   initialSponsors: Sponsor[];
   members: Member[];
+  canManageRoles: boolean;
+  joinRequests: TeamJoinRequest[];
 }) {
   const [finesEnabled, setFinesEnabled] = useState(initialFinesEnabled);
   const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
@@ -48,6 +71,8 @@ export function TeamSettingsForm({
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [sponsors, setSponsors] = useState<Sponsor[]>(initialSponsors);
   const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>(initialJoinRequests);
+  const [resolvingId, setResolvingId] = useState<number | null>(null);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [sponsorDialogOpen, setSponsorDialogOpen] = useState(false);
@@ -145,6 +170,23 @@ export function TeamSettingsForm({
     if ("error" in result) { toast.error(result.error); return; }
     setSponsors((prev) => prev.filter((s) => s.id !== sponsorId));
     toast.success("Sponsor removed");
+  };
+
+  const handleResolveRequest = async (request: TeamJoinRequest, approve: boolean) => {
+    setResolvingId(request.id);
+    const result = await resolveJoinRequest(request.id, approve);
+    setResolvingId(null);
+    if ("error" in result) { toast.error(result.error); return; }
+    setJoinRequests((prev) => prev.filter((r) => r.id !== request.id));
+    if (approve) {
+      setMembers((prev) =>
+        prev.some((m) => m.playerId === request.playerId)
+          ? prev
+          : [...prev, { playerId: request.playerId, teamId, name: request.playerName, imgUrl: request.playerImgUrl, role: "player" as TeamRole }]
+            .sort((a, b) => a.name.localeCompare(b.name))
+      );
+    }
+    toast.success(result.success);
   };
 
   return (
@@ -308,11 +350,72 @@ export function TeamSettingsForm({
         </CardContent>
       </Card>
 
+      {/* Join requests */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><UserPlus className="h-4 w-4" /> Join Requests</CardTitle>
+          <CardDescription>Players who have requested to join this team. Approve to add them.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {joinRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending requests.</p>
+          ) : (
+            joinRequests.map((request) => (
+              <div key={request.id} className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                {request.playerImgUrl ? (
+                  <Image src={request.playerImgUrl} alt={request.playerName} width={28} height={28} unoptimized className="h-7 w-7 rounded-full object-cover border shrink-0" />
+                ) : (
+                  <div className="h-7 w-7 rounded-full border bg-muted flex items-center justify-center text-xs font-semibold shrink-0">{getInitials(request.playerName)}</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{request.playerName}</p>
+                  {request.note && <p className="text-xs text-muted-foreground truncate">{request.note}</p>}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button size="icon" variant="outline" className="h-7 w-7 text-green-600" aria-label="Approve"
+                    disabled={resolvingId === request.id} onClick={() => handleResolveRequest(request, true)}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="outline" className="h-7 w-7 text-destructive" aria-label="Reject"
+                    disabled={resolvingId === request.id} onClick={() => handleResolveRequest(request, false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       {/* Member roles */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" /> Member Roles</CardTitle>
-          <p className="text-xs text-muted-foreground">Set who can manage team data. Captains have full access; players can issue and pay fines only.</p>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4" /> Member Roles
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Role explanations">
+                  <Info className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80">
+                <p className="text-sm font-semibold mb-2">What each role can do</p>
+                <ul className="space-y-2">
+                  {ROLE_HELP.map((r) => (
+                    <li key={r.label} className="text-xs">
+                      <span className="font-medium text-foreground">{r.label}</span>
+                      <span className="text-muted-foreground"> — {r.desc}</span>
+                    </li>
+                  ))}
+                </ul>
+              </PopoverContent>
+            </Popover>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            {canManageRoles
+              ? "Set who can manage team data. Only captains can change roles."
+              : "Only captains can change member roles."}
+          </p>
         </CardHeader>
         <CardContent className="space-y-2">
           {members.map((member) => (
@@ -327,17 +430,19 @@ export function TeamSettingsForm({
               </div>
               <select
                 value={member.role}
+                disabled={!canManageRoles}
                 onChange={async (e) => {
-                  const newRole = e.target.value as "captain" | "player";
+                  const newRole = e.target.value as TeamRole;
                   const result = await updatePlayerTeamRole(member.playerId, member.teamId, newRole);
                   if ("error" in result) { toast.error(result.error); return; }
                   setMembers((prev) => prev.map((m) => m.playerId === member.playerId ? { ...m, role: newRole } : m));
                   toast.success(result.success);
                 }}
-                className="text-xs rounded-md border bg-background px-2 py-1 ml-3 shrink-0"
+                className="text-xs rounded-md border bg-background px-2 py-1 ml-3 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <option value="player">Player</option>
-                <option value="captain">Captain</option>
+                {ROLE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
           ))}

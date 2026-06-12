@@ -3,7 +3,8 @@ import { db } from "@/server";
 import { eq } from "drizzle-orm";
 import { team, teamPhotos, teamSponsors, playerTeams, players } from "@/server/schema";
 import { TeamSettingsForm } from "@/components/teams/team-settings-form";
-import { isCaptain } from "@/lib/permissions";
+import { isCaptain, isTeamAdmin, TeamRole } from "@/lib/permissions";
+import { getTeamJoinRequests } from "@/server/actions/get-team-join-requests";
 import { AlertCircle, Lock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -23,17 +24,17 @@ export default async function TeamSettingsPage() {
     );
   }
 
-  const captain = await isCaptain();
-  if (!captain) {
+  const [teamAdmin, captain] = await Promise.all([isTeamAdmin(), isCaptain()]);
+  if (!teamAdmin) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground mt-8">
         <Lock className="h-4 w-4" />
-        <p className="text-sm">Team settings are only accessible to captains.</p>
+        <p className="text-sm">Team settings are only accessible to captains and secretaries.</p>
       </div>
     );
   }
 
-  const [activeTeam, photos, sponsors, memberships] = await Promise.all([
+  const [activeTeam, photos, sponsors, memberships, joinRequests] = await Promise.all([
     db.query.team.findFirst({ where: eq(team.id, activeTeamId) }),
     db.query.teamPhotos.findMany({
       where: eq(teamPhotos.teamId, activeTeamId),
@@ -44,6 +45,7 @@ export default async function TeamSettingsPage() {
       orderBy: (t, { asc }) => [asc(t.orderIndex)],
     }),
     db.query.playerTeams.findMany({ where: eq(playerTeams.teamId, activeTeamId) }),
+    getTeamJoinRequests(activeTeamId),
   ]);
 
   if (!activeTeam) {
@@ -63,7 +65,7 @@ export default async function TeamSettingsPage() {
       teamId: activeTeamId,
       name: p?.name ?? "Unknown",
       imgUrl: p?.imgUrl ?? null,
-      role: m.role as "captain" | "player",
+      role: m.role as TeamRole,
     };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -85,6 +87,8 @@ export default async function TeamSettingsPage() {
         initialPhotos={photos.map((p) => ({ id: p.id, url: p.url, caption: p.caption ?? null, orderIndex: p.orderIndex }))}
         initialSponsors={sponsors.map((s) => ({ id: s.id, name: s.name, logoUrl: s.logoUrl ?? null, websiteUrl: s.websiteUrl ?? null, orderIndex: s.orderIndex }))}
         members={members}
+        canManageRoles={captain}
+        joinRequests={joinRequests}
       />
     </div>
   );

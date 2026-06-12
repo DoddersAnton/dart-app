@@ -5,6 +5,7 @@ import { fines } from "../schema";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "..";
+import { requireFinanceAccess } from "@/lib/permissions";
 
 
 
@@ -14,6 +15,7 @@ export const deleteFine = actionClient
     .schema(z.object({ id: z.number() }))
     .action(async ({ parsedInput: { id } }) => {
       try {
+        await requireFinanceAccess();
         await db
           .delete(fines)
           .where(eq(fines.id, id))

@@ -4,12 +4,14 @@ import { db } from "..";
 import { eq } from "drizzle-orm";
 import { teamSponsors } from "../schema";
 import { revalidatePath } from "next/cache";
+import { requireTeamAdmin } from "@/lib/permissions";
 
 export async function upsertTeamSponsor(
   teamId: number,
   values: { id?: number; name: string; logoUrl?: string | null; websiteUrl?: string | null }
 ): Promise<{ success: true } | { error: string }> {
   try {
+    await requireTeamAdmin();
     if (values.id) {
       await db.update(teamSponsors)
         .set({ name: values.name, logoUrl: values.logoUrl ?? null, websiteUrl: values.websiteUrl ?? null })
@@ -35,6 +37,7 @@ export async function upsertTeamSponsor(
 
 export async function deleteTeamSponsor(sponsorId: number): Promise<{ success: true } | { error: string }> {
   try {
+    await requireTeamAdmin();
     await db.delete(teamSponsors).where(eq(teamSponsors.id, sponsorId));
     revalidatePath("/");
     revalidatePath("/settings/team-settings");

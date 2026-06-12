@@ -3,13 +3,13 @@
 import { db } from "..";
 import { eq, and } from "drizzle-orm";
 import { playerTeams } from "../schema";
-import { requireCaptain } from "@/lib/permissions";
+import { requireCaptain, TeamRole } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 
 export async function updatePlayerTeamRole(
   playerId: number,
   teamId: number,
-  role: "captain" | "player"
+  role: TeamRole
 ): Promise<{ success: string } | { error: string }> {
   try {
     await requireCaptain();

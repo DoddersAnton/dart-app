@@ -89,6 +89,21 @@ New entries are **appended** to the end so the full history is preserved.
 
 ---
 
+## Session — 2026-06-12 (cont. 4)
+
+### Work Content
+- Committed and pushed all outstanding work to `origin/master`.
+- Commit `e41b2a9` — "Team settings, Instagram link, and mobile UI refinements" (65 files, +8726/-270). Bundled this session's UI changes with the in-progress multi-team work (entangled across the same files).
+- Push range `0c0ab04..e41b2a9` (also published the 2 earlier local commits).
+
+### Current Progress
+- Working tree clean; local `master` in sync with `origin/master`.
+
+### Upcoming Tasks
+- _None._
+
+---
+
 ## Session — 2026-06-12 (cont. 3)
 
 ### Work Content
@@ -104,5 +119,27 @@ New entries are **appended** to the end so the full history is preserved.
 
 ### Upcoming Tasks
 - _None — ready to test on mobile viewport._
+
+---
+
+## Session — 2026-06-12 (cont. 5)
+
+### Work Content
+Major onboarding + roles overhaul (plan: `~/.claude/plans/woolly-weaving-harp.md`).
+
+- **Schema** (`server/schema.ts`): added `players.isLeagueAdmin` (DB-set only); new `team_join_requests` table + relations; documented the 5 team roles. Migration `0022_slippery_beast.sql` generated + pushed.
+- **Permissions** (`lib/permissions.ts`): expanded `TeamRole` to player/vice_captain/treasurer/secretary/captain; added `isLeagueAdmin`, `isTeamAdmin`, `requireTeamAdmin`, `requireFinanceAccess`, `canEditPlayerProfile`. League admin short-circuits to allow.
+- **Action gating** (~16 files): team-data actions → `requireTeamAdmin` (secretary gains access); fine-management (create-fine, delete-fine, delete-player-fine) → `requireFinanceAccess` (treasurer); `update-player-team-role` + `delete-player` stay captain-only; gated `create-player` (insert=team admin, edit=canEditPlayerProfile) and team photos/sponsors. NOTE: issuing/paying fines stays open to members (preserves existing behaviour).
+- **Join requests**: new actions `request-to-join-team`, `resolve-join-request`, `get-team-join-requests`, plus onboarding `claim-player-profile` and `create-own-profile`. Deleted superseded `complete-onboarding.ts` (let players self-assign teams).
+- **Onboarding** (`onboarding-form.tsx`): removed player-driven team select. Step 1 claim an unlinked profile OR create one; Step 2 request to join a team (pending captain approval). Pre-linked claims skip straight to the app.
+- **Team Settings**: page now gated to team admins (captain/secretary); added Join Requests card (approve/reject), expanded role select to 5 roles (gated to captains via `canManageRoles`), and an Info popover explaining each role.
+- **Surfacing**: nav formats role labels (e.g. "Vice Captain"); "Add Player" button + page gated to team admins.
+
+### Current Progress
+- Complete. `tsc --noEmit` clean, `npm run lint` clean (only pre-existing warnings), `npm run build` passes. Migration applied to DB.
+
+### Upcoming Tasks
+- Manual end-to-end verification in `npm run dev` (needs real Clerk sessions): new-user onboarding → request join → captain approve/reject; role-gating per role; league admin via DB flag.
+- Optional/deferred: dedicated "delete player" UI (captain-only rights already wired).
 
 ---

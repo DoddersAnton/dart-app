@@ -1,5 +1,5 @@
 "use server";
-import { requireCaptain } from "@/lib/permissions";
+import { requireFinanceAccess } from "@/lib/permissions";
 import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
 import { playerFines } from "../schema";
@@ -15,7 +15,7 @@ export const deletePlayerfine = actionClient
     .schema(z.object({ id: z.number() }))
     .action(async ({ parsedInput: { id } }) => {
       try {
-        await requireCaptain();
+        await requireFinanceAccess();
         const data = await db
           .delete(playerFines)
           .where(eq(playerFines.id, id))

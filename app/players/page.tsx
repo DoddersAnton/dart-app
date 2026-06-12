@@ -12,6 +12,7 @@ import { playerTeams } from "@/server/schema";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { cookies } from "next/headers";
+import { isTeamAdmin } from "@/lib/permissions";
 import { PlayerCardList } from "./player-card-list";
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export default async function GetFineTypePage() {
   );
 
   const total = resolvedPlayers.length;
+  const canAddPlayer = await isTeamAdmin();
 
   return (
     <div className="w-full px-2 mx-auto lg:w-[80%] mt-24">
@@ -55,16 +57,18 @@ export default async function GetFineTypePage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between flex-row">
             <div>Players</div>
-            <div>
-              <Link
-                href="/players/add-player"
-                className="flex justify-center"
-              >
-                <Button size="sm" className="mb-4" variant="outline">
-                  Add Player <Plus className="ml-2" size={16} />
-                </Button>
-              </Link>
-            </div>
+            {canAddPlayer && (
+              <div>
+                <Link
+                  href="/players/add-player"
+                  className="flex justify-center"
+                >
+                  <Button size="sm" className="mb-4" variant="outline">
+                    Add Player <Plus className="ml-2" size={16} />
+                  </Button>
+                </Link>
+              </div>
+            )}
           </CardTitle>
           <CardDescription>
             {activeTeamId ? `${total} players in this team` : `All ${total} players`}
