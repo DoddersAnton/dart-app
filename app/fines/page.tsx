@@ -1,7 +1,7 @@
 import { db } from "@/server";
 import { auth } from "@clerk/nextjs/server";
 
-import { desc, eq, or, isNull } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { players as playersTable, playerFines } from "@/server/schema";
 import { PlayerFinesSummary } from "./player-fines-summary";
 import { cookies } from "next/headers";
@@ -23,11 +23,9 @@ export default async function Page() {
   ]);
   const fines = await db.query.fines.findMany();
 
-  // Filter fines by active team if set; include legacy fines (no teamId) in all views
+  // Strictly filter fines by the active team — only show fines that belong to it
   const dataTable = await db.query.playerFines.findMany({
-    where: activeTeamId
-      ? or(eq(playerFines.teamId, activeTeamId), isNull(playerFines.teamId))
-      : undefined,
+    where: activeTeamId ? eq(playerFines.teamId, activeTeamId) : undefined,
     orderBy: (f) => [desc(f.createdAt)],
   });
 

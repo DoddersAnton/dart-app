@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { getPlayerDashboardData } from "./_lib/player-dashboard-data";
 import { PlayerOverviewClient } from "./player-overview-client";
+import { isCaptain } from "@/lib/permissions";
 
 function calcPct(wins: number, losses: number) {
   const total = wins + losses;
@@ -18,9 +19,10 @@ export default async function PlayerOverviewPage({
 }) {
   const { id } = await params;
   const playerId = Number(id);
-  const [data, { userId: clerkUserId }] = await Promise.all([
+  const [data, { userId: clerkUserId }, userIsCaptain] = await Promise.all([
     getPlayerDashboardData(playerId),
     auth(),
+    isCaptain(),
   ]);
 
   if (!data.player) {
@@ -91,6 +93,7 @@ export default async function PlayerOverviewPage({
         dateOfBirth: data.player.dateOfBirth ? data.player.dateOfBirth.toISOString() : null,
       }}
       clerkUserId={clerkUserId}
+      canEdit={userIsCaptain || (clerkUserId !== null && data.player.userid === clerkUserId)}
       totalFinesIssuedValue={data.totalFinesIssuedValue}
       finesCount={data.finesWithType.length}
       paidFinesCount={data.paidFines.length}

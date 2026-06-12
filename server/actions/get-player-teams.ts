@@ -10,6 +10,7 @@ export type PlayerTeamEntry = {
   teamId: number;
   teamName: string;
   isDefault: boolean;
+  role: string;
 };
 
 export async function getPlayerTeams(playerId: number): Promise<PlayerTeamEntry[]> {
@@ -24,6 +25,7 @@ export async function getPlayerTeams(playerId: number): Promise<PlayerTeamEntry[
       teamId: r.teamId,
       teamName: r.team.name,
       isDefault: r.isDefault,
+      role: r.role,
     }));
   } catch {
     return [];

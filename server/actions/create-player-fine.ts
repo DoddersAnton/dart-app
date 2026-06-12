@@ -12,7 +12,7 @@ const actionClient = createSafeActionClient();
 export const createPlayerFine = actionClient
   .schema(createPlayerFineSchema)
   .action(
-    async ({ parsedInput: { id, playerId, fineId, matchDate, notes, quantity } }) => {
+    async ({ parsedInput: { id, playerId, fineId, matchDate, notes, quantity, teamId } }) => {
       try {
         const user = await currentUser();
 
@@ -61,6 +61,7 @@ export const createPlayerFine = actionClient
                 fineId: fineId,
                 notes: notes,
                 issuedBy: user?.id,
+                teamId: teamId ?? null,
               })
               .returning();
           }
@@ -76,6 +77,7 @@ export const createPlayerFine = actionClient
             fineId: fineId,
             notes: notes,
             issuedBy: user?.id,
+            teamId: teamId ?? null,
           })
           .returning();
 

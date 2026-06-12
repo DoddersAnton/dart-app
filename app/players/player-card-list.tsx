@@ -9,12 +9,12 @@ interface Player {
   id: number;
   name: string;
   nickname: string | null;
-  team: string | null;
   imgUrl?: string | null;
 }
 
 interface PlayerCardListProps {
   players: Player[];
+  roleMap?: Record<number, string>;
 }
 
 function getInitials(name: string) {
@@ -25,7 +25,7 @@ function getInitials(name: string) {
     .join("");
 }
 
-export function PlayerCardList({ players }: PlayerCardListProps) {
+export function PlayerCardList({ players, roleMap = {} }: PlayerCardListProps) {
   const [search, setSearch] = useState("");
   const [avatarMap, setAvatarMap] = useState<Record<number, string>>({});
 
@@ -60,7 +60,12 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
 
             return (
               <Link key={player.id} href={`/player/${player.id}`}>
-                <div className="group aspect-square rounded-xl border bg-card p-5 hover:border-primary transition-colors flex flex-col items-center justify-center gap-3">
+                <div className="group aspect-square rounded-xl border bg-card p-5 hover:border-primary transition-colors flex flex-col items-center justify-center gap-3 relative">
+                  {roleMap[player.id] === "captain" && (
+                    <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                      Captain
+                    </span>
+                  )}
                   {avatarSrc ? (
                     <Image
                       src={avatarSrc}
@@ -78,7 +83,6 @@ export function PlayerCardList({ players }: PlayerCardListProps) {
                   <div className="text-center">
                     <p className="font-semibold text-sm group-hover:text-primary transition-colors">{player.name}</p>
                     {player.nickname && <p className="text-xs text-muted-foreground mt-0.5">{player.nickname}</p>}
-                    {player.team && <p className="text-xs text-muted-foreground">{player.team}</p>}
                   </div>
                 </div>
               </Link>

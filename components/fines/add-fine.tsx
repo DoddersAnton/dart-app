@@ -69,17 +69,20 @@ interface FormProps {
     description: string | null;
     amount: number;
   }[];
+  activeTeamId?: number | null;
 }
 
   export default function FineForm({
   playersListData,
   finesListData,
+  activeTeamId,
 }: FormProps) {
   const form = useForm<zPlayerFineSchema>({
     resolver: zodResolver(createPlayerFineSchema),
     defaultValues: {
       notes: "",
       quantity: 1,
+      teamId: activeTeamId ?? undefined,
     },
     mode: "onChange",
   });

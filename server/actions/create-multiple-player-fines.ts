@@ -15,7 +15,7 @@ const actionClient = createSafeActionClient();
 export const createMulitplePlayerFines = actionClient
   .schema(createMulitplePlayerFineSchema)
   .action(
-    async ({ parsedInput: { playerIds, fineId, matchDate, notes, quantity } }) => {
+    async ({ parsedInput: { playerIds, fineId, matchDate, notes, quantity, teamId } }) => {
       try {
         const user = await currentUser();
 
@@ -45,6 +45,7 @@ export const createMulitplePlayerFines = actionClient
                     fineId: fineId,
                     notes: notes,
                     issuedBy: user?.id,
+                    teamId: teamId ?? null,
                   })
                   .returning();
                   

@@ -9,8 +9,8 @@ import { TeamProvider } from "@/contexts/team-context";
 import { headers, cookies } from "next/headers";
 
 export const metadata: Metadata = {
-  title: "Darts App",
-  description: "Darts application for managing players, games, and fines.",
+  title: "SGOR+",
+  description: "SGOR+ — darts league management for players, games, and fines.",
 };
 
 export default async function RootLayout({

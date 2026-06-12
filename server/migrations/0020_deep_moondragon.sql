@@ -1,0 +1,1 @@
+ALTER TABLE "player_teams" ADD COLUMN "role" varchar(20) DEFAULT 'player' NOT NULL;

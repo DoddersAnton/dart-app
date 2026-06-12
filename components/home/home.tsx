@@ -3,22 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Target, Trophy, Users, ChartBar } from "lucide-react";
+import { Target, Trophy, Users, ChartBar, Instagram } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
-
-const photos = [
-  { src: "/team-pic-1.jpeg", alt: "Team photo 1" },
-  { src: "/team-pic-2.jpeg", alt: "Team photo 2" },
-  { src: "/team-pic-3.jpeg", alt: "Team photo 3" },
-  { src: "/team-pic-4.jpeg", alt: "Team photo 4" },
-];
-
-const sponsors = [
-  { name: "Rustico", img: "/rustico.png", href: "https://hellorustico.co.uk/" },
-  { name: "Tarian Drums", img: "/t-drums-sponsor.jpeg", href: "https://www.tariandrums.wales/" },
-  { name: "West Wales Weighing", img: "/WWW-sponsor.jpeg", href: "https://www.westwalesweighing.co.uk/" },
-];
+import { TeamHomepageData } from "@/server/actions/get-team-homepage-data";
 
 const features = [
   { icon: Target, label: "Fines", description: "Track and manage player fines", href: "/fines" },
@@ -31,40 +19,126 @@ type HomeProps = {
   userName?: string | null;
   userImageUrl?: string | null;
   linkedPlayer?: { id: number; name: string; imgUrl: string | null } | null;
+  teamData?: TeamHomepageData | null;
 };
 
-export function Home({ userName, userImageUrl, linkedPlayer }: HomeProps) {
+export function Home({ userName, userImageUrl, linkedPlayer, teamData }: HomeProps) {
+  const teamName = teamData?.name ?? "SGOR+";
+  const teamLogo = teamData?.logoUrl ?? null;
+  const teamDescription = teamData?.description ?? null;
+  const teamInstagram = teamData?.instagramUrl ?? null;
+  const photos = teamData?.photos ?? [];
+  const sponsors = teamData?.sponsors ?? [];
+
   return (
     <div className="min-h-screen">
+      <div className="max-w-2xl mx-auto px-4">
 
       {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-24 pb-12">
+      <section className="relative flex flex-col items-center justify-center text-center pt-24 pb-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
+          className="w-full"
         >
-          <Image src="/DRT-logo.png" alt="DRT Logo" width={100} height={100} unoptimized className="mx-auto" />
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">Dartiau Rhieni Trisant</h1>
-          <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
-            A team of dads from Llantrisant, based at the Working Men&apos;s Club. Track our fines, results, and player performance all in one place.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3 justify-center">
-            <Link href="/fines">
-              <Button size="lg">View Fines <Target className="ml-2 h-4 w-4" /></Button>
-            </Link>
-            <Link href="/fixtures">
-              <Button size="lg" variant="outline">Fixtures <Trophy className="ml-2 h-4 w-4" /></Button>
-            </Link>
-          </div>
+          {/* App branding — always shown */}
+          <Image src="/sgor-logo.png" alt="SGOR+" width={80} height={80} unoptimized className="mx-auto h-20 w-20 object-contain dark:hidden" />
+          <Image src="/sgor-logo-dark.png" alt="SGOR+" width={80} height={80} unoptimized className="mx-auto h-20 w-20 object-contain hidden dark:block" />
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mt-3">SGOR+</h1>
+
+          {/* Team card — shown when logged in with an active team */}
+          {teamData && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.25 }}
+              className="mt-6 rounded-xl border bg-muted/40 text-left overflow-hidden"
+            >
+              {/* Team identity row */}
+              <div className="px-5 py-4">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Your team</p>
+                <div className="flex items-center gap-3">
+                  {teamLogo ? (
+                    <Image src={teamLogo} alt={teamName} width={44} height={44} unoptimized className="h-11 w-11 rounded-full object-contain border bg-background shrink-0" />
+                  ) : (
+                    <div className="h-11 w-11 rounded-full border bg-background flex items-center justify-center text-sm font-semibold shrink-0">
+                      {teamName[0]}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-bold text-base leading-tight">{teamName}</p>
+                    {teamDescription && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{teamDescription}</p>
+                    )}
+                  </div>
+                </div>
+                {teamInstagram && (
+                  <a
+                    href={teamInstagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <Instagram className="h-4 w-4" /> Instagram
+                  </a>
+                )}
+              </div>
+
+              {/* Photos */}
+              {photos.length > 0 && (
+                <div className="border-t grid grid-cols-2 sm:grid-cols-4 gap-2 p-3">
+                  {photos.map((photo) => (
+                    <div key={photo.id} className="relative aspect-square overflow-hidden rounded-lg">
+                      <Image
+                        src={photo.url}
+                        alt={photo.caption ?? "Team photo"}
+                        fill
+                        unoptimized
+                        className="object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sponsors */}
+              {sponsors.length > 0 && (
+                <div className="border-t px-5 py-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Your Team Sponsors</p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {sponsors.map((sponsor) => {
+                      const inner = (
+                        <div className="w-36 flex flex-col items-center gap-2 rounded-lg border bg-background px-3 py-3 hover:border-primary transition-colors">
+                          {sponsor.logoUrl ? (
+                            <div className="relative h-10 w-full">
+                              <Image src={sponsor.logoUrl} alt={sponsor.name} fill unoptimized className="object-contain" />
+                            </div>
+                          ) : null}
+                          <span className="text-xs font-medium text-center leading-tight">{sponsor.name}</span>
+                        </div>
+                      );
+                      return sponsor.websiteUrl ? (
+                        <a key={sponsor.id} href={sponsor.websiteUrl} target="_blank" rel="noopener noreferrer">{inner}</a>
+                      ) : (
+                        <div key={sponsor.id}>{inner}</div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Logged-in user profile card */}
           {userName && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
-              className="mt-8 flex justify-center"
+              className="mt-4"
             >
-              <Card className="w-full max-w-sm text-left">
+              <Card className="text-left">
                 <CardContent className="flex items-center gap-4 p-4">
                   {(linkedPlayer?.imgUrl ?? userImageUrl) && (
                     <Image
@@ -100,45 +174,8 @@ export function Home({ userName, userImageUrl, linkedPlayer }: HomeProps) {
         </motion.div>
       </section>
 
-      {/* Photo grid */}
-      <section className="px-4 py-12 max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-3"
-        >
-          {photos.map((photo, i) => (
-            <div key={i} className="relative aspect-square overflow-hidden rounded-xl">
-              <Image
-                src={photo.src}
-                alt={photo.alt}
-                fill
-                unoptimized
-                className="object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* Instagram */}
-      <section className="px-4 pb-4 max-w-5xl mx-auto flex justify-center">
-        <a
-          href="https://www.instagram.com/dartiau_rhieni_trisant?igsh=MTAxY3dqZW93cWNheg=="
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 rounded-xl border px-5 py-3 hover:border-pink-500 hover:text-pink-500 transition-colors group"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-pink-500 transition-colors">
-            <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
-          </svg>
-          <span className="text-sm font-medium">Follow us on Instagram</span>
-        </a>
-      </section>
-
       {/* Feature cards */}
-      <section className="px-4 py-12 max-w-5xl mx-auto">
+      <section className="pb-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -157,33 +194,7 @@ export function Home({ userName, userImageUrl, linkedPlayer }: HomeProps) {
         </motion.div>
       </section>
 
-      {/* Sponsors */}
-      <section className="px-4 py-12 max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <p className="text-center text-xs text-muted-foreground uppercase tracking-widest mb-6">Thanks to our sponsors</p>
-          <div className="grid grid-cols-3 gap-6">
-            {sponsors.map(({ name, img, href }) => (
-              <a
-                key={name}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col items-center gap-3 rounded-xl border bg-card p-4 hover:border-primary transition-colors"
-              >
-                <div className="relative h-20 w-full overflow-hidden rounded-lg">
-                  <Image src={img} alt={name} fill unoptimized className="object-contain group-hover:scale-105 transition-transform duration-300" />
-                </div>
-                <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors text-center">{name}</span>
-              </a>
-            ))}
-          </div>
-        </motion.div>
-      </section>
-
+      </div>
     </div>
   );
 }

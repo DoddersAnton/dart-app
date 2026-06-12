@@ -1,0 +1,1 @@
+ALTER TABLE "team" ADD COLUMN "instagram_url" varchar(500);

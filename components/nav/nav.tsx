@@ -52,6 +52,7 @@ const navLinks = [
       { titleEng: "Teams", descriptionEng: "Manage teams", href: "/settings/teams" },
       { titleEng: "Seasons", descriptionEng: "Manage seasons", href: "/settings/seasons" },
       { titleEng: "Award Types", descriptionEng: "Manage player award types", href: "/settings/award-types" },
+      { titleEng: "Team Settings", descriptionEng: "Logo, fines toggle and team config", href: "/settings/team-settings" },
       { titleEng: "App Settings", descriptionEng: "Game rules and app configuration", href: "/settings/app-settings" },
     ],
   },
@@ -72,11 +73,13 @@ export function Nav({
   isSignedIn,
   playerTeams = [],
   activeTeamId,
+  userRole,
 }: {
   linkedPlayer?: LinkedPlayer;
   isSignedIn?: boolean;
   playerTeams?: PlayerTeamEntry[];
   activeTeamId?: number | null;
+  userRole?: "captain" | "player" | null;
 }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [submenuOpen, setSubmenuOpen] = React.useState<Record<string, boolean>>({});
@@ -92,9 +95,48 @@ export function Nav({
       )}
     >
       <div className="container mx-auto flex items-center justify-between px-4 py-2">
-        <Link href="/">
-          <Logo />
-        </Link>
+        {/* Left: logo image + text stack (SGOR+ above, team name below) */}
+        <div className="flex items-center gap-2">
+          <Link href="/">
+            <Image src="/sgor-logo.png" alt="SGOR+" width={40} height={40} unoptimized className="h-10 w-10 object-contain dark:hidden" />
+            <Image src="/sgor-logo-dark.png" alt="SGOR+" width={40} height={40} unoptimized className="h-10 w-10 object-contain hidden dark:block" />
+          </Link>
+          <div className="flex flex-col leading-none">
+            <Link href="/" className="text-sm font-bold">SGOR+</Link>
+            {/* Team name sits directly under the brand text, no extra nav height */}
+            {playerTeams.length > 0 && (
+              <div className="block mt-0.5">
+                {playerTeams.length === 1 ? (
+                  <span className="text-[10px] text-muted-foreground">{activeTeam?.teamName}</span>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        disabled={isPending}
+                        className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {activeTeam?.teamName ?? "Select team"}
+                        <ChevronRight className="h-2.5 w-2.5 rotate-90" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {playerTeams.map((t) => (
+                        <DropdownMenuItem
+                          key={t.teamId}
+                          className={`cursor-pointer ${t.teamId === activeTeamId ? "font-semibold" : ""}`}
+                          onClick={() => switchTeam(t.teamId)}
+                        >
+                          {t.teamName}
+                          {t.isDefault && <span className="ml-1 text-[10px] text-muted-foreground">(default)</span>}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         <NavigationMenu className="hidden md:flex">
           <NavigationMenuList className="flex gap-1 text-sm">
@@ -139,40 +181,6 @@ export function Nav({
         </NavigationMenu>
 
         <div className="flex items-center gap-3">
-          {/* Team switcher — shown when player belongs to multiple teams */}
-          {playerTeams.length > 0 && (
-            <div className="hidden md:flex items-center">
-              {playerTeams.length === 1 ? (
-                <span className="text-xs font-medium px-2 py-1 rounded-md bg-muted text-muted-foreground">
-                  {activeTeam?.teamName}
-                </span>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      disabled={isPending}
-                      className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-muted hover:bg-muted/80 transition-colors text-muted-foreground"
-                    >
-                      {activeTeam?.teamName ?? "Select team"}
-                      <ChevronRight className="h-3 w-3 rotate-90" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {playerTeams.map((t) => (
-                      <DropdownMenuItem
-                        key={t.teamId}
-                        className={`cursor-pointer ${t.teamId === activeTeamId ? "font-semibold" : ""}`}
-                        onClick={() => switchTeam(t.teamId)}
-                      >
-                        {t.teamName}
-                        {t.isDefault && <span className="ml-1 text-[10px] text-muted-foreground">(default)</span>}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          )}
           <SignedOut>
             <div className="text-sm">
               <SignInButton />
@@ -182,10 +190,15 @@ export function Nav({
             <Link
               href={linkedPlayer ? `/player/${linkedPlayer.id}` : "#"}
               title={linkedPlayer ? `Go to ${linkedPlayer.name}'s profile` : "No player linked to your account"}
-              className="hidden md:flex items-center gap-1.5 text-sm px-2 py-1 rounded-md hover:bg-muted transition-colors"
+              className="hidden md:flex flex-col items-end px-2 py-1 rounded-md hover:bg-muted transition-colors"
             >
-              <User className="h-4 w-4" />
-              <span className="text-sm">{linkedPlayer ? linkedPlayer.name : "My Profile"}</span>
+              <div className="flex items-center gap-1.5">
+                <User className="h-4 w-4" />
+                <span className="text-sm">{linkedPlayer ? linkedPlayer.name : "My Profile"}</span>
+              </div>
+              {userRole && (
+                <span className="text-[10px] text-muted-foreground capitalize">{userRole}</span>
+              )}
             </Link>
           )}
           <SignedIn>

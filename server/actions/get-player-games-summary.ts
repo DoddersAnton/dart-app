@@ -108,13 +108,18 @@ function assignRankValues(summaries: GameTypeSummary[]): GameTypeSummary[] {
   return ranked;
 }
 
-export async function getGamesSummaryBySeason() {
+export async function getGamesSummaryBySeason(activeTeamId?: number | null) {
   try {
     const players = await db.query.players.findMany();
-    const appTeam = await db.query.team.findFirst({
-      where: (team) => eq(team.isAppTeam, true),
-    });
-    const fixtures = await db.query.fixtures.findMany();
+    // Use activeTeamId when provided; fall back to deprecated isAppTeam flag
+    const appTeam = activeTeamId
+      ? await db.query.team.findFirst({ where: (team) => eq(team.id, activeTeamId) })
+      : await db.query.team.findFirst({ where: (team) => eq(team.isAppTeam, true) });
+    const allFixtures = await db.query.fixtures.findMany();
+    // Only include fixtures involving the active team
+    const fixtures = appTeam
+      ? allFixtures.filter(f => f.homeTeamId === appTeam.id || f.awayTeamId === appTeam.id)
+      : allFixtures;
     const games = await db.query.games.findMany();
     const gamePlayers = await db.query.gamePlayers.findMany();
 
@@ -176,7 +181,10 @@ export async function getGamesSummaryBySeason() {
           const overallSummary = playerSummaries.get("Overall");
           if (!typeSummary || !overallSummary) continue;
 
-          const didWin = game.isAppTeamWin;
+          // Compute win dynamically when activeTeamId is known; fall back to deprecated flag
+          const didWin = appTeam && fixture
+            ? (appTeamIsHome ? game.homeTeamScore > game.awayTeamScore : appTeamIsAway ? game.awayTeamScore > game.homeTeamScore : false)
+            : game.isAppTeamWin;
 
           typeSummary.gamesPlayed = (typeSummary.gamesPlayed ?? 0) + 1;
           typeSummary.wins += didWin ? 1 : 0;

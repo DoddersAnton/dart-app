@@ -69,13 +69,15 @@ interface FormProps {
     description: string | null;
     amount: number;
   }[];
+  activeTeamId?: number | null;
 }
 
-export default function MultipleFineForm({playersListData, finesListData}: FormProps) {
+export default function MultipleFineForm({playersListData, finesListData, activeTeamId}: FormProps) {
   const form = useForm<zMulitplePlayerFineSchema>({
     resolver: zodResolver(createMulitplePlayerFineSchema),
     defaultValues: {
       notes: "",
+      teamId: activeTeamId ?? undefined,
     },
     mode: "onChange",
   });

@@ -1,4 +1,5 @@
 "use server";
+import { requireCaptain } from "@/lib/permissions";
 
 import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
@@ -21,6 +22,7 @@ export const updateAppSettings = actionClient
   .schema(schema)
   .action(async ({ parsedInput }) => {
     try {
+      await requireCaptain();
       await db
         .update(appSettings)
         .set({

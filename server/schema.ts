@@ -135,11 +135,42 @@ export const players = pgTable("players", {
     export const team = pgTable("team", {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),
+    description: varchar("description", { length: 1000 }),
     createdAt: timestamp("created_at").defaultNow(),
     defaultLocationId: integer("default_location_id").references(() => locations.id, { onDelete: "set null" }),
     // @deprecated — replaced by player_teams + activeTeamId context. Remove once multi-team is fully live.
     isAppTeam: boolean("is_app_team").default(false).notNull(),
+    finesEnabled: boolean("fines_enabled").default(true).notNull(),
+    logoUrl: varchar("logo_url", { length: 500 }),
+    instagramUrl: varchar("instagram_url", { length: 500 }),
   });
+
+export const teamPhotos = pgTable("team_photos", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
+  url: varchar("url", { length: 500 }).notNull(),
+  caption: varchar("caption", { length: 255 }),
+  orderIndex: integer("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const teamSponsors = pgTable("team_sponsors", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  logoUrl: varchar("logo_url", { length: 500 }),
+  websiteUrl: varchar("website_url", { length: 500 }),
+  orderIndex: integer("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const teamPhotosRelations = relations(teamPhotos, ({ one }) => ({
+  team: one(team, { fields: [teamPhotos.teamId], references: [team.id] }),
+}));
+
+export const teamSponsorsRelations = relations(teamSponsors, ({ one }) => ({
+  team: one(team, { fields: [teamSponsors.teamId], references: [team.id] }),
+}));
 
 // Player ↔ Team membership (one player can belong to multiple teams)
 export const playerTeams = pgTable("player_teams", {
@@ -147,6 +178,8 @@ export const playerTeams = pgTable("player_teams", {
   playerId: integer("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
   teamId: integer("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
   isDefault: boolean("is_default").default(false).notNull(),
+  // "captain" = full team management; "player" = view/issue fines + own profile only
+  role: varchar("role", { length: 20 }).default("player").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

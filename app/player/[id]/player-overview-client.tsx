@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Camera, ImageUp, Link2, CheckCircle2, Target, PoundSterling, TrendingUp, Dumbbell, Pencil } from "lucide-react";
+import { Camera, ImageUp, Link2, CheckCircle2, Target, PoundSterling, TrendingUp, Dumbbell, Pencil, Cake, Calendar, MoreVertical } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart } from "recharts";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,12 +19,14 @@ import { UploadThingImageUploader } from "@/components/players/uploadthing-image
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type ModeStats = {
   wins: number;
@@ -45,6 +47,7 @@ type Props = {
     dateOfBirth: string | null;
   };
   clerkUserId: string | null;
+  canEdit?: boolean;
   totalFinesIssuedValue: number;
   finesCount: number;
   paidFinesCount: number;
@@ -99,6 +102,7 @@ export function PlayerOverviewClient(props: Props) {
   const [linking, setLinking] = useState(false);
   const isLinked = props.clerkUserId !== null && props.player.userid === props.clerkUserId;
   const [linked, setLinked] = useState(isLinked);
+  const canEdit = props.canEdit ?? false;
 
   const editForm = useForm<zPlayerSchema>({
     resolver: zodResolver(playerSchema),
@@ -163,33 +167,92 @@ export function PlayerOverviewClient(props: Props) {
             <div>
               <CardTitle className="text-2xl">{props.player.name}</CardTitle>
               {props.player.nickname && <p className="text-sm text-muted-foreground">{props.player.nickname}</p>}
-              {props.player.dateOfBirth && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  DOB: {new Date(props.player.dateOfBirth).toLocaleDateString("en-GB")}
-                  {" · "}Age: {Math.floor((Date.now() - new Date(props.player.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365.25))}
-                </p>
-              )}
-              {(props.player.dartsUsed || props.player.dartsWeight) && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {[props.player.dartsUsed, props.player.dartsWeight ? `${props.player.dartsWeight}g` : null]
-                    .filter(Boolean).join(" · ")}
-                </p>
+              {(props.player.dateOfBirth || props.player.dartsUsed || props.player.dartsWeight) && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {props.player.dateOfBirth && (
+                    <>
+                      <Badge variant="secondary" className="gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(props.player.dateOfBirth).toLocaleDateString("en-GB")}
+                      </Badge>
+                      <Badge variant="secondary" className="gap-1">
+                        <Cake className="h-3 w-3" />
+                        {Math.floor((Date.now() - new Date(props.player.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365.25))} yrs
+                      </Badge>
+                    </>
+                  )}
+                  {props.player.dartsUsed && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Target className="h-3 w-3" />
+                      {props.player.dartsUsed}
+                    </Badge>
+                  )}
+                  {props.player.dartsWeight && (
+                    <Badge variant="secondary">{props.player.dartsWeight}g</Badge>
+                  )}
+                </div>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link href={`/practice/new?playerId=${props.player.id}`}>
-              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                <Dumbbell className="h-3.5 w-3.5" /> Practice
-              </Button>
-            </Link>
-            <Dialog open={editOpen} onOpenChange={setEditOpen}>
-              <DialogTrigger asChild>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Desktop: inline action buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              <Link href={`/practice/new?playerId=${props.player.id}`}>
                 <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                  <Dumbbell className="h-3.5 w-3.5" /> Practice
+                </Button>
+              </Link>
+              {canEdit && (
+                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setEditOpen(true)}>
                   <Pencil className="h-3.5 w-3.5" /> Edit
                 </Button>
-              </DialogTrigger>
+              )}
+              <div className="flex">
+                <Button variant="outline" size="icon" aria-label="Link player" onClick={handleLinkPlayer} disabled={linking || linked}
+                  className={`rounded-r-none border-r-0 ${linked ? "border-green-500 text-green-500" : ""}`}>
+                  {linked ? <CheckCircle2 className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" size="icon" aria-label="Upload avatar" className="rounded-l-none" onClick={() => setDialogOpen(true)}>
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Mobile: condensed dropdown */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Player actions">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild className="cursor-pointer gap-2">
+                    <Link href={`/practice/new?playerId=${props.player.id}`}>
+                      <Dumbbell className="h-4 w-4" /> Practice
+                    </Link>
+                  </DropdownMenuItem>
+                  {canEdit && (
+                    <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => setEditOpen(true)}>
+                      <Pencil className="h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => setDialogOpen(true)}>
+                    <Camera className="h-4 w-4" /> Change image
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer gap-2" onClick={handleLinkPlayer} disabled={linking || linked}>
+                    {linked ? <CheckCircle2 className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                    {linked ? "Linked" : "Link player"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Controlled dialogs — shared by desktop buttons and the mobile menu */}
+          {canEdit && (
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Edit Player</DialogTitle>
@@ -248,26 +311,16 @@ export function PlayerOverviewClient(props: Props) {
                 </Form>
               </DialogContent>
             </Dialog>
-            <div className="flex">
-            <Button variant="outline" size="icon" aria-label="Link player" onClick={handleLinkPlayer} disabled={linking || linked}
-              className={`rounded-r-none border-r-0 ${linked ? "border-green-500 text-green-500" : ""}`}>
-              {linked ? <CheckCircle2 className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
-            </Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Upload avatar" className="rounded-l-none">
-                  <Camera className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2"><ImageUp className="h-4 w-4" /> Upload avatar</DialogTitle>
-                </DialogHeader>
-                <UploadThingImageUploader onUploadComplete={updatePlayerAvatar} />
-              </DialogContent>
-            </Dialog>
-            </div>
-          </div>
+          )}
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><ImageUp className="h-4 w-4" /> Upload avatar</DialogTitle>
+              </DialogHeader>
+              <UploadThingImageUploader onUploadComplete={updatePlayerAvatar} />
+            </DialogContent>
+          </Dialog>
         </CardHeader>
       </Card>
 

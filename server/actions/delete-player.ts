@@ -1,4 +1,5 @@
 "use server";
+import { requireCaptain } from "@/lib/permissions";
 import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
 import { players } from "../schema";
@@ -14,6 +15,7 @@ export const deletePlayer = actionClient
     .schema(z.object({ id: z.number() }))
     .action(async ({ parsedInput: { id } }) => {
       try {
+        await requireCaptain();
         await db
           .delete(players)
           .where(eq(players.id, id))

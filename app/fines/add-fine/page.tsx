@@ -4,8 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getFines } from "@/server/actions/get-fines";
 import { getPlayers } from "@/server/actions/get-players";
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 
 export default async function AddFine() {
+
+    const cookieStore = await cookies();
+    const activeTeamId = cookieStore.get("active-team-id")?.value
+      ? parseInt(cookieStore.get("active-team-id")!.value)
+      : null;
 
     const playersData = await getPlayers();
     const finesData = await getFines();
@@ -49,12 +55,12 @@ export default async function AddFine() {
         </TabsList>
         <TabsContent value="single-fine">
           <Suspense>
-            <FineForm playersListData={players} finesListData={fines} />
+            <FineForm playersListData={players} finesListData={fines} activeTeamId={activeTeamId} />
           </Suspense>
         </TabsContent>
         <TabsContent value="group-fine">
           <Suspense>
-            <MultipleFineForm  playersListData={players} finesListData={fines}/>
+            <MultipleFineForm  playersListData={players} finesListData={fines} activeTeamId={activeTeamId} />
           </Suspense>
         </TabsContent>
       </Tabs>

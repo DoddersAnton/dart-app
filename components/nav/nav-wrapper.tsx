@@ -1,11 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getPlayerByUserId } from "@/server/actions/get-player-by-user-id";
 import { getPlayerTeams, PlayerTeamEntry } from "@/server/actions/get-player-teams";
 import { Nav } from "./nav";
-
-const PROTECTED = /^\/(fines|players|fixtures|settings|subscriptions|reports|practice|player|games)/;
 
 export async function NavWrapper() {
   const user = await currentUser();
@@ -14,23 +11,7 @@ export async function NavWrapper() {
     return <Nav linkedPlayer={null} isSignedIn={false} playerTeams={[]} activeTeamId={null} />;
   }
 
-  const headersList = await headers();
-  const pathname = headersList.get("x-pathname") ?? "";
-  const isOnboarding = pathname.startsWith("/onboarding");
-  const isProtected = PROTECTED.test(pathname);
-
   const player = await getPlayerByUserId(user.id);
-
-  // On protected routes: enforce player + team registration
-  if (isProtected && !isOnboarding) {
-    if (!player) {
-      redirect("/onboarding");
-    }
-    const teams = await getPlayerTeams(player.id);
-    if (!teams.length) {
-      redirect("/onboarding");
-    }
-  }
 
   let playerTeams: PlayerTeamEntry[] = [];
   if (player) {
@@ -49,12 +30,17 @@ export async function NavWrapper() {
       : (playerTeams.find((t) => t.isDefault)?.teamId ?? playerTeams[0].teamId);
   }
 
+  const userRole = activeTeamId
+    ? (playerTeams.find((t) => t.teamId === activeTeamId)?.role as "captain" | "player" | undefined) ?? null
+    : null;
+
   return (
     <Nav
       linkedPlayer={player ? { id: player.id, name: player.name } : null}
       isSignedIn
       playerTeams={playerTeams}
       activeTeamId={activeTeamId}
+      userRole={userRole}
     />
   );
 }

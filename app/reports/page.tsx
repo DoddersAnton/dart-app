@@ -1,17 +1,34 @@
 import { db } from "@/server";
+import { eq } from "drizzle-orm";
 import { getFixtureKpis } from "@/server/actions/get-fixture-kpis";
 import { getGamesSummaryBySeason } from "@/server/actions/get-player-games-summary";
+import { playerFines, playerTeams } from "@/server/schema";
 import { ReportsClient } from "./reports-client";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const [kpisResult, summaryResult, players, fines, playerFines, payments] = await Promise.all([
-    getFixtureKpis(),
-    getGamesSummaryBySeason(),
+  const cookieStore = await cookies();
+  const activeTeamId = cookieStore.get("active-team-id")?.value
+    ? parseInt(cookieStore.get("active-team-id")!.value)
+    : null;
+
+  // Players on the active team (for fines leaderboard)
+  const teamPlayerIds = activeTeamId
+    ? (await db.query.playerTeams.findMany({ where: eq(playerTeams.teamId, activeTeamId) }))
+        .map((pt) => pt.playerId)
+    : null;
+
+  const [kpisResult, summaryResult, players, fines, playerFinesData, payments] = await Promise.all([
+    getFixtureKpis(activeTeamId),
+    getGamesSummaryBySeason(activeTeamId),
     db.query.players.findMany(),
     db.query.fines.findMany(),
-    db.query.playerFines.findMany(),
+    // Strictly filter fines by active team (same policy as fines page)
+    activeTeamId
+      ? db.query.playerFines.findMany({ where: eq(playerFines.teamId, activeTeamId) })
+      : db.query.playerFines.findMany(),
     db.query.payments.findMany(),
   ]);
 
@@ -33,10 +50,14 @@ export default async function ReportsPage() {
       rank: r.rankValue ?? 0,
     }));
 
-  // Fines leaderboard
-  const finesLeaderboard = players
+  // Fines leaderboard — scoped to active team's players and fines
+  const finesPlayers = teamPlayerIds
+    ? players.filter((p) => teamPlayerIds.includes(p.id))
+    : players;
+
+  const finesLeaderboard = finesPlayers
     .map((player) => {
-      const pf = playerFines.filter((f) => f.playerId === player.id);
+      const pf = playerFinesData.filter((f) => f.playerId === player.id);
       const total = pf.reduce((acc, f) => {
         const fine = fines.find((fi) => fi.id === f.fineId);
         return acc + (fine?.amount ?? 0);
@@ -61,6 +82,7 @@ export default async function ReportsPage() {
   const totalFinesIssued = finesLeaderboard.reduce((acc, p) => acc + p.total, 0);
   const totalFinesUnpaid = finesLeaderboard.reduce((acc, p) => acc + p.unpaid, 0);
   const totalPayments = payments.reduce((acc, p) => acc + p.amount, 0);
+
 
   return (
     <div className="w-full mt-22 lg:w-[80%] px-4 mx-auto space-y-8 pb-12">

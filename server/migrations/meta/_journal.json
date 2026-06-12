@@ -127,6 +127,34 @@
       "when": 1781088538615,
       "tag": "0017_previous_old_lace",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781116785964,
+      "tag": "0018_long_risque",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781118252180,
+      "tag": "0019_silent_sue_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1781172723068,
+      "tag": "0020_deep_moondragon",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781246510581,
+      "tag": "0021_lonely_starfox",
+      "breakpoints": true
     }
   ]
 }

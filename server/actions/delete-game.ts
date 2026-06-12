@@ -1,4 +1,5 @@
 "use server";
+import { requireCaptain } from "@/lib/permissions";
 import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
 import { appSettings, fixtures, games, team } from "../schema";
@@ -14,6 +15,7 @@ export const deleteGame = actionClient
     .schema(z.object({ id: z.number() }))
     .action(async ({ parsedInput: { id } }) => {
       try {
+        await requireCaptain();
 
         const game = await db.query.games.findFirst({
           where: eq(games.id, id),

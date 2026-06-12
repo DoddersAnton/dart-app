@@ -19,8 +19,8 @@ export default async function FixturesPage() {
 
     const [fixtureList, fixtureKpis, playerList, availabilitySummary, linkedPlayer] = await Promise.all([
         getFixtureList(activeTeamId),
-        getFixtureKpis(),
-        getGamesSummaryBySeason(),
+        getFixtureKpis(activeTeamId),
+        getGamesSummaryBySeason(activeTeamId),
         getFixturesAvailabilitySummary(),
         user ? getPlayerByUserId(user.id) : Promise.resolve(null),
     ]);
