@@ -59,7 +59,6 @@ interface FormProps {
     id: number;
     name: string;
     nickname: string | null;
-    team: string | null;
     createdAt: Date;
   }[];
   finesListData: {

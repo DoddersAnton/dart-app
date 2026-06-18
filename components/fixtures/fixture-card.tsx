@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 import { useAction } from "next-safe-action/hooks";
 import { getGamesByFixture } from "@/server/actions/get-games-by-fixture";
+import { getFixtureReport, FixtureReportGame } from "@/server/actions/get-fixture-report";
 import { deleteGame } from "@/server/actions/delete-game";
 import { updateFixtureNotes } from "@/server/actions/update-fixture-notes";
 import { updateFixtureStatus } from "@/server/actions/update-fixture-status";
@@ -30,6 +31,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
 import GameFormPopup from "./add-game-popup";
 import GamesSummaryCard, { GameSummary } from "../games/game-summary-card";
+import MatchReport from "./match-report";
 
 type AvailabilityRecord = {
   attending: boolean | null;
@@ -123,6 +125,20 @@ function useGamesByFixture(fixtureId: number) {
   return { games, loading, error, fetchGames };
 }
 
+function useFixtureReport(fixtureId: number) {
+  const [reportGames, setReportGames] = useState<FixtureReportGame[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    getFixtureReport(fixtureId).then((res) => {
+      if (active && "success" in res && res.success) setReportGames(res.success);
+    });
+    return () => { active = false; };
+  }, [fixtureId]);
+
+  return reportGames;
+}
+
 export default function FixtureCard({
   fixtureData,
   availability,
@@ -133,6 +149,9 @@ export default function FixtureCard({
   linkedPlayerId?: number | null;
 }) {
   const { games, loading, error, fetchGames } = useGamesByFixture(fixtureData.id);
+  const reportGames = useFixtureReport(fixtureData.id);
+  const hasReport = reportGames.some((g) => g.rounds.length > 0);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const [notesOpen, setNotesOpen] = useState(!!(fixtureData.notes));
   const [editingNotes, setEditingNotes] = useState(false);
@@ -429,6 +448,26 @@ export default function FixtureCard({
               )}
             </div>
           </CardContent>
+        </Card>
+      )}
+
+      {/* Match Report */}
+      {hasReport && (
+        <Card>
+          <CardHeader className="pb-2">
+            <button
+              className="flex items-center justify-between w-full text-left"
+              onClick={() => setReportOpen((v) => !v)}
+            >
+              <CardTitle className="text-base">Match Report</CardTitle>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${reportOpen ? "rotate-180" : ""}`} />
+            </button>
+          </CardHeader>
+          {reportOpen && (
+            <CardContent className="pt-0">
+              <MatchReport games={reportGames} />
+            </CardContent>
+          )}
         </Card>
       )}
 

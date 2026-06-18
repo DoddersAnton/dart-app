@@ -28,7 +28,7 @@ type FineRoundProps = {
   fineData: { id: number, title: string, description: string | null, amount: number, createdAt: string | null }[]
   playerId?: number | null;
   fineId?: number | null;
-  defaultPlayers?: { id: number; name: string; nickname: string | null; team: string | null; createdAt: Date; }[]
+  defaultPlayers?: { id: number; name: string; nickname: string | null; createdAt: Date; }[]
   roundNo?: number | null;
   roundLeg?: number | null;
 };

@@ -9,14 +9,38 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { getTeams } from "@/server/actions/get-teams";
+import { isLeagueAdmin } from "@/lib/permissions";
+import { db } from "@/server";
 import {  User2Icon } from "lucide-react";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 export default async function TeamsSettingsPage() {
   const teams = await getTeams();
 
   if ("error" in teams) {
     return <div className="mt-22">{teams.error}</div>;
+  }
+
+  // League admins can manage team rosters from these cards.
+  const canManage = await isLeagueAdmin();
+
+  // Build a teamId → players map in one pass (only needed when managing).
+  const playersByTeam = new Map<number, { id: number; name: string; nickname: string | null }[]>();
+  if (canManage) {
+    const [allPlayers, memberships] = await Promise.all([
+      db.query.players.findMany(),
+      db.query.playerTeams.findMany(),
+    ]);
+    const playerMap = new Map(allPlayers.map((p) => [p.id, p]));
+    for (const m of memberships) {
+      const p = playerMap.get(m.playerId);
+      if (!p) continue;
+      const list = playersByTeam.get(m.teamId) ?? [];
+      list.push({ id: p.id, name: p.name, nickname: p.nickname });
+      playersByTeam.set(m.teamId, list);
+    }
   }
 
   return (
@@ -62,7 +86,8 @@ export default async function TeamsSettingsPage() {
                 locationGoogleMapsLink={location.locationGoogleMapsLink}
                 locationAddress={location.locationAddress}
                 isAppTeam={location.isAppTeam}
-             
+                canManage={canManage}
+                players={playersByTeam.get(location.id) ?? []}
             />
           ))}
           </div>

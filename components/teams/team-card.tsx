@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import ManageTeamPlayers, { TeamMember } from "./manage-team-players";
 
 interface TeamCardProps {
   id: number;
@@ -14,6 +15,8 @@ interface TeamCardProps {
   locationAddress?: string | null;
   locationGoogleMapsLink?: string | null;
   isAppTeam?: boolean;
+  canManage?: boolean;
+  players?: TeamMember[];
 }
 
 export default function TeamCard({
@@ -23,6 +26,8 @@ export default function TeamCard({
   locationAddress,
   locationGoogleMapsLink,
   isAppTeam,
+  canManage = false,
+  players = [],
 }: TeamCardProps) {
   return (
     <Card>
@@ -91,6 +96,12 @@ export default function TeamCard({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </CardContent>
+      )}
+
+      {canManage && (
+        <CardContent className="pt-0">
+          <ManageTeamPlayers teamId={id} teamName={name} players={players} />
         </CardContent>
       )}
     </Card>

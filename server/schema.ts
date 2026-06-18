@@ -87,12 +87,21 @@ export const players = pgTable("players", {
     gameId: integer("game_id").notNull().references(() => games.id, {
       onDelete: "cascade"
     }),
-    playerId: integer("player_id").notNull().references(() => players.id, {
+    // @deprecated — single-sided attribution. Use homePlayerId/awayPlayerId. Now nullable; kept for legacy rows.
+    playerId: integer("player_id").references(() => players.id, {
       onDelete: "cascade"
     }),
+    // Two-sided attribution: one round row = (homePlayerId threw homeScore in homeDartsUsed)
+    // + (awayPlayerId threw awayScore in awayDartsUsed). Either side may be NULL (free-text opponent
+    // or a first-throw checkout where the other side never threw).
+    homePlayerId: integer("home_player_id").references(() => players.id, { onDelete: "set null" }),
+    awayPlayerId: integer("away_player_id").references(() => players.id, { onDelete: "set null" }),
     homeScore: integer("home_score").default(0).notNull(),
     awayScore: integer("away_score").default(0).notNull(),
+    // @deprecated — shared darts count. Use homeDartsUsed/awayDartsUsed for per-side averages.
     dartsUsed: integer("darts_used").default(3).notNull(),
+    homeDartsUsed: integer("home_darts_used"),
+    awayDartsUsed: integer("away_darts_used"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     fineAdded: boolean("fine_added").default(false).notNull(),
@@ -106,6 +115,10 @@ export const players = pgTable("players", {
     playerId: integer("player_id").notNull().references(() => players.id, {
       onDelete: "cascade"
     }),
+    // Which team this player represented in this game (source of truth; nullable for non-app opponents).
+    teamId: integer("team_id").references(() => team.id, { onDelete: "set null" }),
+    // Denormalized "home" | "away" for rendering, derived from the fixture at insert time.
+    side: varchar("side", { length: 4 }),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   });

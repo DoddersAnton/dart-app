@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart as  Calendar, Camera, ImageUp, InfoIcon, PoundSterling, Trophy, UserIcon, UsersIcon } from "lucide-react";
+import { BarChart as  Calendar, Camera, ImageUp, InfoIcon, PoundSterling, Trophy, UserIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -48,7 +48,6 @@ export type Player = {
   id: number;
   name: string;
   nickname: string | null;
-  team: string | null;
   createdAt: string | null;
   url: string | null;
   //totalFines: number | null;
@@ -330,14 +329,6 @@ export default function PlayerCard({ playerData }: { playerData: Player }) {
                 <UserIcon size={12} />
               </div>
               <div>{playerData.nickname}</div>
-            </div>{" "}
-          </CardDescription>
-          <CardDescription>
-            <div className="flex items-center gap-2">
-              <div>
-                <UsersIcon size={12} />
-              </div>
-              <div>{playerData.team}</div>
             </div>{" "}
           </CardDescription>
           <CardDescription>

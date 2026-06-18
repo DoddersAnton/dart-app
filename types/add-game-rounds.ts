@@ -7,7 +7,12 @@ export const addGameRoundsSchema = z.object({
     roundLeg: z.coerce.number(),
     homeTeamScore: z.coerce.number(),
     awayTeamScore: z.coerce.number(),
-    playerId: z.number().optional()
+    // @deprecated — kept for compatibility; prefer homePlayerId/awayPlayerId
+    playerId: z.number().optional(),
+    homePlayerId: z.number().optional(),
+    awayPlayerId: z.number().optional(),
+    homeDartsUsed: z.number().optional(),
+    awayDartsUsed: z.number().optional(),
   })),
   
 });

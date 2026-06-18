@@ -13,7 +13,7 @@ async function getCurrentPlayer() {
   return (await db.query.players.findFirst({ where: eq(players.userid, userId) })) ?? null;
 }
 
-async function getActiveTeamId(): Promise<number | null> {
+export async function getActiveTeamId(): Promise<number | null> {
   const cookieStore = await cookies();
   const v = cookieStore.get("active-team-id")?.value;
   return v ? parseInt(v) : null;
@@ -38,6 +38,13 @@ export async function getActiveUserRole(): Promise<TeamRole | null> {
 export async function isLeagueAdmin(): Promise<boolean> {
   const player = await getCurrentPlayer();
   return player?.isLeagueAdmin ?? false;
+}
+
+/** League-admin gate: throws unless the current user is a league administrator. */
+export async function requireLeagueAdmin(): Promise<void> {
+  if (!(await isLeagueAdmin())) {
+    throw new Error("Permission denied — league admin role required");
+  }
 }
 
 /** Returns true when the current user is a captain on the active team (or a league admin). */

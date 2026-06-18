@@ -26,9 +26,9 @@ export const createGameRounds = actionClient
         if (!existingGame) return { error: "Game not found" };
 
         for (const round of gameRounds) {
-            const { roundNo, roundLeg, homeTeamScore, awayTeamScore, playerId } = round;
+            const { roundNo, roundLeg, homeTeamScore, awayTeamScore, homePlayerId, awayPlayerId, homeDartsUsed, awayDartsUsed } = round;
 
-            if(!playerId) continue;
+            if(!homePlayerId && !awayPlayerId) continue;
 
             console.log("===Round No===", roundNo);
 
@@ -36,11 +36,14 @@ export const createGameRounds = actionClient
              .insert(rounds)
               .values({
                 gameId: gameId,
-                playerId: playerId,
+                homePlayerId: homePlayerId,
+                awayPlayerId: awayPlayerId,
                 roundNumber: roundNo,
                 leg: roundLeg,
                 homeScore: homeTeamScore ?? 0,
                 awayScore: awayTeamScore ?? 0,
+                homeDartsUsed: homeDartsUsed,
+                awayDartsUsed: awayDartsUsed,
               })
               .returning();
         }

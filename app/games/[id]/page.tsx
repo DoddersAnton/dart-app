@@ -3,6 +3,7 @@
 import GameCard from "@/components/games/game-card";
 import { getGame } from "@/server/actions/get-game";
 import { getAppSettings } from "@/server/actions/get-app-settings";
+import { getActiveTeamId } from "@/lib/permissions";
 
 export default async function Game({
   params,
@@ -10,7 +11,8 @@ export default async function Game({
   params: Promise<{ id: number }>;
 }) {
   const { id } = await params;
-  const [game, settings] = await Promise.all([getGame(id), getAppSettings()]);
+  const activeTeamId = await getActiveTeamId();
+  const [game, settings] = await Promise.all([getGame(id, activeTeamId), getAppSettings()]);
 
   if (game.error) {
     return <div className="mt-22">{game.error}</div>;

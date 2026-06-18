@@ -21,7 +21,6 @@ export type PlayerColumn = {
     id: number;
   name: string;
   nickname: string | null;
-  team: string | null;
   dateOfBirth: string | null;
   dartsUsed: string | null;
   dartsWeight: number | null;
@@ -94,10 +93,6 @@ export const playerColumns: ColumnDef<PlayerColumn>[] = [
     header: "Nickname",
   },
   
-  {
-    accessorKey: "team",
-    header: "Team",
-  },
   {
     accessorKey: "dateOfBirth",
     header: "Date of Birth",

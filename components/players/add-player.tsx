@@ -27,8 +27,11 @@ import { Textarea } from "../ui/textarea";
 import { useAction } from "next-safe-action/hooks";
 import { Input } from "../ui/input";
 import { getPlayer } from "@/server/actions/get-player";
+import { getTeams } from "@/server/actions/get-teams";
+import { getPlayerTeams } from "@/server/actions/get-player-teams";
 import { zPlayerSchema, playerSchema } from "@/types/add-player-schema";
 import { createPlayer } from "@/server/actions/create-player";
+import { MultiSelect } from "../ui/multi-select";
 
 export default function PlayerForm() {
 
@@ -57,7 +60,6 @@ export default function PlayerForm() {
             form.setValue("id", id);
             form.setValue("name", data.success.name ?? "");
             form.setValue("nickname", data.success.nickname ?? "");
-            form.setValue("team", data.success.team ?? "");
             form.setValue("bio", data.success.bio ?? "");
             form.setValue("dartsUsed", data.success.dartsUsed ?? "");
             form.setValue("dartsWeight", data.success.dartsWeight ?? undefined);
@@ -69,6 +71,9 @@ export default function PlayerForm() {
       };
 
     const [loading, setLoading] = useState(false);
+    const [teamOptions, setTeamOptions] = useState<{ value: string; label: string }[]>([]);
+    const [initialTeamIds, setInitialTeamIds] = useState<string[]>([]);
+    const [teamsReady, setTeamsReady] = useState(false);
 
     useEffect(() => {
 
@@ -77,6 +82,22 @@ export default function PlayerForm() {
       }
 
       setLoading(false)
+    }, []);
+
+    // Load team options (and any existing memberships when editing) for the team picker.
+    useEffect(() => {
+      async function loadTeams() {
+        const res = await getTeams();
+        const list = "success" in res && res.success ? res.success : [];
+        setTeamOptions(list.map((t) => ({ value: String(t.id), label: t.name })));
+        if (editMode) {
+          const memberships = await getPlayerTeams(parseInt(editMode));
+          setInitialTeamIds(memberships.map((m) => String(m.teamId)));
+          form.setValue("teamIds", memberships.map((m) => m.teamId));
+        }
+        setTeamsReady(true);
+      }
+      loadTeams();
     }, []);
 
 
@@ -177,19 +198,27 @@ export default function PlayerForm() {
                     </FormItem>
                   )}
                 />
-                 <FormField
-                  control={form.control}
-                  name="team"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Team</FormLabel>
-                      <FormControl>
-                       <Input {...field} placeholder="add a team name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {teamsReady && (
+                  <FormField
+                    control={form.control}
+                    name="teamIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Teams</FormLabel>
+                        <MultiSelect
+                          options={teamOptions}
+                          defaultValue={initialTeamIds}
+                          onValueChange={(values) => field.onChange(values.map((v) => parseInt(v, 10)))}
+                          placeholder="Search and add teams"
+                          variant="inverted"
+                          animation={0}
+                          maxCount={4}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="dateOfBirth"

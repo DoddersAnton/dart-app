@@ -90,7 +90,8 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
       awayScore = a;
       currentRounds = legRounds.map((r) => ({
         roundNumber: r.roundNumber,
-        player: r.playerName,
+        homePlayerName: r.homePlayerName ?? undefined,
+        awayPlayerName: r.awayPlayerName ?? undefined,
         home: r.homeScore,
         away: r.awayScore,
       }));
@@ -101,9 +102,8 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
   }
 
   const shouldRotate = gameData.gameType === "Team Game" || gameData.gameType === "Doubles";
-  const currentPlayerIdx = shouldRotate && gameData.players.length > 0
-    ? currentRounds.length % gameData.players.length
-    : 0;
+  const homeIdx = shouldRotate && gameData.homePlayers.length > 0 ? currentRounds.length % gameData.homePlayers.length : 0;
+  const awayIdx = shouldRotate && gameData.awayPlayers.length > 0 ? currentRounds.length % gameData.awayPlayers.length : 0;
 
   return {
     homeScore,
@@ -115,10 +115,8 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
     rounds: currentRounds,
     homeTeam: gameData.homeTeam,
     awayTeam: gameData.awayTeam,
-    appPlayers: gameData.players.map((p, i) => ({
-      name: p.name,
-      isNext: shouldRotate ? i === currentPlayerIdx : i === 0,
-    })),
+    homePlayers: gameData.homePlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === homeIdx : i === 0 })),
+    awayPlayers: gameData.awayPlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === awayIdx : i === 0 })),
   };
 }
 
@@ -144,16 +142,20 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
     };
   }, [gameData.id]);
 
-  // Seed opposing players from localStorage (same key the tracker uses)
+  // Seed free-text opponent names from localStorage into whichever side has no real roster.
   useEffect(() => {
     try {
       const stored = localStorage.getItem(`opposing-players-${gameData.id}`);
       if (stored) {
         const parsed: Array<{ id: string; name: string }> = JSON.parse(stored);
-        setState((prev) => ({
-          ...prev,
-          opposingPlayers: parsed.map((p, i) => ({ name: p.name, isNext: i === 0 })),
-        }));
+        const mapped = parsed.map((p, i) => ({ name: p.name, isNext: i === 0 }));
+        const fillSide = gameData.homePlayers.length === 0 ? "home" : gameData.awayPlayers.length === 0 ? "away" : null;
+        if (fillSide) {
+          setState((prev) => ({
+            ...prev,
+            ...(fillSide === "home" ? { homePlayers: mapped } : { awayPlayers: mapped }),
+          }));
+        }
       }
     } catch {}
   }, [gameData.id]);
@@ -253,8 +255,8 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
               awayActive = state.pendingRound.home !== undefined && state.pendingRound.away === undefined;
             }
           }
-          const homePlayers = gameData.isAppTeamHome ? state.appPlayers : state.opposingPlayers;
-          const awayPlayers = gameData.isAppTeamHome ? state.opposingPlayers : state.appPlayers;
+          const homePlayers = state.homePlayers;
+          const awayPlayers = state.awayPlayers;
           return (
             <div className="w-full space-y-3">
               <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
@@ -359,9 +361,8 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
                 </div>
                 {/* Pending round */}
                 {state.pendingRound && (() => {
-                  const pendingOppName = state.opposingPlayers?.find((p) => p.isNext)?.name;
-                  const pendingHomeName = gameData.isAppTeamHome ? state.pendingRound.player : pendingOppName;
-                  const pendingAwayName = gameData.isAppTeamHome ? pendingOppName : state.pendingRound.player;
+                  const pendingHomeName = state.pendingRound.homePlayerName;
+                  const pendingAwayName = state.pendingRound.awayPlayerName;
                   return (
                     <div className={`grid grid-cols-2 divide-x divide-border border-t border-border opacity-60 italic ${flashPending ? "flash-yellow" : ""}`}>
                       <div className="py-3 px-4 text-center">
@@ -377,11 +378,8 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
                 })()}
                 {/* Completed rounds (newest first) */}
                 {displayRounds.map((r) => {
-                  const oppName = state.opposingPlayers?.length
-                    ? state.opposingPlayers[(r.roundNumber - 1) % state.opposingPlayers.length]?.name
-                    : undefined;
-                  const homeName = gameData.isAppTeamHome ? r.player : oppName;
-                  const awayName = gameData.isAppTeamHome ? oppName : r.player;
+                  const homeName = r.homePlayerName;
+                  const awayName = r.awayPlayerName;
                   return (
                     <div key={r.roundNumber} className={`grid grid-cols-2 divide-x divide-border border-t border-border ${newRounds.has(r.roundNumber) ? "flash-yellow" : ""}`}>
                       <div className="py-3 px-4 text-center">

@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus, ArrowLeftRight } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -42,22 +42,30 @@ import { getFines } from "@/server/actions/get-fines";
 import { getPlayers } from "@/server/actions/get-players";
 import { saveRoundAuto } from "@/server/actions/save-round-auto";
 import { deleteLastRound } from "@/server/actions/delete-last-round";
+import { updateLegRoundPlayers } from "@/server/actions/update-leg-round-players";
 import { broadcastGameState } from "@/server/actions/broadcast-game-state";
+import { minDartsForCheckout } from "@/lib/dart-stats";
 import CreateRoundFine from "./create-round-fine";
 
 type Round = {
   roundNumber: number;
   gameId: number;
-  playerId?: number;
-  player?: string;
+  homePlayerId?: number;
+  awayPlayerId?: number;
+  homePlayerName?: string;
+  awayPlayerName?: string;
   fineAdded: boolean;
   home?: number;
   away?: number;
-  dartsUsed?: number;
+  homeDartsUsed?: number;
+  awayDartsUsed?: number;
 };
 
 type FineData = { id: number; title: string; description: string | null; amount: number; createdAt: string | null };
-type PlayerData = { id: number; name: string; nickname: string | null; team: string | null; createdAt: Date };
+type PlayerData = { id: number; name: string; nickname: string | null; createdAt: Date };
+
+// A player on one side — real records carry an id; free-text opponents don't.
+type SidePlayer = { id?: number; name: string; nickname?: string | null; imgUrl?: string | null };
 
 function computeInitialState(gameData: GameWithPlayers, initialScore: number) {
   const legNums = [...new Set(gameData.rounds.map((r) => r.leg))].sort((a, b) => a - b);
@@ -91,11 +99,15 @@ function computeInitialState(gameData: GameWithPlayers, initialScore: number) {
       restoredRounds = legRounds.map((r) => ({
         roundNumber: r.roundNumber,
         gameId: gameData.id,
-        playerId: r.playerId,
-        player: r.playerName,
+        homePlayerId: r.homePlayerId ?? undefined,
+        awayPlayerId: r.awayPlayerId ?? undefined,
+        homePlayerName: r.homePlayerName ?? undefined,
+        awayPlayerName: r.awayPlayerName ?? undefined,
         fineAdded: r.fineAdded,
         home: r.homeScore,
         away: r.awayScore,
+        homeDartsUsed: r.homeDartsUsed ?? undefined,
+        awayDartsUsed: r.awayDartsUsed ?? undefined,
       }));
       return { currentLeg, homeLegs, awayLegs, homeScore, awayScore, restoredRounds };
     } else {
@@ -145,11 +157,10 @@ const CHECKOUT_HINTS: Record<number, string> = {
   3: "1 D1", 2: "D1",
 };
 
-type PlayerEntry = GameWithPlayers["players"][number];
 type OpposingPlayer = { id: string; name: string };
 
-function SortablePlayerRow({ player }: { player: PlayerEntry }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id });
+function SortablePlayerRow({ player }: { player: SidePlayer }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id! });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   const initials = player.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
@@ -209,6 +220,14 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
   const init = computeInitialState(gameData, INITIAL_SCORE);
 
+  const realHome = gameData.homePlayers;
+  const realAway = gameData.awayPlayers;
+  const homeIsReal = realHome.length > 0;
+  const awayIsReal = realAway.length > 0;
+  // The free-text opposing list fills whichever side has no real roster (the opponent).
+  const freeTextSide: "home" | "away" | null =
+    !homeIsReal && awayIsReal ? "home" : homeIsReal && !awayIsReal ? "away" : (!homeIsReal && !awayIsReal ? "away" : null);
+
   const [homeScore, setHomeScore] = useState(init.homeScore);
   const [awayScore, setAwayScore] = useState(init.awayScore);
   const [homeLegs, setHomeLegs] = useState(init.homeLegs);
@@ -216,8 +235,9 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [rounds, setRounds] = useState<Round[]>(init.restoredRounds);
   const [currentLeg, setCurrentLeg] = useState(init.currentLeg);
 
-  // Player order — starts from insert order, can be reordered before first round
-  const [playerOrder, setPlayerOrder] = useState<PlayerEntry[]>(gameData.players);
+  // Per-side throwing order — real rosters can be reordered before the first round.
+  const [homeOrder, setHomeOrder] = useState<SidePlayer[]>(realHome);
+  const [awayOrder, setAwayOrder] = useState<SidePlayer[]>(realAway);
   const orderLocked = init.restoredRounds.length > 0 || rounds.length > 0;
 
   const sensors = useSensors(
@@ -225,61 +245,29 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setPlayerOrder((prev) => {
-      const oldIdx = prev.findIndex((p) => p.id === active.id);
-      const newIdx = prev.findIndex((p) => p.id === over.id);
-      const reordered = arrayMove(prev, oldIdx, newIdx);
-      // Update rotation to first player in new order
-      setPlayerIndex(0);
-      setCurrentRound({ player: reordered[0]?.name });
-      return reordered;
-    });
-  };
+  const [opposingPlayers, setOpposingPlayers] = useState<OpposingPlayer[]>([]);
 
-  const handleOpposingDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setOpposingPlayers((prev) => {
-      const oldIdx = prev.findIndex((p) => p.id === active.id);
-      const newIdx = prev.findIndex((p) => p.id === over.id);
-      setOpposingPlayerIndex(0);
-      return arrayMove(prev, oldIdx, newIdx);
-    });
-  };
+  // Resolved rosters used for rotation / attribution (real order, or free-text fallback).
+  const homeRoster: SidePlayer[] = homeIsReal
+    ? homeOrder
+    : freeTextSide === "home" ? opposingPlayers.map((o) => ({ name: o.name })) : [];
+  const awayRoster: SidePlayer[] = awayIsReal
+    ? awayOrder
+    : freeTextSide === "away" ? opposingPlayers.map((o) => ({ name: o.name })) : [];
 
-  const addOpposingPlayer = () =>
-    setOpposingPlayers((prev) => [...prev, { id: Math.random().toString(36).slice(2), name: "" }]);
-
-  const updateOpposingPlayerName = (id: string, name: string) =>
-    setOpposingPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
-
-  const removeOpposingPlayer = (id: string) =>
-    setOpposingPlayers((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      setOpposingPlayerIndex((i) => (next.length > 0 ? i % next.length : 0));
-      return next;
-    });
-
-  // Player rotation — initialise from how many rounds have already been thrown in this leg
   const shouldRotate = gameData.gameType === "Team Game" || gameData.gameType === "Doubles";
   const isSingles = gameData.gameType === "Singles";
-  const initialPlayerIndex = shouldRotate && playerOrder.length > 0
-    ? init.restoredRounds.length % playerOrder.length
-    : 0;
-  const [playerIndex, setPlayerIndex] = useState(initialPlayerIndex);
-  const defaultPlayer = (shouldRotate && playerOrder.length > 0)
-    ? playerOrder[initialPlayerIndex].name
-    : (isSingles && playerOrder.length > 0)
-    ? playerOrder[0].name
-    : undefined;
-  const [currentRound, setCurrentRound] = useState<Partial<Round>>({ player: defaultPlayer });
+
+  const initIndex = (len: number) =>
+    shouldRotate && len > 0 ? init.restoredRounds.length % len : 0;
+  const [homePlayerIndex, setHomePlayerIndex] = useState(initIndex(realHome.length));
+  const [awayPlayerIndex, setAwayPlayerIndex] = useState(initIndex(realAway.length));
+
+  const [currentRound, setCurrentRound] = useState<Partial<Round>>({});
   const [winner, setWinner] = useState<"home" | "away" | null>(null);
   const [showRoundFineDialog, setShowRoundFineDialog] = useState(false);
-  const [pendingFinePlayer, setPendingFinePlayer] = useState<string | null>(null);
-  const [pendingFineOffer, setPendingFineOffer] = useState<{ player: string; fineTitle: string } | null>(null);
+  const [pendingFinePlayerId, setPendingFinePlayerId] = useState<number | null>(null);
+  const [pendingFineOffer, setPendingFineOffer] = useState<{ playerId: number; playerName: string; fineTitle: string; teamId: number | null } | null>(null);
   const [selectedDarts, setSelectedDarts] = useState<1 | 2 | 3 | null>(null);
   const [finesData, setFinesData] = useState<FineData[]>([]);
   const [playersListData, setPlayersListData] = useState<PlayerData[]>([]);
@@ -298,13 +286,63 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     (init.currentLeg - 1) % 2 === 0 ? "home" : "away"
   );
   const [pendingThrowApplied, setPendingThrowApplied] = useState(0);
-  const [opposingPlayers, setOpposingPlayers] = useState<OpposingPlayer[]>([]);
-  const [opposingPlayerIndex, setOpposingPlayerIndex] = useState(0);
   const [showOpposingEdit, setShowOpposingEdit] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
 
   const hasPendingThrow = currentThrowSide !== firstThrowTeam;
   const pendingThrowScore = hasPendingThrow ? currentRound[firstThrowTeam] : undefined;
+
+  // Current throwers per side, and the active one.
+  const homeThrower = homeRoster[homePlayerIndex];
+  const awayThrower = awayRoster[awayPlayerIndex];
+  const currentThrower = currentThrowSide === "home" ? homeThrower : awayThrower;
+  const currentSideIsReal = currentThrowSide === "home" ? homeIsReal : awayIsReal;
+
+  const addOpposingPlayer = () =>
+    setOpposingPlayers((prev) => [...prev, { id: Math.random().toString(36).slice(2), name: "" }]);
+
+  const updateOpposingPlayerName = (id: string, name: string) =>
+    setOpposingPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
+
+  const removeOpposingPlayer = (id: string) =>
+    setOpposingPlayers((prev) => prev.filter((p) => p.id !== id));
+
+  const setSideIndex = (side: "home" | "away", idx: number) =>
+    side === "home" ? setHomePlayerIndex(idx) : setAwayPlayerIndex(idx);
+
+  const handleHomeDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setHomeOrder((prev) => {
+      const oldIdx = prev.findIndex((p) => p.id === active.id);
+      const newIdx = prev.findIndex((p) => p.id === over.id);
+      setHomePlayerIndex(0);
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
+
+  const handleAwayDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setAwayOrder((prev) => {
+      const oldIdx = prev.findIndex((p) => p.id === active.id);
+      const newIdx = prev.findIndex((p) => p.id === over.id);
+      setAwayPlayerIndex(0);
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
+
+  const handleOpposingDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setOpposingPlayers((prev) => {
+      const oldIdx = prev.findIndex((p) => p.id === active.id);
+      const newIdx = prev.findIndex((p) => p.id === over.id);
+      if (freeTextSide === "home") setHomePlayerIndex(0);
+      else setAwayPlayerIndex(0);
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -324,13 +362,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     }
   }, [rounds]);
 
-  // Load / persist opposing players via localStorage
+  // Load / persist free-text opposing players via localStorage
   useEffect(() => {
     try {
       const stored = localStorage.getItem(`opposing-players-${gameData.id}`);
       if (stored) setOpposingPlayers(JSON.parse(stored));
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameData.id]);
   useEffect(() => {
     try {
@@ -345,12 +382,21 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     },
   });
 
+  // Build the home/away broadcast roster arrays with the "next" flag.
+  const broadcastRosters = (nextHomeIdx: number, nextAwayIdx: number) => ({
+    homePlayers: homeRoster.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextHomeIdx : i === 0 })),
+    awayPlayers: awayRoster.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextAwayIdx : i === 0 })),
+  });
+
+  const broadcastRoundList = (list: Round[]) =>
+    list.map((r) => ({ roundNumber: r.roundNumber, homePlayerName: r.homePlayerName, awayPlayerName: r.awayPlayerName, home: r.home, away: r.away }));
+
   const handleSubmitRound = () => {
     if (winner) return;
 
     const score = currentRound[currentThrowSide];
 
-    if (!currentRound.player) {
+    if (currentSideIsReal && !currentThrower) {
       toast.error("Select a player for this round");
       return;
     }
@@ -372,11 +418,16 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
     const remaining = currentThrowSide === "home" ? homeScore : awayScore;
 
-    // Auto-fine check — offer inline button instead of dialog
-    const isAppTeamThrow = (currentThrowSide === "home") === gameData.isAppTeamHome;
-    if (autoFinesEnabled && isAppTeamThrow && score <= 20 && remaining > 170) {
+    // Auto-fine check — fires for the throwing side if that team has fines enabled and the thrower is a real player.
+    const throwerSideFinesEnabled = currentThrowSide === "home" ? gameData.homeTeamFinesEnabled : gameData.awayTeamFinesEnabled;
+    if (autoFinesEnabled && throwerSideFinesEnabled && currentThrower?.id && score <= 20 && remaining > 170) {
       const lowFine = finesData.find((f) => f.title === "20 or under");
-      if (lowFine) setPendingFineOffer({ player: currentRound.player ?? "", fineTitle: lowFine.title });
+      if (lowFine) setPendingFineOffer({
+        playerId: currentThrower.id,
+        playerName: currentThrower.name,
+        fineTitle: lowFine.title,
+        teamId: currentThrowSide === "home" ? gameData.homeTeamId : gameData.awayTeamId,
+      });
     }
     const updated = remaining - score;
     const newScore = updated >= 0 ? updated : remaining; // bust = no change
@@ -394,18 +445,23 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     // Shared helper: complete a checkout round immediately using pre-selected dart count
     const finishCheckout = (
       home: number, away: number, roundNumber: number,
-      player: string | undefined, playerId: number | undefined,
+      homePlayerId: number | undefined, awayPlayerId: number | undefined,
+      homeDartsUsed: number | undefined, awayDartsUsed: number | undefined,
       finalHomeScore: number, finalAwayScore: number, roundWinner: "home" | "away",
     ) => {
-      const dartsUsed = selectedDarts ?? 3;
       setSelectedDarts(null);
       setCurrentThrowSide(firstThrowTeam);
       setPendingThrowApplied(0);
-      const newRound: Round = { roundNumber, gameId: gameData.id, player, playerId, home, away, fineAdded: false, dartsUsed };
+      const newRound: Round = {
+        roundNumber, gameId: gameData.id,
+        homePlayerId, awayPlayerId,
+        homePlayerName: homeThrower?.name, awayPlayerName: awayThrower?.name,
+        home, away, fineAdded: false, homeDartsUsed, awayDartsUsed,
+      };
       const updatedRounds = [...rounds, newRound];
       setRounds(updatedRounds);
-      if (playerId) {
-        saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, playerId, homeScore: home, awayScore: away, dartsUsed })
+      if (homePlayerId || awayPlayerId) {
+        saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId, awayPlayerId, homeScore: home, awayScore: away, homeDartsUsed, awayDartsUsed })
           .then(() => setSavedRoundCount((c) => c + 1));
       }
       const newHomeLegs = roundWinner === "home" ? homeLegs + 1 : homeLegs;
@@ -413,36 +469,40 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       const isGameDecided = newHomeLegs >= Math.ceil(maxLegsPerGame / 2) || newAwayLegs >= Math.ceil(maxLegsPerGame / 2);
       if (roundWinner === "home") { setWinner("home"); setHomeLegs((l) => l + 1); }
       else { setWinner("away"); setAwayLegs((l) => l + 1); }
-      const nextPlayerIdx = shouldRotate && playerOrder.length > 0 ? (playerIndex + 1) % playerOrder.length : playerIndex;
-      const nextOppIdx = shouldRotate && opposingPlayers.length > 0 ? (opposingPlayerIndex + 1) % opposingPlayers.length : opposingPlayerIndex;
-      if (shouldRotate && playerOrder.length > 0) { setPlayerIndex(nextPlayerIdx); setCurrentRound({ player: playerOrder[nextPlayerIdx].name }); }
-      else if (isSingles && playerOrder.length > 0) { setCurrentRound({ player: playerOrder[0].name }); }
-      else { setCurrentRound({}); }
-      if (shouldRotate && opposingPlayers.length > 0) setOpposingPlayerIndex(nextOppIdx);
+      const nextHomeIdx = shouldRotate && homeRoster.length > 0 ? (homePlayerIndex + 1) % homeRoster.length : homePlayerIndex;
+      const nextAwayIdx = shouldRotate && awayRoster.length > 0 ? (awayPlayerIndex + 1) % awayRoster.length : awayPlayerIndex;
+      if (shouldRotate) { setHomePlayerIndex(nextHomeIdx); setAwayPlayerIndex(nextAwayIdx); }
+      setCurrentRound({});
       broadcastGameState(gameData.id, {
         homeScore: finalHomeScore, awayScore: finalAwayScore,
         homeLegs: newHomeLegs, awayLegs: newAwayLegs, currentLeg,
         winner: roundWinner, isGameDecided,
-        rounds: updatedRounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+        rounds: broadcastRoundList(updatedRounds),
         homeTeam: gameData.homeTeam, awayTeam: gameData.awayTeam,
         currentThrowSide: firstThrowTeam,
-        appPlayers: playerOrder.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextPlayerIdx : i === 0 })),
-        opposingPlayers: opposingPlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextOppIdx : i === 0 })),
+        ...broadcastRosters(nextHomeIdx, nextAwayIdx),
       });
     };
 
     if (typeof otherScore !== "number") {
       // First throw path
       if (newScore === 0) {
-        if (selectedDarts === null) { toast.error("Select darts used for the checkout"); return; }
+        const minDarts = minDartsForCheckout(score) ?? 1;
+        if (selectedDarts === null || selectedDarts < minDarts) {
+          toast.error(`Select darts used for the checkout (minimum ${minDarts})`);
+          return;
+        }
         // Checkout on first throw — end round immediately, other team doesn't throw
         const home = currentThrowSide === "home" ? score : 0;
         const away = currentThrowSide === "away" ? score : 0;
         const finalHomeScore = currentThrowSide === "home" ? 0 : homeScore;
         const finalAwayScore = currentThrowSide === "away" ? 0 : awayScore;
         const roundWinner: "home" | "away" = currentThrowSide === "home" ? "home" : "away";
-        const playerId = playerOrder.find((p) => p.name === currentRound.player)?.id;
-        finishCheckout(home, away, rounds.length + 1, currentRound.player, playerId, finalHomeScore, finalAwayScore, roundWinner);
+        const homePlayerId = currentThrowSide === "home" ? homeThrower?.id : undefined;
+        const awayPlayerId = currentThrowSide === "away" ? awayThrower?.id : undefined;
+        const homeDarts = currentThrowSide === "home" ? (selectedDarts ?? 3) : undefined;
+        const awayDarts = currentThrowSide === "away" ? (selectedDarts ?? 3) : undefined;
+        finishCheckout(home, away, rounds.length + 1, homePlayerId, awayPlayerId, homeDarts, awayDarts, finalHomeScore, finalAwayScore, roundWinner);
         return;
       }
 
@@ -453,16 +513,17 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         homeScore: currentThrowSide === "home" ? newScore : homeScore,
         awayScore: currentThrowSide === "away" ? newScore : awayScore,
         homeLegs, awayLegs, currentLeg, winner: null,
-        rounds: rounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+        rounds: broadcastRoundList(rounds),
         pendingRound: {
-          roundNumber: rounds.length + 1, player: currentRound.player,
+          roundNumber: rounds.length + 1,
+          homePlayerName: homeThrower?.name,
+          awayPlayerName: awayThrower?.name,
           home: currentThrowSide === "home" ? score : undefined,
           away: currentThrowSide === "away" ? score : undefined,
         },
         homeTeam: gameData.homeTeam, awayTeam: gameData.awayTeam,
         currentThrowSide: otherSide,
-        appPlayers: playerOrder.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === playerIndex : i === 0 })),
-        opposingPlayers: opposingPlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === opposingPlayerIndex : i === 0 })),
+        ...broadcastRosters(homePlayerIndex, awayPlayerIndex),
       });
       return;
     }
@@ -471,44 +532,52 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     const home = currentThrowSide === "home" ? score : otherScore;
     const away = currentThrowSide === "away" ? score : otherScore;
     const roundNumber = rounds.length + 1;
-    const playerId = playerOrder.find((p) => p.name === currentRound.player)?.id;
     const finalHomeScore = currentThrowSide === "home" ? newScore : homeScore;
     const finalAwayScore = currentThrowSide === "away" ? newScore : awayScore;
     const roundWinner = finalHomeScore === 0 ? "home" : finalAwayScore === 0 ? "away" : null;
 
     if (roundWinner) {
-      if (selectedDarts === null) { toast.error("Select darts used for the checkout"); return; }
-      finishCheckout(home, away, roundNumber, currentRound.player, playerId, finalHomeScore, finalAwayScore, roundWinner);
+      const checkoutScore = roundWinner === "home" ? home : away;
+      const minDarts = minDartsForCheckout(checkoutScore) ?? 1;
+      if (selectedDarts === null || selectedDarts < minDarts) {
+        toast.error(`Select darts used for the checkout (minimum ${minDarts})`);
+        return;
+      }
+      const homeDarts = roundWinner === "home" ? (selectedDarts ?? 3) : 3;
+      const awayDarts = roundWinner === "away" ? (selectedDarts ?? 3) : 3;
+      finishCheckout(home, away, roundNumber, homeThrower?.id, awayThrower?.id, homeDarts, awayDarts, finalHomeScore, finalAwayScore, roundWinner);
       return;
     }
 
     // Normal round — no checkout
-    const newRound: Round = { roundNumber, gameId: gameData.id, player: currentRound.player, playerId, home, away, fineAdded: false };
+    const newRound: Round = {
+      roundNumber, gameId: gameData.id,
+      homePlayerId: homeThrower?.id, awayPlayerId: awayThrower?.id,
+      homePlayerName: homeThrower?.name, awayPlayerName: awayThrower?.name,
+      home, away, fineAdded: false, homeDartsUsed: 3, awayDartsUsed: 3,
+    };
     const updatedRounds = [...rounds, newRound];
     setRounds(updatedRounds);
     setCurrentThrowSide(firstThrowTeam);
     setPendingThrowApplied(0);
 
-    if (playerId) {
-      saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, playerId, homeScore: home, awayScore: away })
+    if (homeThrower?.id || awayThrower?.id) {
+      saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId: homeThrower?.id, awayPlayerId: awayThrower?.id, homeScore: home, awayScore: away, homeDartsUsed: 3, awayDartsUsed: 3 })
         .then(() => setSavedRoundCount((c) => c + 1));
     }
 
-    const nextPlayerIdx = shouldRotate && playerOrder.length > 0 ? (playerIndex + 1) % playerOrder.length : playerIndex;
-    const nextOppIdx = shouldRotate && opposingPlayers.length > 0 ? (opposingPlayerIndex + 1) % opposingPlayers.length : opposingPlayerIndex;
-    if (shouldRotate && playerOrder.length > 0) { setPlayerIndex(nextPlayerIdx); setCurrentRound({ player: playerOrder[nextPlayerIdx].name }); }
-    else if (isSingles && playerOrder.length > 0) { setCurrentRound({ player: playerOrder[0].name }); }
-    else { setCurrentRound({}); }
-    if (shouldRotate && opposingPlayers.length > 0) setOpposingPlayerIndex(nextOppIdx);
+    const nextHomeIdx = shouldRotate && homeRoster.length > 0 ? (homePlayerIndex + 1) % homeRoster.length : homePlayerIndex;
+    const nextAwayIdx = shouldRotate && awayRoster.length > 0 ? (awayPlayerIndex + 1) % awayRoster.length : awayPlayerIndex;
+    if (shouldRotate) { setHomePlayerIndex(nextHomeIdx); setAwayPlayerIndex(nextAwayIdx); }
+    setCurrentRound({});
 
     broadcastGameState(gameData.id, {
       homeScore: finalHomeScore, awayScore: finalAwayScore,
       homeLegs, awayLegs, currentLeg, winner: null,
-      rounds: updatedRounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+      rounds: broadcastRoundList(updatedRounds),
       homeTeam: gameData.homeTeam, awayTeam: gameData.awayTeam,
       currentThrowSide: firstThrowTeam,
-      appPlayers: playerOrder.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextPlayerIdx : i === 0 })),
-      opposingPlayers: opposingPlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextOppIdx : i === 0 })),
+      ...broadcastRosters(nextHomeIdx, nextAwayIdx),
     });
   };
 
@@ -544,8 +613,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     }
 
     // Compute previous indices before rotation for the broadcast
-    const prevPlayerIdx = shouldRotate && playerOrder.length > 0 ? (playerIndex - 1 + playerOrder.length) % playerOrder.length : playerIndex;
-    const prevOppIdx = shouldRotate && opposingPlayers.length > 0 ? (opposingPlayerIndex - 1 + opposingPlayers.length) % opposingPlayers.length : opposingPlayerIndex;
+    const prevHomeIdx = shouldRotate && homeRoster.length > 0 ? (homePlayerIndex - 1 + homeRoster.length) % homeRoster.length : homePlayerIndex;
+    const prevAwayIdx = shouldRotate && awayRoster.length > 0 ? (awayPlayerIndex - 1 + awayRoster.length) % awayRoster.length : awayPlayerIndex;
 
     // Broadcast undo to display mode viewers
     broadcastGameState(gameData.id, {
@@ -555,30 +624,90 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       awayLegs,
       currentLeg,
       winner: null,
-      rounds: updatedRounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+      rounds: broadcastRoundList(updatedRounds),
       homeTeam: gameData.homeTeam,
       awayTeam: gameData.awayTeam,
       currentThrowSide: firstThrowTeam,
-      appPlayers: playerOrder.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === prevPlayerIdx : i === 0 })),
-      opposingPlayers: opposingPlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === prevOppIdx : i === 0 })),
+      ...broadcastRosters(prevHomeIdx, prevAwayIdx),
     });
 
     // Step back one in the rotation
-    if (shouldRotate && playerOrder.length > 0) {
-      setPlayerIndex(prevPlayerIdx);
-      setCurrentRound({ player: playerOrder[prevPlayerIdx].name });
+    if (shouldRotate) {
+      setHomePlayerIndex(prevHomeIdx);
+      setAwayPlayerIndex(prevAwayIdx);
     }
-    if (shouldRotate && opposingPlayers.length > 0) {
-      setOpposingPlayerIndex(prevOppIdx);
+    setCurrentRound({});
+  };
+
+  // Swap the throwing order. For rotation games (Team/Doubles) this advances the
+  // rotation by one position and re-credits the leg's saved rounds. For Singles
+  // there's no rotation, so it just swaps which side throws first.
+  // Either way home/away scores are left untouched.
+  const handleSwitchOrder = () => {
+    if (winner || hasPendingThrow) return;
+
+    // Singles: no rotation to re-credit — just flip who throws first.
+    if (!shouldRotate) {
+      const nextFirst: "home" | "away" = firstThrowTeam === "home" ? "away" : "home";
+      setFirstThrowTeam(nextFirst);
+      setCurrentThrowSide(nextFirst);
+      broadcastGameState(gameData.id, {
+        homeScore, awayScore, homeLegs, awayLegs, currentLeg, winner: null,
+        rounds: broadcastRoundList(rounds),
+        homeTeam: gameData.homeTeam, awayTeam: gameData.awayTeam,
+        currentThrowSide: nextFirst,
+        ...broadcastRosters(homePlayerIndex, awayPlayerIndex),
+      });
+      toast.success("Throwing order switched");
+      return;
     }
+
+    const homeLen = homeRoster.length;
+    const awayLen = awayRoster.length;
+
+    const updatedRounds = rounds.map((r, p) => {
+      const newHome = homeLen > 0 ? homeRoster[(p + 1) % homeLen] : undefined;
+      const newAway = awayLen > 0 ? awayRoster[(p + 1) % awayLen] : undefined;
+      return {
+        ...r,
+        homePlayerId: homeIsReal ? newHome?.id : r.homePlayerId,
+        awayPlayerId: awayIsReal ? newAway?.id : r.awayPlayerId,
+        homePlayerName: newHome?.name ?? r.homePlayerName,
+        awayPlayerName: newAway?.name ?? r.awayPlayerName,
+      };
+    });
+    setRounds(updatedRounds);
+
+    const nextHomeIdx = homeLen > 0 ? (homePlayerIndex + 1) % homeLen : homePlayerIndex;
+    const nextAwayIdx = awayLen > 0 ? (awayPlayerIndex + 1) % awayLen : awayPlayerIndex;
+    setHomePlayerIndex(nextHomeIdx);
+    setAwayPlayerIndex(nextAwayIdx);
+
+    // Persist the re-attribution for rounds already written to the DB.
+    const savedToUpdate = updatedRounds.slice(0, savedRoundCount).filter((r) => r.homePlayerId || r.awayPlayerId);
+    if (savedToUpdate.length > 0) {
+      updateLegRoundPlayers({
+        gameId: gameData.id,
+        leg: currentLeg,
+        rounds: savedToUpdate.map((r) => ({ roundNumber: r.roundNumber, homePlayerId: r.homePlayerId, awayPlayerId: r.awayPlayerId })),
+      });
+    }
+
+    broadcastGameState(gameData.id, {
+      homeScore, awayScore, homeLegs, awayLegs, currentLeg, winner: null,
+      rounds: broadcastRoundList(updatedRounds),
+      homeTeam: gameData.homeTeam, awayTeam: gameData.awayTeam,
+      currentThrowSide: firstThrowTeam,
+      ...broadcastRosters(nextHomeIdx, nextAwayIdx),
+    });
+    toast.success("Throwing order switched");
   };
 
   const submitPendingFine = () => {
     if (!pendingFineOffer) return;
-    const player = playerOrder.find((p) => p.name === pendingFineOffer.player);
     const fine = finesData.find((f) => f.title === pendingFineOffer.fineTitle);
-    if (!player || !fine) { toast.error("Player or fine not found"); return; }
-    executeFine({ playerId: player.id, fineId: fine.id, matchDate: new Date(), quantity: 1, notes: `Fine during ${gameData.gameType}` });
+    if (!fine) { toast.error("Fine not found"); return; }
+    executeFine({ playerId: pendingFineOffer.playerId, fineId: fine.id, matchDate: new Date(), quantity: 1, notes: `Fine during ${gameData.gameType}`, teamId: pendingFineOffer.teamId ?? undefined });
     setPendingFineOffer(null);
   };
 
@@ -630,22 +759,25 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             roundLeg: currentLeg,
             homeTeamScore: r.home ?? 0,
             awayTeamScore: r.away ?? 0,
-            playerId: r.playerId,
+            homePlayerId: r.homePlayerId,
+            awayPlayerId: r.awayPlayerId,
+            homeDartsUsed: r.homeDartsUsed,
+            awayDartsUsed: r.awayDartsUsed,
           })),
         });
       }
 
-      const playerIds = gameData.players.map((p) => p.id);
-      if (playerIds.length > 0) {
-        const newHomeLegs = winner === "home" ? homeLegs : homeLegs;
-        const newAwayLegs = winner === "away" ? awayLegs : awayLegs;
+      const homePlayerIds = homeIsReal ? homeOrder.map((p) => p.id!).filter(Boolean) : [];
+      const awayPlayerIds = awayIsReal ? awayOrder.map((p) => p.id!).filter(Boolean) : [];
+      if (homePlayerIds.length > 0 || awayPlayerIds.length > 0) {
         await createGame({
           id: gameData.id,
           fixtureId: gameData.fixtureId,
-          homeTeamScore: newHomeLegs,
-          awayTeamScore: newAwayLegs,
+          homeTeamScore: homeLegs,
+          awayTeamScore: awayLegs,
           gameType: gameData.gameType,
-          playerList: playerIds as [number, ...number[]],
+          homePlayerList: homePlayerIds,
+          awayPlayerList: awayPlayerIds,
         });
       }
 
@@ -658,11 +790,10 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           currentLeg,
           winner,
           isGameDecided: true,
-          rounds: rounds.map((r) => ({ roundNumber: r.roundNumber, player: r.player, home: r.home, away: r.away })),
+          rounds: broadcastRoundList(rounds),
           homeTeam: gameData.homeTeam,
           awayTeam: gameData.awayTeam,
-          appPlayers: playerOrder.map((p, i) => ({ name: p.name, isNext: i === playerIndex })),
-          opposingPlayers: opposingPlayers.map((p, i) => ({ name: p.name, isNext: i === opposingPlayerIndex })),
+          ...broadcastRosters(homePlayerIndex, awayPlayerIndex),
         });
         toast.success("Game saved!");
         window.location.href = `/fixtures/${gameData.fixtureId}`;
@@ -680,13 +811,13 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setRounds([]);
         setWinner(null);
         setShowHistory(false);
-        setPlayerIndex(0);
-        setOpposingPlayerIndex(0);
+        setHomePlayerIndex(0);
+        setAwayPlayerIndex(0);
         setFirstThrowTeam(nextFirstThrowTeam);
         setCurrentThrowSide(nextFirstThrowTeam);
         setPendingThrowApplied(0);
         setSavedRoundCount(0);
-        setCurrentRound((shouldRotate || isSingles) && playerOrder.length > 0 ? { player: playerOrder[0].name } : {});
+        setCurrentRound({});
         broadcastGameState(gameData.id, {
           homeScore: INITIAL_SCORE,
           awayScore: INITIAL_SCORE,
@@ -698,8 +829,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           homeTeam: gameData.homeTeam,
           awayTeam: gameData.awayTeam,
           currentThrowSide: nextFirstThrowTeam,
-          appPlayers: playerOrder.map((p, i) => ({ name: p.name, isNext: i === 0 })),
-          opposingPlayers: opposingPlayers.map((p, i) => ({ name: p.name, isNext: i === 0 })),
+          ...broadcastRosters(0, 0),
         });
         toast.success(`Leg ${currentLeg} saved — starting leg ${nextLeg}`);
       }
@@ -714,6 +844,21 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const awayCheckout = CHECKOUT_HINTS[awayScore];
   const legsToWin = Math.ceil(maxLegsPerGame / 2);
   const gameDecided = homeLegs >= legsToWin || awayLegs >= legsToWin;
+
+  // Per-player average for a side's player (DB rounds + current unsaved rounds).
+  const playerAvgFor = (side: "home" | "away", playerId?: number): string | null => {
+    if (!playerId) return null;
+    const dbScores = gameData.rounds
+      .filter((r) => (side === "home" ? r.homePlayerId : r.awayPlayerId) === playerId)
+      .map((r) => (side === "home" ? r.homeScore : r.awayScore))
+      .filter((s) => s > 0);
+    const liveScores = rounds
+      .filter((r) => (side === "home" ? r.homePlayerId : r.awayPlayerId) === playerId)
+      .map((r) => (side === "home" ? (r.home ?? 0) : (r.away ?? 0)))
+      .filter((s) => s > 0);
+    const all = [...dbScores, ...liveScores];
+    return all.length > 0 ? (all.reduce((a, b) => a + b, 0) / all.length).toFixed(1) : null;
+  };
 
   // Game already complete (loaded from DB) — nothing more to track
   if (currentLeg > maxLegsPerGame || (gameDecided && !winner)) {
@@ -736,14 +881,130 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     );
   }
 
+  // Render a side's roster — real player cards (with avg + drag) or the free-text editor.
+  const renderRosterSection = (side: "home" | "away") => {
+    const isReal = side === "home" ? homeIsReal : awayIsReal;
+    const order = side === "home" ? homeOrder : awayOrder;
+    const roster = side === "home" ? homeRoster : awayRoster;
+    const activeIdx = side === "home" ? homePlayerIndex : awayPlayerIndex;
+    const teamName = side === "home" ? gameData.homeTeam : gameData.awayTeam;
+    const onDragEnd = side === "home" ? handleHomeDragEnd : handleAwayDragEnd;
+
+    if (isReal) {
+      return (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">{teamName} players</p>
+          {shouldRotate && !orderLocked && rounds.length === 0 ? (
+            <div className="space-y-2">
+              <p className="text-[10px] text-center text-muted-foreground">Drag to set throwing order</p>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                <SortableContext items={order.map((p) => p.id!)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {order.map((p) => (
+                      <SortablePlayerRow key={p.id} player={p} />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {order.map((p, idx) => {
+                const isNext = shouldRotate && !winner && side === currentThrowSide && idx === activeIdx;
+                const initials = p.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+                const playerAvg = playerAvgFor(side, p.id);
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 border transition-all ${
+                      isNext
+                        ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-1 ring-amber-400"
+                        : "bg-muted/50 border-border"
+                    }`}
+                  >
+                    {p.imgUrl ? (
+                      <Image src={p.imgUrl} alt={p.name} width={28} height={28} unoptimized className="h-7 w-7 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="h-7 w-7 rounded-full bg-muted border flex items-center justify-center text-[10px] font-semibold shrink-0">
+                        {initials}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold leading-tight truncate">
+                        {shouldRotate && <span className="text-muted-foreground mr-1">{idx + 1}.</span>}
+                        {p.name}
+                      </p>
+                      {p.nickname && <p className="text-[10px] text-muted-foreground leading-tight truncate">{p.nickname}</p>}
+                      {playerAvg && (
+                        <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 leading-tight tabular-nums">
+                          avg {playerAvg}
+                        </p>
+                      )}
+                    </div>
+                    {isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide ml-1">Next</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Free-text opponent side
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">{teamName} players</p>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={() => setShowOpposingEdit(true)}>
+            <Pencil className="h-3 w-3" /> Edit
+          </Button>
+        </div>
+        {roster.length === 0 ? (
+          <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs h-8" onClick={() => setShowOpposingEdit(true)}>
+            <Plus className="h-3.5 w-3.5" /> Add opposing players
+          </Button>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {roster.map((p, idx) => {
+              const isNext = shouldRotate && !winner && side === currentThrowSide && idx === activeIdx;
+              const initials = p.name
+                ? p.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")
+                : "?";
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 border transition-all ${
+                    isNext
+                      ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-1 ring-amber-400"
+                      : "bg-muted/50 border-border"
+                  }`}
+                >
+                  <div className="h-6 w-6 rounded-full bg-muted border flex items-center justify-center text-[10px] font-semibold shrink-0">
+                    {initials}
+                  </div>
+                  <p className="text-xs font-semibold leading-tight">
+                    {shouldRotate && <span className="text-muted-foreground mr-1">{idx + 1}.</span>}
+                    {p.name || <span className="text-muted-foreground italic">Unnamed</span>}
+                  </p>
+                  {isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide ml-1">Next</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {pendingFinePlayer && (
+      {pendingFinePlayerId && (
         <CreateRoundFine
           PopupProps={{
             showRoundFineDialog,
             setShowRoundFineDialog,
-            playerId: playerOrder.find((p) => p.name === pendingFinePlayer)?.id,
+            playerId: pendingFinePlayerId,
             fineId: null,
             fineData: finesData,
             defaultPlayers: playersListData,
@@ -868,12 +1129,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       {/* Averages row — all legs combined, 3-dart average */}
       {(() => {
         const allHomeRounds = [
-          ...gameData.rounds.map((r) => ({ score: r.homeScore, darts: r.dartsUsed ?? 3 })),
-          ...rounds.filter((r) => typeof r.home === "number").map((r) => ({ score: r.home as number, darts: r.dartsUsed ?? 3 })),
+          ...gameData.rounds.map((r) => ({ score: r.homeScore, darts: r.homeDartsUsed ?? r.dartsUsed ?? 3 })),
+          ...rounds.filter((r) => typeof r.home === "number").map((r) => ({ score: r.home as number, darts: r.homeDartsUsed ?? 3 })),
         ].filter((r) => r.score > 0);
         const allAwayRounds = [
-          ...gameData.rounds.map((r) => ({ score: r.awayScore, darts: r.dartsUsed ?? 3 })),
-          ...rounds.filter((r) => typeof r.away === "number").map((r) => ({ score: r.away as number, darts: r.dartsUsed ?? 3 })),
+          ...gameData.rounds.map((r) => ({ score: r.awayScore, darts: r.awayDartsUsed ?? r.dartsUsed ?? 3 })),
+          ...rounds.filter((r) => typeof r.away === "number").map((r) => ({ score: r.away as number, darts: r.awayDartsUsed ?? 3 })),
         ].filter((r) => r.score > 0);
         const homeAvgVal = allHomeRounds.length > 0
           ? (allHomeRounds.reduce((s, r) => s + r.score, 0) * 3 / allHomeRounds.reduce((s, r) => s + r.darts, 0)).toFixed(1)
@@ -899,119 +1160,9 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         );
       })()}
 
-      {/* Players — drag to reorder before first round, locked badges after */}
-      {shouldRotate && !orderLocked && rounds.length === 0 ? (
-        <div className="space-y-2">
-          <p className="text-xs text-center text-muted-foreground">Drag to set throwing order</p>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={playerOrder.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {playerOrder.map((p) => (
-                  <SortablePlayerRow key={p.id} player={p} />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2 justify-center">
-          {playerOrder.map((p, idx) => {
-            const isNext = shouldRotate && !winner && idx === playerIndex;
-            const initials = p.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
-
-            // Per-player avg: DB saved rounds + current unsaved rounds
-            const dbScores = gameData.rounds
-              .filter((r) => r.playerId === p.id)
-              .map((r) => (gameData.isAppTeamHome ? r.homeScore : r.awayScore))
-              .filter((s) => s > 0);
-            const liveScores = rounds
-              .filter((r) => r.playerId === p.id)
-              .map((r) => (gameData.isAppTeamHome ? (r.home ?? 0) : (r.away ?? 0)))
-              .filter((s) => s > 0);
-            const allScores = [...dbScores, ...liveScores];
-            const playerAvg = allScores.length > 0
-              ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1)
-              : null;
-
-            return (
-              <div
-                key={p.id}
-                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 border transition-all ${
-                  isNext
-                    ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-1 ring-amber-400"
-                    : "bg-muted/50 border-border"
-                }`}
-              >
-                {p.imgUrl ? (
-                  <Image src={p.imgUrl} alt={p.name} width={28} height={28} unoptimized className="h-7 w-7 rounded-full object-cover shrink-0" />
-                ) : (
-                  <div className="h-7 w-7 rounded-full bg-muted border flex items-center justify-center text-[10px] font-semibold shrink-0">
-                    {initials}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold leading-tight truncate">
-                    {shouldRotate && <span className="text-muted-foreground mr-1">{idx + 1}.</span>}
-                    {p.name}
-                  </p>
-                  {p.nickname && <p className="text-[10px] text-muted-foreground leading-tight truncate">{p.nickname}</p>}
-                  {playerAvg && (
-                    <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 leading-tight tabular-nums">
-                      avg {playerAvg}
-                    </p>
-                  )}
-                </div>
-                {isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide ml-1">Next</span>}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Opposing team players */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            {gameData.isAppTeamHome ? gameData.awayTeam : gameData.homeTeam} players
-          </p>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={() => setShowOpposingEdit(true)}>
-            <Pencil className="h-3 w-3" /> Edit
-          </Button>
-        </div>
-        {opposingPlayers.length === 0 ? (
-          <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs h-8" onClick={() => setShowOpposingEdit(true)}>
-            <Plus className="h-3.5 w-3.5" /> Add opposing players
-          </Button>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {opposingPlayers.map((p, idx) => {
-              const isNext = shouldRotate && !winner && idx === opposingPlayerIndex;
-              const initials = p.name
-                ? p.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")
-                : "?";
-              return (
-                <div
-                  key={p.id}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 border transition-all ${
-                    isNext
-                      ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-1 ring-amber-400"
-                      : "bg-muted/50 border-border"
-                  }`}
-                >
-                  <div className="h-6 w-6 rounded-full bg-muted border flex items-center justify-center text-[10px] font-semibold shrink-0">
-                    {initials}
-                  </div>
-                  <p className="text-xs font-semibold leading-tight">
-                    {shouldRotate && <span className="text-muted-foreground mr-1">{idx + 1}.</span>}
-                    {p.name || <span className="text-muted-foreground italic">Unnamed</span>}
-                  </p>
-                  {isNext && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wide ml-1">Next</span>}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* Rosters */}
+      {renderRosterSection("home")}
+      {renderRosterSection("away")}
 
       {/* Winner banner */}
       {winner && (
@@ -1130,7 +1281,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       {pendingFineOffer && (
         <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2">
           <p className="text-sm">
-            Fine <span className="font-semibold">{pendingFineOffer.player}</span> for scoring 20 or under?
+            Fine <span className="font-semibold">{pendingFineOffer.playerName}</span> for scoring 20 or under?
           </p>
           <div className="flex gap-1.5 shrink-0">
             <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" onClick={submitPendingFine}>
@@ -1155,51 +1306,59 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             </p>
           </div>
 
-          {/* Player selector — hidden for Singles (auto-selected) */}
-          {isSingles ? (
-            <p className="text-xs text-muted-foreground">
-              Player: <span className="font-medium text-foreground">{playerOrder[0]?.name}</span>
-            </p>
-          ) : (
-          <div className="space-y-1">
-            {shouldRotate && (
+          {/* Player selector for the throwing side */}
+          {currentSideIsReal ? (
+            isSingles ? (
               <p className="text-xs text-muted-foreground">
-                Up next: <span className="font-medium text-foreground">
-                  {playerOrder[playerIndex]?.name}
-                  {playerOrder[playerIndex]?.nickname && (
-                    <span className="text-muted-foreground font-normal"> ({playerOrder[playerIndex].nickname})</span>
-                  )}
-                </span>
+                Player: <span className="font-medium text-foreground">{currentThrower?.name}</span>
               </p>
-            )}
-            <Select
-              value={currentRound.player ?? ""}
-              onValueChange={(val) => {
-                const idx = playerOrder.findIndex((p) => p.name === val);
-                if (idx !== -1) setPlayerIndex(idx);
-                setCurrentRound((prev) => ({ ...prev, player: val }));
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select player" />
-              </SelectTrigger>
-              <SelectContent>
-                {playerOrder.map((p, idx) => (
-                  <SelectItem key={p.id} value={p.name}>
-                    <span className="font-medium">{p.name}</span>
-                    {p.nickname && <span className="text-muted-foreground ml-1.5 text-xs">({p.nickname})</span>}
-                    {shouldRotate && idx === playerIndex && (
-                      <span className="ml-2 text-[10px] text-amber-500 font-semibold">↑ next</span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            ) : (
+              <div className="space-y-1">
+                {shouldRotate && (
+                  <p className="text-xs text-muted-foreground">
+                    Up next: <span className="font-medium text-foreground">
+                      {currentThrower?.name}
+                      {currentThrower?.nickname && (
+                        <span className="text-muted-foreground font-normal"> ({currentThrower.nickname})</span>
+                      )}
+                    </span>
+                  </p>
+                )}
+                <Select
+                  value={currentThrower?.name ?? ""}
+                  onValueChange={(val) => {
+                    const roster = currentThrowSide === "home" ? homeRoster : awayRoster;
+                    const idx = roster.findIndex((p) => p.name === val);
+                    if (idx !== -1) setSideIndex(currentThrowSide, idx);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select player" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(currentThrowSide === "home" ? homeRoster : awayRoster).map((p, idx) => (
+                      <SelectItem key={p.id ?? idx} value={p.name}>
+                        <span className="font-medium">{p.name}</span>
+                        {p.nickname && <span className="text-muted-foreground ml-1.5 text-xs">({p.nickname})</span>}
+                        {shouldRotate && idx === (currentThrowSide === "home" ? homePlayerIndex : awayPlayerIndex) && (
+                          <span className="ml-2 text-[10px] text-amber-500 font-semibold">↑ next</span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {currentThrower?.name
+                ? <>Throwing: <span className="font-medium text-foreground">{currentThrower.name}</span></>
+                : <>Add {currentThrowSide === "home" ? gameData.homeTeam : gameData.awayTeam} players above to track who threw.</>}
+            </p>
           )}
 
-          {/* Throws-first toggle — only before the first round */}
-          {rounds.length === 0 && !hasPendingThrow && (
+          {/* Throws-first toggle — editable at any round boundary to fix a wrong starting team */}
+          {!hasPendingThrow && (
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">Throws first</p>
               <div className="flex rounded-lg border overflow-hidden text-xs font-medium">
@@ -1244,9 +1403,24 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             const hint = checkoutHintsEnabled && preview !== null && !isBust && preview > 0 && preview <= 170
               ? CHECKOUT_HINTS[preview]
               : null;
+            const canCheckout = minDartsForCheckout(remaining) !== null;
             return (
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground text-center font-medium">{team}</p>
+                {canCheckout && !isCheckout && !isBust && !isOver180 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-950/30"
+                    onClick={() => {
+                      setCurrentRound((prev) => ({ ...prev, [field]: remaining }));
+                      setSelectedDarts(null);
+                    }}
+                  >
+                    <Target className="h-3.5 w-3.5" /> Checkout {remaining}
+                  </Button>
+                )}
                 <Input
                   key={currentThrowSide}
                   type="number"
@@ -1257,28 +1431,45 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                   autoFocus
                   className={`text-center text-2xl font-bold h-14 ${isOver180 ? "border-destructive" : isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
                   value={currentRound[field] ?? ""}
-                  onChange={(e) => setCurrentRound((prev) => ({ ...prev, [field]: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? undefined : Number(e.target.value);
+                    setCurrentRound((prev) => ({ ...prev, [field]: v }));
+                    // Clear a stale dart selection unless the new entry is still a checkout.
+                    if (!(typeof v === "number" && remaining - v === 0)) setSelectedDarts(null);
+                  }}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
                 />
                 {isOver180 && <p className="text-xs text-destructive text-center font-semibold">Max score is 180</p>}
                 {!isOver180 && isBust && <p className="text-xs text-destructive text-center font-semibold">Bust!</p>}
-                {!isOver180 && isCheckout && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-green-600 text-center font-semibold">Checkout! 🎯</p>
-                    <div className="flex items-center gap-2 justify-center">
-                      <p className={`text-xs font-medium ${selectedDarts === null ? "text-amber-500" : "text-muted-foreground"}`}>
-                        {selectedDarts === null ? "Select darts used:" : "Darts used:"}
-                      </p>
-                      {([1, 2, 3] as const).map((n) => (
-                        <Button key={n} type="button" size="sm"
-                          variant={selectedDarts === n ? "default" : "outline"}
-                          className={`h-8 w-10 font-bold text-sm ${selectedDarts === null ? "border-amber-400" : ""}`}
-                          onClick={() => setSelectedDarts(n)}
-                        >{n}</Button>
-                      ))}
+                {!isOver180 && isCheckout && (() => {
+                  const minDarts = minDartsForCheckout(remaining) ?? 1;
+                  const needsSelection = selectedDarts === null || selectedDarts < minDarts;
+                  return (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-green-600 text-center font-semibold">Checkout! 🎯</p>
+                      <div className="flex items-center gap-2 justify-center">
+                        <p className={`text-xs font-medium ${needsSelection ? "text-amber-500" : "text-muted-foreground"}`}>
+                          {needsSelection ? "Select darts used:" : "Darts used:"}
+                        </p>
+                        {([1, 2, 3] as const).map((n) => {
+                          const disabled = n < minDarts;
+                          return (
+                            <Button key={n} type="button" size="sm" disabled={disabled}
+                              variant={selectedDarts === n ? "default" : "outline"}
+                              className={`h-8 w-10 font-bold text-sm ${needsSelection && !disabled ? "border-amber-400" : ""}`}
+                              onClick={() => setSelectedDarts(n)}
+                            >{n}</Button>
+                          );
+                        })}
+                      </div>
+                      {needsSelection && (
+                        <p className="text-[10px] text-amber-500 text-center">
+                          Darts used is required to finish the leg{minDarts > 1 ? ` — at least ${minDarts} for this checkout` : ""}.
+                        </p>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
                 {!isOver180 && !isBust && !isCheckout && preview !== null && (
                   <p className="text-xs text-muted-foreground text-center">
                     Leaves <span className={`font-semibold ${hint ? "text-amber-500" : "text-foreground"}`}>{preview}</span>
@@ -1292,10 +1483,28 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           {/* Actions */}
           <div className="flex gap-2">
             <Button className="flex-1" onClick={handleSubmitRound}
-              disabled={(() => { const f = currentThrowSide === "home" ? currentRound.home : currentRound.away; const rem = currentThrowSide === "home" ? homeScore : awayScore; return typeof f === "number" && rem - f === 0 && selectedDarts === null; })()}
+              disabled={(() => {
+                const f = currentThrowSide === "home" ? currentRound.home : currentRound.away;
+                const rem = currentThrowSide === "home" ? homeScore : awayScore;
+                if (typeof f !== "number" || rem - f !== 0) return false; // not a checkout
+                const min = minDartsForCheckout(rem) ?? 1;
+                return selectedDarts === null || selectedDarts < min;
+              })()}
             >
               {hasPendingThrow ? "Complete round" : "Submit throw"}
             </Button>
+            {!hasPendingThrow && (rounds.length > 0 || isSingles) && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleSwitchOrder}
+                title={isSingles
+                  ? "Switch which side throws first"
+                  : "Switch throwing order — re-credit rounds to the next player in the rotation"}
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="outline"
               size="icon"
@@ -1308,7 +1517,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             <Button
               variant="outline"
               size="icon"
-              onClick={() => { setPendingFinePlayer(currentRound.player ?? null); setShowRoundFineDialog(true); }}
+              onClick={() => { setPendingFinePlayerId(currentThrower?.id ?? null); setShowRoundFineDialog(true); }}
+              disabled={!currentThrower?.id}
               title="Add fine"
             >
               <Flag className="h-4 w-4" />

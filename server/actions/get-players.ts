@@ -9,7 +9,6 @@ export async function getPlayers() {
             id: player.id,
             name: player.name,
             nickname: player.nickname,
-            team: player.team,
             createdAt: player.createdAt ? player.createdAt.toISOString() : null,
         }));
     } catch (error) {
