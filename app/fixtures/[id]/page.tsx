@@ -28,6 +28,8 @@ export default async function FixturePage({
     id: s.id,
     homeTeam: s.homeTeam,
     awayTeam: s.awayTeam,
+    homeTeamId: s.homeTeamId ?? null,
+    awayTeamId: s.awayTeamId ?? null,
     homeTeamScore: s.homeTeamScore,
     awayTeamScore: s.awayTeamScore,
     matchLocation: s.location ?? s.matchLocation,
@@ -37,7 +39,6 @@ export default async function FixturePage({
     matchStatus: s.matchStatus,
     season: s.season ?? "",
     league: s.league,
-    isAppTeamWin: s.isAppTeamWin,
     notes: s.notes ?? null,
     createdAt: s.createdAt ? s.createdAt.toLocaleDateString("en-GB") : "",
   };

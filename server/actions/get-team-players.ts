@@ -16,14 +16,15 @@ export type TeamPlayer = {
  */
 export async function getTeamPlayers(teamId: number): Promise<TeamPlayer[]> {
   try {
-    const [allPlayers, memberships] = await Promise.all([
-      db.query.players.findMany(),
-      db.query.playerTeams.findMany({ where: eq(playerTeams.teamId, teamId) }),
-    ]);
-    const ids = new Set(memberships.map((m) => m.playerId));
-    return allPlayers
-      .filter((p) => ids.has(p.id))
-      .map((p) => ({ id: p.id, name: p.name, nickname: p.nickname }));
+    const memberships = await db.query.playerTeams.findMany({
+      where: eq(playerTeams.teamId, teamId),
+      with: { player: true },
+    });
+    return memberships.map((m) => ({
+      id: m.player.id,
+      name: m.player.name,
+      nickname: m.player.nickname,
+    }));
   } catch (error) {
     console.error("getTeamPlayers error:", error);
     return [];

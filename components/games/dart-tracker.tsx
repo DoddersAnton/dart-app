@@ -643,7 +643,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   // rotation by one position and re-credits the leg's saved rounds. For Singles
   // there's no rotation, so it just swaps which side throws first.
   // Either way home/away scores are left untouched.
-  const handleSwitchOrder = () => {
+  const handleSwitchOrder = async () => {
     if (winner || hasPendingThrow) return;
 
     // Singles: no rotation to re-credit — just flip who throws first.
@@ -686,11 +686,15 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     // Persist the re-attribution for rounds already written to the DB.
     const savedToUpdate = updatedRounds.slice(0, savedRoundCount).filter((r) => r.homePlayerId || r.awayPlayerId);
     if (savedToUpdate.length > 0) {
-      updateLegRoundPlayers({
+      const result = await updateLegRoundPlayers({
         gameId: gameData.id,
         leg: currentLeg,
         rounds: savedToUpdate.map((r) => ({ roundNumber: r.roundNumber, homePlayerId: r.homePlayerId, awayPlayerId: r.awayPlayerId })),
       });
+      if (!result?.success) {
+        toast.error("Failed to update player attribution — throwing order may be out of sync");
+        return;
+      }
     }
 
     broadcastGameState(gameData.id, {

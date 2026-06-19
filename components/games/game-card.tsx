@@ -27,6 +27,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import { Separator } from "../ui/separator";
+import { useTeam } from "@/contexts/team-context";
 
 const INITIAL_SCORE: Record<string, number> = {
   "Team Game": 801,
@@ -155,12 +156,19 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
     onError: () => toast.error("Failed to delete rounds"),
   });
 
+  const { activeTeamId } = useTeam();
+
   const homeWon = gameData.homeTeamScore > gameData.awayTeamScore;
   const awayWon = gameData.awayTeamScore > gameData.homeTeamScore;
   const isDraw = !homeWon && !awayWon && gameData.homeTeamScore === gameData.awayTeamScore;
 
-  // Result from the active team's perspective; fall back to the legacy flag when no perspective.
-  const myWon = gameData.mySide === "home" ? homeWon : gameData.mySide === "away" ? awayWon : gameData.isAppTeamWin;
+  // Resolve which side is "my" team: prefer the server-computed mySide, otherwise derive
+  // from the client-side active team context and the game's homeTeamId/awayTeamId.
+  const resolvedSide: "home" | "away" | null = gameData.mySide
+    ?? (activeTeamId === gameData.homeTeamId ? "home"
+      : activeTeamId === gameData.awayTeamId ? "away"
+      : null);
+  const myWon = resolvedSide === "home" ? homeWon : resolvedSide === "away" ? awayWon : null;
   const resultBadge = isDraw
     ? <Badge variant="secondary">Draw</Badge>
     : myWon

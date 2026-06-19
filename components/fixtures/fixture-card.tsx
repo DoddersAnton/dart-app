@@ -32,6 +32,7 @@ import { Textarea } from "../ui/textarea";
 import GameFormPopup from "./add-game-popup";
 import GamesSummaryCard, { GameSummary } from "../games/game-summary-card";
 import MatchReport from "./match-report";
+import { useTeam } from "@/contexts/team-context";
 
 type AvailabilityRecord = {
   attending: boolean | null;
@@ -50,13 +51,14 @@ type Fixture = {
   matchDate: string | null;
   homeTeam: string;
   awayTeam: string;
+  homeTeamId?: number | null;
+  awayTeamId?: number | null;
   homeTeamScore: number;
   awayTeamScore: number;
   matchStatus: string;
   createdAt: string | null;
   league: string;
   season: string;
-  isAppTeamWin: boolean;
   notes?: string | null;
 };
 
@@ -159,6 +161,15 @@ export default function FixtureCard({
   const [savingNotes, setSavingNotes] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(fixtureData.matchStatus);
 
+  const { activeTeamId } = useTeam();
+  // Derive win/loss from the active team context: check which side the active team is on,
+  // then compare scores. Falls back to home-side perspective when no team context is set.
+  const isWin = activeTeamId === fixtureData.homeTeamId
+    ? fixtureData.homeTeamScore > fixtureData.awayTeamScore
+    : activeTeamId === fixtureData.awayTeamId
+      ? fixtureData.awayTeamScore > fixtureData.homeTeamScore
+      : fixtureData.homeTeamScore > fixtureData.awayTeamScore;
+
   const { execute: executeStatusUpdate, status: statusUpdateStatus } = useAction(updateFixtureStatus, {
     onSuccess: (data) => {
       if (data.data?.error) toast.error(data.data.error);
@@ -220,12 +231,12 @@ export default function FixtureCard({
       <span className="text-xs font-medium text-red-500">In Progress</span>
     </span>
   ) : isCancelled ? (
-    fixtureData.isAppTeamWin
+    isWin
       ? <Badge variant="outline" className="text-green-600 border-green-500">Cancelled (win)</Badge>
       : <Badge variant="outline" className="text-destructive border-destructive">Cancelled (lost)</Badge>
   ) : isScheduled ? (
     <Badge variant="outline" className="text-amber-500 border-amber-400">Scheduled</Badge>
-  ) : fixtureData.isAppTeamWin ? (
+  ) : isWin ? (
     <Badge className="bg-green-600 hover:bg-green-700">Win</Badge>
   ) : fixtureData.homeTeamScore === fixtureData.awayTeamScore ? (
     <Badge variant="secondary">Draw</Badge>
