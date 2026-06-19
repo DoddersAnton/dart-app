@@ -12,21 +12,23 @@ export type GameStateBroadcast = {
   isGameDecided?: boolean;
   rounds: Array<{
     roundNumber: number;
-    player?: string;
+    homePlayerName?: string;
+    awayPlayerName?: string;
     home?: number;
     away?: number;
   }>;
   pendingRound?: {
     roundNumber: number;
-    player?: string;
+    homePlayerName?: string;
+    awayPlayerName?: string;
     home?: number;
     away?: number;
   };
   homeTeam: string;
   awayTeam: string;
   currentThrowSide?: "home" | "away";
-  appPlayers?: Array<{ name: string; isNext: boolean }>;
-  opposingPlayers?: Array<{ name: string; isNext: boolean }>;
+  homePlayers?: Array<{ name: string; isNext: boolean }>;
+  awayPlayers?: Array<{ name: string; isNext: boolean }>;
 };
 
 export async function broadcastGameState(

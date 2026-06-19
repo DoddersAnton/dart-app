@@ -30,6 +30,8 @@ import { addGameSchema, zGameSchema } from "@/types/add-game-schema";
 import { getGame } from "@/server/actions/get-game";
 import { createGame } from "@/server/actions/create-game";
 import { getPlayers } from "@/server/actions/get-players";
+import { getTeamPlayers, type TeamPlayer } from "@/server/actions/get-team-players";
+import { getFixture } from "@/server/actions/get-fixture";
 import { getAppSettings } from "@/server/actions/get-app-settings";
 
 import { z } from "zod";
@@ -80,37 +82,75 @@ function ScoreStepper({
   );
 }
 
+// Render a roster MultipleSelector bound to a form field of player ids.
+function RosterField({
+  field,
+  roster,
+}: {
+  field: { value: number[]; onChange: (ids: number[]) => void };
+  roster: TeamPlayer[];
+}) {
+  const options = roster.map((p) => ({
+    value: p.id.toString(),
+    label: p.name + " " + (p.nickname ? `(${p.nickname})` : ""),
+  }));
+  return (
+    <MultipleSelector
+      options={options}
+      defaultOptions={options}
+      value={options.filter((o) => (field.value ?? []).includes(parseInt(o.value, 10)))}
+      placeholder="Select players"
+      onChange={(values: { value: string; label: string }[]) =>
+        field.onChange(values.map((o) => parseInt(o.value, 10)))
+      }
+    />
+  );
+}
 
 export default function GameForm() {
-  const [playersListData, setPlayersListData] = useState<
-    {
-      id: number;
-      name: string;
-      nickname: string | null;
-      team: string | null;
-      createdAt: string | null;
-    }[]
-  >([]);
-
-  async function fetchPlayers() {
-    const result = await getPlayers();
-    if (Array.isArray(result)) {
-      setPlayersListData(result);
-    } else if ("error" in result) {
-      toast.error(result.error);
-    }
-  }
-
-
+  const [homeRoster, setHomeRoster] = useState<TeamPlayer[]>([]);
+  const [awayRoster, setAwayRoster] = useState<TeamPlayer[]>([]);
+  const [homeTeamName, setHomeTeamName] = useState("Home");
+  const [awayTeamName, setAwayTeamName] = useState("Away");
+  const [awayIsAppTeam, setAwayIsAppTeam] = useState(true);
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const editMode = searchParams.get("id");
   const paramFixtureId = searchParams.get("fixtureId");
 
-  useEffect(() => {
-    fetchPlayers();
+  async function allPlayersAsRoster(): Promise<TeamPlayer[]> {
+    const result = await getPlayers();
+    if (Array.isArray(result)) {
+      return result.map((p) => ({ id: p.id, name: p.name, nickname: p.nickname }));
+    }
+    return [];
+  }
 
+  async function loadRosters(fixtureId: number) {
+    if (!fixtureId) {
+      setHomeRoster(await allPlayersAsRoster());
+      return;
+    }
+    const fixtureRes = await getFixture(fixtureId);
+    if (fixtureRes.success) {
+      const f = fixtureRes.success;
+      setHomeTeamName(f.homeTeam ?? "Home");
+      setAwayTeamName(f.awayTeam ?? "Away");
+      setHomeRoster(f.homeTeamId ? await getTeamPlayers(f.homeTeamId) : await allPlayersAsRoster());
+      if (f.awayTeamId) {
+        setAwayRoster(await getTeamPlayers(f.awayTeamId));
+        setAwayIsAppTeam(true);
+      } else {
+        setAwayRoster([]);
+        setAwayIsAppTeam(false);
+      }
+    } else {
+      setHomeRoster(await allPlayersAsRoster());
+    }
+  }
+
+  useEffect(() => {
     getAppSettings().then((res) => {
       if (res.success?.maxLegsPerGame) setMaxLegs(res.success.maxLegsPerGame);
     });
@@ -119,9 +159,10 @@ export default function GameForm() {
       setLoading(true);
       checkGame(parseInt(editMode));
       setLoading(false);
+    } else {
+      loadRosters(parseInt(paramFixtureId ?? "0"));
     }
   }, []);
-
 
   const form = useForm<z.infer<typeof addGameSchema>>({
     resolver: zodResolver(addGameSchema),
@@ -130,8 +171,8 @@ export default function GameForm() {
       homeTeamScore: 0,
       awayTeamScore: 0,
       gameType: "",
-      playerList: [] as number[],
-      // id is optional and can be omitted
+      homePlayerList: [],
+      awayPlayerList: [],
     },
     mode: "onChange",
   });
@@ -151,19 +192,9 @@ export default function GameForm() {
         form.setValue("gameType", data.success.gameType);
         form.setValue("homeTeamScore", data.success.homeTeamScore);
         form.setValue("awayTeamScore", data.success.awayTeamScore);
-
-        const playerIds = data.success.players.map((player) => player.id);
-        if (playerIds.length > 0) {
-          form.setValue("playerList", playerIds as [number, ...number[]]);
-          //setSelectedPlayers(playerIds.map((id) => id.toString()));
-
-          if(playersListData.length === 0){
-            fetchPlayers();
-          }
-
-        } else {
-          form.resetField("playerList");
-        }
+        form.setValue("homePlayerList", data.success.homePlayers.map((p) => p.id));
+        form.setValue("awayPlayerList", data.success.awayPlayers.map((p) => p.id));
+        await loadRosters(data.success.fixtureId);
       }
     }
   };
@@ -183,7 +214,7 @@ export default function GameForm() {
       if (data.data?.error) {
         toast.error(data.data.error);
         router.push(`/fixtures/${parseInt(paramFixtureId ?? "0")}`);
- 
+
         return;
       }
       if (data.data?.success) {
@@ -202,7 +233,6 @@ export default function GameForm() {
   });
 
   async function onSubmit(values: zGameSchema) {
-    console.log("form", values);
     execute(values);
   }
 
@@ -219,7 +249,7 @@ export default function GameForm() {
           {!loading && (
             <Card className=" w-[80%] mx-auto overflow-y-auto">
               <CardHeader>
-                 {editMode ? "Edit" : "Add"} Game 
+                 {editMode ? "Edit" : "Add"} Game
                 <div className="text-red-500">
                   {Object.entries(form.formState.errors).map(([key, error]) => (
                     <div key={key} className="text-red-500">
@@ -239,53 +269,34 @@ export default function GameForm() {
                   >
                     <FormField
                       control={form.control}
-                      name="playerList"
+                      name="homePlayerList"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Player Names ({playersListData.length})</FormLabel>
-                          <MultipleSelector
-                          options={playersListData.map((player) => ({
-                              value: player.id.toString(),
-                              label: player.name + " " + (player.nickname ? `(${player.nickname})` : ""),
-                            }))}
-                            
-                            defaultOptions={playersListData.map((player) => ({
-                              value: player.id.toString(),
-                              label:
-                                player.name +
-                                " " +
-                                (player.nickname ? `(${player.nickname})` : ""),
-                            }))}
-                            value={
-                              field.value
-                                ? playersListData
-                                    .filter((player) =>
-                                      field.value.includes(player.id)
-                                    )
-                                    .map((player) => ({
-                                      value: player.id.toString(),
-                                      label:
-                                        player.name +
-                                        " " +
-                                        (player.nickname ? `(${player.nickname})` : ""),
-                                    }))
-                                : []
-                            }
-                            placeholder="Select players"
-                            onChange={(
-                              values: { value: string; label: string }[]
-                            ) => {
-                              const playerIds = values.map((option) =>
-                                parseInt(option.value, 10)
-                              );
-                              field.onChange(playerIds);
-                              //setSelectedPlayers(values.map((option) => option.value));
-                            }}
-                          />
+                          <FormLabel>{homeTeamName} players ({homeRoster.length})</FormLabel>
+                          <RosterField field={field} roster={homeRoster} />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
+                    {awayIsAppTeam ? (
+                      <FormField
+                        control={form.control}
+                        name="awayPlayerList"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{awayTeamName} players ({awayRoster.length})</FormLabel>
+                            <RosterField field={field} roster={awayRoster} />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        <Info className="inline-block mr-1.5" size={13} />
+                        {awayTeamName} isn&apos;t an app team — track their players in the dart tracker.
+                      </p>
+                    )}
                     <div className="grid w-full items-center gap-4"></div>
 
                     <FormField
@@ -377,7 +388,7 @@ export default function GameForm() {
           )}
         </div>
 
-        
+
     </div>
   );
 }

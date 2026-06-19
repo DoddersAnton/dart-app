@@ -47,6 +47,7 @@ import {
   GamesSummary,
 } from "@/server/actions/get-player-games-summary";
 import { FixtureAvailabilityDetail } from "@/server/actions/get-fixtures-availability-summary";
+import { useTeam } from "@/contexts/team-context";
 
 interface EnhancedFixtureCardProps {
   data: FixtureListSummary[];
@@ -205,12 +206,20 @@ function seasonKpiItem({
 
 function fixtureItem({
   fixtureData,
+  activeTeamId,
   key,
 }: {
   fixtureData: FixtureListSummary;
+  activeTeamId: number | null;
   key?: number;
 }) {
-  const isWin = fixtureData.isAppTeamWin;
+  // Derive win/loss from the active team context: check which side the active team is on,
+  // then compare scores. Falls back to home-side perspective when no team context is set.
+  const isWin = activeTeamId === fixtureData.homeTeamId
+    ? fixtureData.homeTeamScore > fixtureData.awayTeamScore
+    : activeTeamId === fixtureData.awayTeamId
+      ? fixtureData.awayTeamScore > fixtureData.homeTeamScore
+      : fixtureData.homeTeamScore > fixtureData.awayTeamScore;
   const isInProgress = fixtureData.matchStatus === "in progress";
   const isCancelled = fixtureData.matchStatus === "cancelled";
   const isScheduled = !isInProgress && !isCancelled && fixtureData.matchStatus === "scheduled";
@@ -317,6 +326,7 @@ function fixtureItem({
 
 export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
   const [seasonFilter, setSeasonFilter] = React.useState<string | null>(null);
+  const { activeTeamId } = useTeam();
 
   const availabilityByFixture = React.useMemo(() => {
     const map = new Map<number, FixtureAvailabilityDetail>();
@@ -408,7 +418,7 @@ export default function EnhancedFixtureCard(props: EnhancedFixtureCardProps) {
             })
             .map((fixture) => (
               <div key={fixture.id} className="mb-4 mx-auto">
-                {fixtureItem({ fixtureData: fixture, key: fixture.id })}
+                {fixtureItem({ fixtureData: fixture, activeTeamId, key: fixture.id })}
               </div>
             ))}
         </TabsContent>

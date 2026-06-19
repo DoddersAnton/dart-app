@@ -30,6 +30,8 @@ import { addGameSchema, zGameSchema } from "@/types/add-game-schema";
 import { getGame } from "@/server/actions/get-game";
 import { createGame } from "@/server/actions/create-game";
 import { getPlayers } from "@/server/actions/get-players";
+import { getTeamPlayers, type TeamPlayer } from "@/server/actions/get-team-players";
+import { getFixture } from "@/server/actions/get-fixture";
 import { getAppSettings } from "@/server/actions/get-app-settings";
 
 function ScoreStepper({
@@ -88,25 +90,36 @@ type GameFormProps = {
   gameId?: number;
 };
 
-export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFormProps) {
-  const [playersListData, setPlayersListData] = useState<
-    {
-      id: number;
-      name: string;
-      nickname: string | null;
-      team: string | null;
-      createdAt: string | null;
-    }[]
-  >([]);
+// Render a roster MultipleSelector bound to a form field of player ids.
+function RosterField({
+  field,
+  roster,
+}: {
+  field: { value: number[]; onChange: (ids: number[]) => void };
+  roster: TeamPlayer[];
+}) {
+  const options = roster.map((p) => ({
+    value: p.id.toString(),
+    label: p.name + " " + (p.nickname ? `(${p.nickname})` : ""),
+  }));
+  return (
+    <MultipleSelector
+      defaultOptions={options}
+      value={options.filter((o) => (field.value ?? []).includes(parseInt(o.value, 10)))}
+      placeholder="Select players"
+      onChange={(values: { value: string; label: string }[]) =>
+        field.onChange(values.map((o) => parseInt(o.value, 10)))
+      }
+    />
+  );
+}
 
-  async function fetchPlayers() {
-    const result = await getPlayers();
-    if (Array.isArray(result)) {
-      setPlayersListData(result);
-    } else if ("error" in result) {
-      toast.error(result.error);
-    }
-  }
+export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFormProps) {
+  const [homeRoster, setHomeRoster] = useState<TeamPlayer[]>([]);
+  const [awayRoster, setAwayRoster] = useState<TeamPlayer[]>([]);
+  const [homeTeamName, setHomeTeamName] = useState("Home");
+  const [awayTeamName, setAwayTeamName] = useState("Away");
+  const [awayIsAppTeam, setAwayIsAppTeam] = useState(true);
 
   const form = useForm<z.infer<typeof addGameSchema>>({
     resolver: zodResolver(addGameSchema),
@@ -115,8 +128,8 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
       homeTeamScore: 0,
       awayTeamScore: 0,
       gameType: "",
-      playerList: [] as number[],
-      // id is optional and can be omitted
+      homePlayerList: [],
+      awayPlayerList: [],
     },
     mode: "onChange",
   });
@@ -124,6 +137,33 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
   const router = useRouter();
   const searchParams = useSearchParams();
   const editMode = searchParams.get("id") ?? gameId?.toString() ?? null;
+
+  async function loadRosters() {
+    const fixtureRes = await getFixture(fixtureId);
+    if (fixtureRes.success) {
+      const f = fixtureRes.success;
+      setHomeTeamName(f.homeTeam ?? "Home");
+      setAwayTeamName(f.awayTeam ?? "Away");
+      setHomeRoster(f.homeTeamId ? await getTeamPlayers(f.homeTeamId) : await allPlayersAsRoster());
+      if (f.awayTeamId) {
+        setAwayRoster(await getTeamPlayers(f.awayTeamId));
+        setAwayIsAppTeam(true);
+      } else {
+        setAwayRoster([]);
+        setAwayIsAppTeam(false);
+      }
+    } else {
+      setHomeRoster(await allPlayersAsRoster());
+    }
+  }
+
+  async function allPlayersAsRoster(): Promise<TeamPlayer[]> {
+    const result = await getPlayers();
+    if (Array.isArray(result)) {
+      return result.map((p) => ({ id: p.id, name: p.name, nickname: p.nickname }));
+    }
+    return [];
+  }
 
   const checkGame = async (gameId: number) => {
     if (editMode) {
@@ -140,19 +180,14 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
         form.setValue("gameType", data.success.gameType);
         form.setValue("homeTeamScore", data.success.homeTeamScore);
         form.setValue("awayTeamScore", data.success.awayTeamScore);
-        const playerIds = data.success.players.map((player) => player.id);
-        if (playerIds.length > 0) {
-          form.setValue("playerList", playerIds as [number, ...number[]]);
-        } else {
-          form.resetField("playerList");
-        }
+        form.setValue("homePlayerList", data.success.homePlayers.map((p) => p.id));
+        form.setValue("awayPlayerList", data.success.awayPlayers.map((p) => p.id));
       }
     }
   };
 
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedPlayers, setSelectedPlayers] = useState<string[] | undefined>(undefined);
   const [maxLegs, setMaxLegs] = useState(3);
   const maxLegsWon = Math.ceil(maxLegs / 2);
 
@@ -162,7 +197,7 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
   const awayMax = Math.min(maxLegsWon, maxLegs - homeScore);
 
   useEffect(() => {
-    fetchPlayers();
+    loadRosters();
 
     getAppSettings().then((res) => {
       if (res.success?.maxLegsPerGame) setMaxLegs(res.success.maxLegsPerGame);
@@ -202,13 +237,19 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
   });
 
   async function onSubmit(values: zGameSchema) {
-    console.log("form", values);
     values.fixtureId = fixtureId;
     execute(values);
   }
 
+  // Refetch rosters whenever the dialog opens so players added since the page
+  // first loaded (e.g. a new opponent-team member) show up without a hard reload.
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && !editMode) loadRosters();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline">
           {editMode ? "Edit" : "Add"} Game <Plus />
@@ -251,55 +292,34 @@ export default function GameFormPopup({ fixtureId, onGameAdded, gameId }: GameFo
                   >
                     <FormField
                       control={form.control}
-                      name="playerList"
+                      name="homePlayerList"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Player Names</FormLabel>
-                          <MultipleSelector
-                            defaultOptions={playersListData.map((player) => ({
-                              value: player.id.toString(),
-                              label:
-                                player.name +
-                                " " +
-                                (player.nickname ? `(${player.nickname})` : ""),
-                            }))}
-                            value={
-                              selectedPlayers
-                                ? playersListData
-                                    .filter((player) =>
-                                      selectedPlayers.includes(
-                                        player.id.toString()
-                                      )
-                                    )
-                                    .map((player) => ({
-                                      value: player.id.toString(),
-                                      label:
-                                        player.name +
-                                        " " +
-                                        (player.nickname
-                                          ? `(${player.nickname})`
-                                          : ""),
-                                    }))
-                                : undefined
-                            }
-                            placeholder="Select players"
-                            // You may need to use a supported callback like 'onChange' if available in MultipleSelectorProps
-                            onChange={(
-                              values: { value: string; label: string }[]
-                            ) => {
-                              const playerIds = values.map((option) =>
-                                parseInt(option.value, 10)
-                              );
-                              field.onChange(playerIds);
-                              setSelectedPlayers(
-                                values.map((option) => option.value)
-                              );
-                            }}
-                          />
+                          <FormLabel>{homeTeamName} players</FormLabel>
+                          <RosterField field={field} roster={homeRoster} />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
+                    {awayIsAppTeam ? (
+                      <FormField
+                        control={form.control}
+                        name="awayPlayerList"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{awayTeamName} players</FormLabel>
+                            <RosterField field={field} roster={awayRoster} />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        <Info className="inline-block mr-1.5" size={13} />
+                        {awayTeamName} isn&apos;t an app team — track their players in the dart tracker.
+                      </p>
+                    )}
                     <div className="grid w-full items-center gap-4"></div>
 
                     <FormField
