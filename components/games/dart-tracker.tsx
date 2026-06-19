@@ -676,14 +676,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         awayPlayerName: newAway?.name ?? r.awayPlayerName,
       };
     });
-    setRounds(updatedRounds);
 
     const nextHomeIdx = homeLen > 0 ? (homePlayerIndex + 1) % homeLen : homePlayerIndex;
     const nextAwayIdx = awayLen > 0 ? (awayPlayerIndex + 1) % awayLen : awayPlayerIndex;
-    setHomePlayerIndex(nextHomeIdx);
-    setAwayPlayerIndex(nextAwayIdx);
 
-    // Persist the re-attribution for rounds already written to the DB.
+    // Persist the re-attribution for rounds already written to the DB before updating local state,
+    // so a failure leaves state consistent with what is in the database.
     const savedToUpdate = updatedRounds.slice(0, savedRoundCount).filter((r) => r.homePlayerId || r.awayPlayerId);
     if (savedToUpdate.length > 0) {
       const result = await updateLegRoundPlayers({
@@ -692,10 +690,14 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         rounds: savedToUpdate.map((r) => ({ roundNumber: r.roundNumber, homePlayerId: r.homePlayerId, awayPlayerId: r.awayPlayerId })),
       });
       if (!result?.success) {
-        toast.error("Failed to update player attribution — throwing order may be out of sync");
+        toast.error("Failed to update player attribution — throwing order was not switched");
         return;
       }
     }
+
+    setRounds(updatedRounds);
+    setHomePlayerIndex(nextHomeIdx);
+    setAwayPlayerIndex(nextAwayIdx);
 
     broadcastGameState(gameData.id, {
       homeScore, awayScore, homeLegs, awayLegs, currentLeg, winner: null,
