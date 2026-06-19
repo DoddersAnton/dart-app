@@ -50,6 +50,7 @@ export const createPlayer = actionClient
           .where(eq(players.id, id))
           .returning();
 
+        if (teamIds?.length) await requireTeamAdmin();
         await ensureTeamMemberships(id, teamIds ?? []);
 
         revalidatePath("/players/add-player");
