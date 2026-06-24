@@ -6,15 +6,19 @@ import { db } from "..";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { players, fines, playerFines } from "../schema";
+import { resolveSeasonIdForDate } from "../season-helper";
 
 const actionClient = createSafeActionClient();
 
 export const createPlayerFine = actionClient
   .schema(createPlayerFineSchema)
   .action(
-    async ({ parsedInput: { id, playerId, fineId, matchDate, notes, quantity, teamId } }) => {
+    async ({ parsedInput: { id, playerId, fineId, matchDate, notes, quantity, teamId, seasonId } }) => {
       try {
         const user = await currentUser();
+
+        // Use the chosen season, otherwise derive it from the fine's match date.
+        const resolvedSeasonId = seasonId ?? (await resolveSeasonIdForDate(matchDate ? new Date(matchDate) : null));
 
         if (playerId) {
           const player = await db.query.players.findFirst({
@@ -43,6 +47,7 @@ export const createPlayerFine = actionClient
               fineId: fineId,
               notes: notes,
               issuedBy: user?.id,
+              seasonId: resolvedSeasonId,
             })
             .where(id ? eq(playerFines.id, id) : undefined)
             .returning();
@@ -62,6 +67,7 @@ export const createPlayerFine = actionClient
                 notes: notes,
                 issuedBy: user?.id,
                 teamId: teamId ?? null,
+                seasonId: resolvedSeasonId,
               })
               .returning();
           }
@@ -78,6 +84,7 @@ export const createPlayerFine = actionClient
             notes: notes,
             issuedBy: user?.id,
             teamId: teamId ?? null,
+            seasonId: resolvedSeasonId,
           })
           .returning();
 

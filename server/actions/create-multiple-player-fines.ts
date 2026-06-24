@@ -7,6 +7,7 @@ import { db } from "..";
 import { eq } from "drizzle-orm";
 import { fines, playerFines, players } from "../schema";
 import { revalidatePath } from "next/cache";
+import { resolveSeasonIdForDate } from "../season-helper";
 
 
 const actionClient = createSafeActionClient();
@@ -15,9 +16,12 @@ const actionClient = createSafeActionClient();
 export const createMulitplePlayerFines = actionClient
   .schema(createMulitplePlayerFineSchema)
   .action(
-    async ({ parsedInput: { playerIds, fineId, matchDate, notes, quantity, teamId } }) => {
+    async ({ parsedInput: { playerIds, fineId, matchDate, notes, quantity, teamId, seasonId } }) => {
       try {
         const user = await currentUser();
+
+        // Use the chosen season, otherwise derive it from the fine's match date.
+        const resolvedSeasonId = seasonId ?? (await resolveSeasonIdForDate(matchDate ? new Date(matchDate) : null));
 
         for (const playerId of playerIds) {
           const player = await db.query.players.findFirst({
@@ -46,9 +50,10 @@ export const createMulitplePlayerFines = actionClient
                     notes: notes,
                     issuedBy: user?.id,
                     teamId: teamId ?? null,
+                    seasonId: resolvedSeasonId,
                   })
                   .returning();
-                  
+
               }
              
             }else {
@@ -60,6 +65,8 @@ export const createMulitplePlayerFines = actionClient
                   fineId: fineId,
                   notes: notes,
                   issuedBy: user?.id,
+                  teamId: teamId ?? null,
+                  seasonId: resolvedSeasonId,
                 })
                 .returning();
               }

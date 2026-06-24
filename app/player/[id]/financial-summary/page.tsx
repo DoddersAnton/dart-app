@@ -21,7 +21,7 @@ export default async function PlayerFinancialSummaryPage({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Financial summary</h2>
+      <h2 className="text-2xl font-semibold">Financial summary — {data.player.name}</h2>
       <FinancialSummaryClient
         playerId={playerId}
         unpaidFinesTotal={unpaidFinesTotal}

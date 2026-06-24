@@ -53,7 +53,7 @@ export default async function PlayerAvailabilityPage({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Availability</h2>
+      <h2 className="text-2xl font-semibold">Availability — {player.name}</h2>
       <AvailabilityClient playerId={playerId} records={records} fixtureCounts={fixtureCounts} />
     </div>
   );

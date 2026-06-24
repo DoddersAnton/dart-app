@@ -69,12 +69,25 @@ interface FormProps {
     amount: number;
   }[];
   activeTeamId?: number | null;
+  seasons?: { id: number; name: string; startDate: string; endDate: string }[];
+}
+
+// The season whose [startDate, endDate] contains the given date, if any.
+function seasonIdForDate(
+  date: Date | undefined,
+  seasons: { id: number; startDate: string; endDate: string }[],
+): number | undefined {
+  if (!date) return undefined;
+  const t = date.getTime();
+  const match = seasons.find((s) => new Date(s.startDate).getTime() <= t && t <= new Date(s.endDate).getTime());
+  return match?.id;
 }
 
   export default function FineForm({
   playersListData,
   finesListData,
   activeTeamId,
+  seasons = [],
 }: FormProps) {
   const form = useForm<zPlayerFineSchema>({
     resolver: zodResolver(createPlayerFineSchema),
@@ -126,6 +139,13 @@ interface FormProps {
       setLoading(false);
     })();
   }, [editMode]);
+
+  // Default the season from the chosen match date (re-defaults when the date changes).
+  const watchedMatchDate = form.watch("matchDate");
+  useEffect(() => {
+    const sid = seasonIdForDate(watchedMatchDate, seasons);
+    if (sid) form.setValue("seasonId", sid);
+  }, [watchedMatchDate, seasons]);
 
   const { execute, status } = useAction(createPlayerFine, {
     onSuccess: (data) => {
@@ -412,6 +432,38 @@ interface FormProps {
                         </Popover>
                       </FormControl>
 
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="seasonId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Season</FormLabel>
+                      <FormDescription>
+                        <Info className="inline-block mr-2" size={14} />
+                        Defaulted from the match date — change if needed.
+                      </FormDescription>
+                      <Select
+                        onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                        value={field.value === undefined || field.value === null ? "" : String(field.value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a season" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {seasons.map((season) => (
+                            <SelectItem key={season.id} value={season.id.toString()}>
+                              {season.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

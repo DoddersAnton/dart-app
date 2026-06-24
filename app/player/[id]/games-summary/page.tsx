@@ -19,7 +19,7 @@ export default async function PlayerGamesSummaryPage({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Games summary</h2>
+      <h2 className="text-2xl font-semibold">Games summary — {data.player.name}</h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card><CardHeader><CardTitle>Total matches</CardTitle></CardHeader><CardContent>{data.totalMatchesPlayed}</CardContent></Card>
         <Card><CardHeader><CardTitle>Seasons played</CardTitle></CardHeader><CardContent>{seasonsPlayed}</CardContent></Card>

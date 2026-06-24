@@ -44,6 +44,9 @@ export const players = pgTable("players", {
     roundNo: integer("round_no"),
     roundLeg: integer("round_leg"),
     teamId: integer("team_id").references(() => team.id, { onDelete: "set null" }),
+    // Optional link to the season this fine falls in (derived from matchDate).
+    // Nullable for backward compatibility with fines created before seasons were tracked.
+    seasonId: integer("season_id").references(() => seasons.id, { onDelete: "set null" }),
   });
 
   export const fixtures = pgTable("fixtures", {

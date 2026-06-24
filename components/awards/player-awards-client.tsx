@@ -67,12 +67,13 @@ interface PlayerAward {
 
 interface Props {
   playerId: number;
+  playerName?: string;
   playerAwards: PlayerAward[];
   awardTypes: AwardType[];
   seasons: Season[];
 }
 
-export function PlayerAwardsClient({ playerId, playerAwards, awardTypes, seasons }: Props) {
+export function PlayerAwardsClient({ playerId, playerName, playerAwards, awardTypes, seasons }: Props) {
   const [open, setOpen] = useState(false);
   const [editingAward, setEditingAward] = useState<PlayerAward | null>(null);
 
@@ -138,7 +139,7 @@ export function PlayerAwardsClient({ playerId, playerAwards, awardTypes, seasons
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Awards</h2>
+        <h2 className="text-2xl font-semibold">Awards{playerName ? ` — ${playerName}` : ""}</h2>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingAward(null); form.reset({ playerId }); } }}>
           <DialogTrigger asChild>
             <Button size="sm" onClick={openAdd}>

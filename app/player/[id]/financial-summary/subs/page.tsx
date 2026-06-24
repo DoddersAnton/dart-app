@@ -21,7 +21,7 @@ export default async function PlayerSubsPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Subscriptions</h2>
+      <h2 className="text-2xl font-semibold">Subscriptions — {data.player.name}</h2>
       <div className="grid gap-4 md:grid-cols-3">
         <Card><CardHeader><CardTitle>All subs</CardTitle></CardHeader><CardContent>{data.subs.length}</CardContent></Card>
         <Card><CardHeader><CardTitle>Paid / Unpaid</CardTitle></CardHeader><CardContent>{data.paidSubs.length} / {data.unpaidSubs.length}</CardContent></Card>
