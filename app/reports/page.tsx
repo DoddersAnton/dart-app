@@ -29,8 +29,8 @@ export default async function ReportsPage() {
     activeTeamId
       ? db.query.playerFines.findMany({ where: eq(playerFines.teamId, activeTeamId) })
       : db.query.playerFines.findMany(),
-    db.query.subscriptions.findMany(),
-    db.query.seasons.findMany(),
+db.query.subscriptions.findMany(),
+db.query.seasons.findMany({ orderBy: (s, { asc }) => [asc(s.startDate)] }),
   ]);
 
   const seasonKpis = kpisResult.success ?? [];
