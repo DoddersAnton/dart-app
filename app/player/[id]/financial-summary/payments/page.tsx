@@ -20,7 +20,7 @@ export default async function PlayerPaymentsPage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Payments</h2>
+      <h2 className="text-2xl font-semibold">Payments — {data.player.name}</h2>
       <Card>
         <CardHeader><CardTitle>Totals</CardTitle></CardHeader>
         <CardContent>£{data.totalPaymentsValue.toFixed(2)} across {data.payments.length} payments</CardContent>

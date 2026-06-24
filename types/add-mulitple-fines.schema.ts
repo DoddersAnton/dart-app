@@ -12,6 +12,7 @@ export const createMulitplePlayerFineSchema = z.object({
   notes: z.string().max(1000).optional(),
   quantity: z.coerce.number(),
   teamId: z.number().int().positive().optional(),
+  seasonId: z.number().int().positive().optional(),
   //issuedBy: z.string().max(255).optional(),
 });
 

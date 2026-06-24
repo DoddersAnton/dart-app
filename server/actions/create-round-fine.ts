@@ -5,6 +5,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "..";
 import { eq } from "drizzle-orm";
 import { players, fines, playerFines } from "../schema";
+import { resolveSeasonIdForDate } from "../season-helper";
 
 const actionClient = createSafeActionClient();
 
@@ -14,6 +15,9 @@ export const createPlayerRoundFine = actionClient
     async ({ parsedInput: { id, playerId, fineId, matchDate, notes, quantity, gameId, roundNo, roundLeg } }) => {
       try {
         const user = await currentUser();
+
+        // Round fines have no season UI — derive it from the fine's match date.
+        const resolvedSeasonId = await resolveSeasonIdForDate(matchDate ? new Date(matchDate) : null);
 
         if (playerId) {
           const player = await db.query.players.findFirst({
@@ -52,6 +56,7 @@ export const createPlayerRoundFine = actionClient
               gameId: gameId,
               roundNo: roundNo,
               roundLeg: roundLeg,
+              seasonId: resolvedSeasonId,
             })
             .where(id ? eq(playerFines.id, id) : undefined)
             .returning();
@@ -72,6 +77,7 @@ export const createPlayerRoundFine = actionClient
                 gameId: gameId,
                 roundNo: roundNo,
                 roundLeg: roundLeg,
+                seasonId: resolvedSeasonId,
               })
               .returning();
           }
@@ -89,6 +95,7 @@ export const createPlayerRoundFine = actionClient
             gameId: gameId,
             roundNo: roundNo,
             roundLeg: roundLeg,
+            seasonId: resolvedSeasonId,
           })
           .returning();
 

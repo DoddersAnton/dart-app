@@ -36,7 +36,7 @@ export default async function PlayerPracticePage({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Practice</h2>
+        <h2 className="text-2xl font-semibold">Practice — {player.name}</h2>
         <Link href={`/practice/new?playerId=${playerId}`}>
           <Button size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" /> New Session

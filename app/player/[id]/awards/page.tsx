@@ -36,6 +36,7 @@ export default async function PlayerAwardsPage({
   return (
     <PlayerAwardsClient
       playerId={playerId}
+      playerName={player.name}
       playerAwards={playerAwardsList}
       awardTypes={awardTypes}
       seasons={seasons}

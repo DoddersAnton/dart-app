@@ -1,0 +1,2 @@
+ALTER TABLE "player_fines" ADD COLUMN "season_id" integer;--> statement-breakpoint
+ALTER TABLE "player_fines" ADD CONSTRAINT "player_fines_season_id_seasons_id_fk" FOREIGN KEY ("season_id") REFERENCES "public"."seasons"("id") ON DELETE set null ON UPDATE no action;

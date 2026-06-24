@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Plus, FilterIcon, EraserIcon, LayoutDashboard, Table2, ChartColumn, Download } from "lucide-react";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import { Plus, FilterIcon, EraserIcon, LayoutDashboard, Table2, ChartColumn, Download, CalendarIcon } from "lucide-react";
 import { exportToCsv } from "@/lib/export-csv";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 import { PlayerFinesSummaryDataTable } from "./player-summary-table";
 import { PlayerFinesDataTable } from "./playerfines-data-table";
@@ -18,9 +23,11 @@ import { summaryColumns } from "./player-summary-columns";
 import { playerFinesColumns } from "./player-fines-columns";
 import { FineChart } from "./fine-chart";
 import { FineTypeBarChart } from "./fine-chart-byfinetype";
+import { FineSeasonComparison } from "./fine-season-comparison";
 
 export interface FineSummaryProps {
   myPlayerId?: number | null;
+  seasons?: { id: number; name: string }[];
   playerFinesData: {
     id: number;
     player: string;
@@ -31,12 +38,19 @@ export interface FineSummaryProps {
     createdAt: string | null;
     status: string | null;
     playerImgUrl?: string | null;
+    seasonId?: number | null;
+    season?: string | null;
   }[];
 }
 
-export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryProps) {
+// Strip a date to midnight for inclusive day-level range comparisons.
+const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+export function PlayerFinesSummary({ playerFinesData, myPlayerId, seasons = [] }: FineSummaryProps) {
   const [filterDate, setFilterDate] = useState<string>("all");
   const [filterPlayer, setFilterPlayer] = useState<string>("all");
+  const [filterSeason, setFilterSeason] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const dates = useMemo(
@@ -64,9 +78,18 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryP
       const date = new Date(item.matchDate).toLocaleDateString("en-GB");
       const matchesDate = filterDate === "all" || date === filterDate;
       const matchesPlayer = filterPlayer === "all" || item.player === filterPlayer;
-      return matchesDate && matchesPlayer;
+      const matchesSeason = filterSeason === "all" || String(item.seasonId ?? "") === filterSeason;
+
+      let matchesRange = true;
+      if (dateRange?.from || dateRange?.to) {
+        const d = dayStart(new Date(item.matchDate));
+        if (dateRange.from && d < dayStart(dateRange.from)) matchesRange = false;
+        if (dateRange.to && d > dayStart(dateRange.to)) matchesRange = false;
+      }
+
+      return matchesDate && matchesPlayer && matchesSeason && matchesRange;
     });
-  }, [filterDate, filterPlayer, playerFinesData]);
+  }, [filterDate, filterPlayer, filterSeason, dateRange, playerFinesData]);
 
   const totals = useMemo(() => {
     const total = filteredFines.reduce((acc, fine) => acc + fine.amount, 0);
@@ -194,13 +217,63 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryP
           <CardContent className="space-y-3">
             <Select value={filterDate} onValueChange={setFilterDate}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter by match date" />
+                <SelectValue placeholder="Filter by exact match date" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All dates</SelectItem>
                 {dates.map((date) => (
                   <SelectItem key={date} value={date}>
                     {date}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Date range — pick a single day or a from→to span */}
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "flex-1 justify-start text-left font-normal",
+                      !dateRange?.from && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from
+                      ? dateRange.to
+                        ? `${format(dateRange.from, "dd MMM yyyy")} – ${format(dateRange.to, "dd MMM yyyy")}`
+                        : format(dateRange.from, "dd MMM yyyy")
+                      : "Filter by date range"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={1}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {(dateRange?.from || dateRange?.to) && (
+                <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>
+                  Clear
+                </Button>
+              )}
+            </div>
+
+            <Select value={filterSeason} onValueChange={setFilterSeason}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filter by season" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All seasons</SelectItem>
+                {seasons.map((season) => (
+                  <SelectItem key={season.id} value={String(season.id)}>
+                    {season.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -223,6 +296,14 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryP
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">Rows: {filteredFines.length}</Badge>
               {filterDate !== "all" && <Badge>Date: {filterDate}</Badge>}
+              {(dateRange?.from || dateRange?.to) && (
+                <Badge>
+                  Range: {dateRange?.from ? format(dateRange.from, "dd/MM/yy") : "…"}–{dateRange?.to ? format(dateRange.to, "dd/MM/yy") : "…"}
+                </Badge>
+              )}
+              {filterSeason !== "all" && (
+                <Badge>Season: {seasons.find((s) => String(s.id) === filterSeason)?.name ?? filterSeason}</Badge>
+              )}
               {filterPlayer !== "all" && <Badge>Player: {filterPlayer}</Badge>}
             </div>
 
@@ -232,6 +313,8 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryP
               onClick={() => {
                 setFilterDate("all");
                 setFilterPlayer("all");
+                setFilterSeason("all");
+                setDateRange(undefined);
               }}
             >
               Clear Filters <EraserIcon className="ml-2 h-4 w-4" />
@@ -261,7 +344,8 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId }: FineSummaryP
             total={totals.total}
           />
         </TabsContent>
-        <TabsContent value="charts">
+        <TabsContent value="charts" className="space-y-4">
+          <FineSeasonComparison playerFinesData={playerFinesData} seasons={seasons} />
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <FineChart playerFinesData={filteredFines} />
             <FineTypeBarChart playerFinesData={filteredFines} />

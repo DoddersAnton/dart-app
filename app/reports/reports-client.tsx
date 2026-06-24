@@ -6,7 +6,7 @@ import { FixtureKpiSummary } from "@/types/fixtures-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Target, TrendingUp, PoundSterling } from "lucide-react";
+import { Trophy, Target, TrendingUp, PoundSterling, Wallet } from "lucide-react";
 
 type LeaderboardEntry = {
   playerId: number;
@@ -28,11 +28,52 @@ type FinesEntry = {
   unpaid: number;
 };
 
+type SubsSummary = {
+  totalValue: number;
+  paidValue: number;
+  unpaidValue: number;
+  paidCount: number;
+  unpaidCount: number;
+  totalCount: number;
+};
+
+type Financials = { totalFinesIssued: number; totalFinesPaid: number; totalFinesUnpaid: number };
+
+const ALL_SEASONS = "all";
+
+// Sum per-season KPIs into a single "All seasons" view.
+function aggregateKpis(kpis: FixtureKpiSummary[]): FixtureKpiSummary | undefined {
+  if (kpis.length === 0) return undefined;
+  const sum = (f: keyof FixtureKpiSummary) => kpis.reduce((a, k) => a + ((k[f] as number) ?? 0), 0);
+  const wins = sum("totalFixtureWins");
+  const fixtures = sum("totalFixtures");
+  return {
+    ...kpis[0],
+    season: "All seasons",
+    totalFixtures: fixtures,
+    totalFixtureWins: wins,
+    totalFixtureLosses: sum("totalFixtureLosses"),
+    totalFixturePercentWin: fixtures > 0 ? (wins / fixtures) * 100 : 0,
+    totalPoints: sum("totalPoints"),
+    totalHomeWins: sum("totalHomeWins"),
+    totalHomeLosses: sum("totalHomeLosses"),
+    totalAwayWins: sum("totalAwayWins"),
+    totalAwayLosses: sum("totalAwayLosses"),
+    totalSinglesGameWins: sum("totalSinglesGameWins"),
+    totalSinglesGameLosses: sum("totalSinglesGameLosses"),
+    totalDoublesGameWins: sum("totalDoublesGameWins"),
+    totalDoublesGameLosses: sum("totalDoublesGameLosses"),
+    totalTeamGameWins: sum("totalTeamGameWins"),
+    totalteamGameLosses: sum("totalteamGameLosses"),
+  };
+}
+
 type Props = {
   seasonKpis: FixtureKpiSummary[];
-  leaderboard: LeaderboardEntry[];
-  finesLeaderboard: FinesEntry[];
-  financials: { totalFinesIssued: number; totalFinesUnpaid: number; totalPayments: number };
+  standingsBySeason: Record<string, LeaderboardEntry[]>;
+  finesLeaderboardBySeason: Record<string, FinesEntry[]>;
+  financialsBySeason: Record<string, Financials>;
+  subsSummaryBySeason: Record<string, SubsSummary>;
   latestSeason: string | null;
 };
 
@@ -59,12 +100,29 @@ function WinBar({ wins, losses }: { wins: number; losses: number }) {
   );
 }
 
-export function ReportsClient({ seasonKpis, leaderboard, finesLeaderboard, financials, latestSeason }: Props) {
+export function ReportsClient({ seasonKpis, standingsBySeason, finesLeaderboardBySeason, financialsBySeason, subsSummaryBySeason, latestSeason }: Props) {
   const [selectedSeason, setSelectedSeason] = useState<string>(
-    seasonKpis.at(-1)?.season ?? "all"
+    seasonKpis.at(-1)?.season ?? latestSeason ?? "all"
   );
 
-  const kpi = seasonKpis.find((k) => k.season === selectedSeason) ?? seasonKpis.at(-1);
+  const kpi = selectedSeason === ALL_SEASONS
+    ? aggregateKpis(seasonKpis)
+    : seasonKpis.find((k) => k.season === selectedSeason) ?? seasonKpis.at(-1);
+
+  // Every visual below reflects the selected season.
+  const leaderboard = standingsBySeason[selectedSeason] ?? [];
+  const finesLeaderboard = finesLeaderboardBySeason[selectedSeason] ?? [];
+  const financials = financialsBySeason[selectedSeason] ?? { totalFinesIssued: 0, totalFinesPaid: 0, totalFinesUnpaid: 0 };
+  const subsSummary = subsSummaryBySeason[selectedSeason] ?? { totalValue: 0, paidValue: 0, unpaidValue: 0, paidCount: 0, unpaidCount: 0, totalCount: 0 };
+
+  const finesPaidPct = financials.totalFinesIssued > 0
+    ? (financials.totalFinesPaid / financials.totalFinesIssued) * 100
+    : 0;
+  const subsPaidPct = subsSummary.totalValue > 0
+    ? (subsSummary.paidValue / subsSummary.totalValue) * 100
+    : subsSummary.totalCount > 0
+    ? (subsSummary.paidCount / subsSummary.totalCount) * 100
+    : 0;
 
   return (
     <div className="space-y-8">
@@ -77,6 +135,7 @@ export function ReportsClient({ seasonKpis, leaderboard, finesLeaderboard, finan
             <SelectValue placeholder="Select season" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={ALL_SEASONS}>All seasons</SelectItem>
             {seasonKpis.map((k) => (
               <SelectItem key={k.season} value={k.season}>{k.season}</SelectItem>
             ))}
@@ -144,7 +203,7 @@ export function ReportsClient({ seasonKpis, leaderboard, finesLeaderboard, finan
 
         {/* Player leaderboard */}
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4" /> Player standings — {latestSeason ?? "latest"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4" /> Player standings — {selectedSeason === ALL_SEASONS ? "All seasons" : selectedSeason}</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {leaderboard.length === 0 && <p className="text-sm text-muted-foreground">No data yet.</p>}
             {leaderboard.map((p, i) => (
@@ -184,24 +243,80 @@ export function ReportsClient({ seasonKpis, leaderboard, finesLeaderboard, finan
         </Card>
       </div>
 
-      {/* Financial summary */}
+      {/* Fines — paid vs unpaid */}
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><PoundSterling className="h-4 w-4" /> Financial summary</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Total fines issued</p>
-              <p className="text-2xl font-bold">£{financials.totalFinesIssued.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Unpaid fines</p>
-              <p className="text-2xl font-bold text-amber-500">£{financials.totalFinesUnpaid.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Total payments</p>
-              <p className="text-2xl font-bold text-emerald-500">£{financials.totalPayments.toFixed(2)}</p>
-            </div>
-          </div>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><PoundSterling className="h-4 w-4" /> Fines</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {financials.totalFinesIssued === 0 ? (
+            <p className="text-sm text-muted-foreground">No fines issued.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total issued</p>
+                  <p className="text-2xl font-bold">£{financials.totalFinesIssued.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Paid</p>
+                  <p className="text-2xl font-bold text-emerald-500">£{financials.totalFinesPaid.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Unpaid</p>
+                  <p className="text-2xl font-bold text-amber-500">£{financials.totalFinesUnpaid.toFixed(2)}</p>
+                </div>
+              </div>
+
+              <div>
+                <div className="h-2.5 w-full rounded-full bg-amber-500/30 overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${finesPaidPct}%` }} />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>{finesPaidPct.toFixed(0)}% paid</span>
+                  <span>{(100 - finesPaidPct).toFixed(0)}% outstanding</span>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Subscriptions — paid vs unpaid */}
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Wallet className="h-4 w-4" /> Subscriptions</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {subsSummary.totalCount === 0 ? (
+            <p className="text-sm text-muted-foreground">No subscriptions recorded.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total subs</p>
+                  <p className="text-2xl font-bold">£{subsSummary.totalValue.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">{subsSummary.totalCount} sub{subsSummary.totalCount !== 1 ? "s" : ""}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Paid</p>
+                  <p className="text-2xl font-bold text-emerald-500">£{subsSummary.paidValue.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">{subsSummary.paidCount} paid</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Unpaid</p>
+                  <p className="text-2xl font-bold text-amber-500">£{subsSummary.unpaidValue.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">{subsSummary.unpaidCount} unpaid</p>
+                </div>
+              </div>
+
+              <div>
+                <div className="h-2.5 w-full rounded-full bg-amber-500/30 overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${subsPaidPct}%` }} />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>{subsPaidPct.toFixed(0)}% paid</span>
+                  <span>{(100 - subsPaidPct).toFixed(0)}% outstanding</span>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

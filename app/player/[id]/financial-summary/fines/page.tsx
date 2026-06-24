@@ -21,7 +21,7 @@ export default async function PlayerFinesPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Fines</h2>
+      <h2 className="text-2xl font-semibold">Fines — {data.player.name}</h2>
       <div className="grid gap-4 md:grid-cols-3">
         <Card><CardHeader><CardTitle>Issues</CardTitle></CardHeader><CardContent>{data.finesWithType.length}</CardContent></Card>
         <Card><CardHeader><CardTitle>Total value</CardTitle></CardHeader><CardContent>£{data.totalFinesIssuedValue.toFixed(2)}</CardContent></Card>

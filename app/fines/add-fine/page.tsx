@@ -3,6 +3,7 @@ import MultipleFineForm from "@/components/fines/add-mulitple-fines";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getFines } from "@/server/actions/get-fines";
 import { getPlayers } from "@/server/actions/get-players";
+import { getSeasonOptions } from "@/server/actions/get-season-options";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 
@@ -15,6 +16,7 @@ export default async function AddFine() {
 
     const playersData = await getPlayers();
     const finesData = await getFines();
+    const seasons = await getSeasonOptions();
 
     if (!playersData || ('error' in playersData)) {
         return (
@@ -55,12 +57,12 @@ export default async function AddFine() {
         </TabsList>
         <TabsContent value="single-fine">
           <Suspense>
-            <FineForm playersListData={players} finesListData={fines} activeTeamId={activeTeamId} />
+            <FineForm playersListData={players} finesListData={fines} activeTeamId={activeTeamId} seasons={seasons} />
           </Suspense>
         </TabsContent>
         <TabsContent value="group-fine">
           <Suspense>
-            <MultipleFineForm  playersListData={players} finesListData={fines} activeTeamId={activeTeamId} />
+            <MultipleFineForm  playersListData={players} finesListData={fines} activeTeamId={activeTeamId} seasons={seasons} />
           </Suspense>
         </TabsContent>
       </Tabs>

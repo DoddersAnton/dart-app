@@ -8,7 +8,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAction } from "next-safe-action/hooks";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import {
@@ -69,9 +69,21 @@ interface FormProps {
     amount: number;
   }[];
   activeTeamId?: number | null;
+  seasons?: { id: number; name: string; startDate: string; endDate: string }[];
 }
 
-export default function MultipleFineForm({playersListData, finesListData, activeTeamId}: FormProps) {
+// The season whose [startDate, endDate] contains the given date, if any.
+function seasonIdForDate(
+  date: Date | undefined,
+  seasons: { id: number; startDate: string; endDate: string }[],
+): number | undefined {
+  if (!date) return undefined;
+  const t = date.getTime();
+  const match = seasons.find((s) => new Date(s.startDate).getTime() <= t && t <= new Date(s.endDate).getTime());
+  return match?.id;
+}
+
+export default function MultipleFineForm({playersListData, finesListData, activeTeamId, seasons = []}: FormProps) {
   const form = useForm<zMulitplePlayerFineSchema>({
     resolver: zodResolver(createMulitplePlayerFineSchema),
     defaultValues: {
@@ -80,6 +92,13 @@ export default function MultipleFineForm({playersListData, finesListData, active
     },
     mode: "onChange",
   });
+
+  // Default the season from the chosen match date (re-defaults when the date changes).
+const watchedMatchDate = form.watch("matchDate");
+useEffect(() => {
+  const sid = seasonIdForDate(watchedMatchDate, seasons);
+  form.setValue("seasonId", sid);
+}, [watchedMatchDate, seasons, form]);
   const [selectedFine, setSelectedFine] = useState<number | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<
     string[] | undefined
@@ -324,6 +343,38 @@ export default function MultipleFineForm({playersListData, finesListData, active
                         </Popover>
                       </FormControl>
 
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="seasonId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Season</FormLabel>
+                      <FormDescription>
+                        <Info className="inline-block mr-2" size={14} />
+                        Defaulted from the match date — change if needed.
+                      </FormDescription>
+                      <Select
+                        onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                        value={field.value === undefined || field.value === null ? "" : String(field.value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a season" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {seasons.map((season) => (
+                            <SelectItem key={season.id} value={season.id.toString()}>
+                              {season.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
