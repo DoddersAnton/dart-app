@@ -94,11 +94,11 @@ export default function MultipleFineForm({playersListData, finesListData, active
   });
 
   // Default the season from the chosen match date (re-defaults when the date changes).
-  const watchedMatchDate = form.watch("matchDate");
-  useEffect(() => {
-    const sid = seasonIdForDate(watchedMatchDate, seasons);
-    if (sid) form.setValue("seasonId", sid);
-  }, [watchedMatchDate, seasons]);
+const watchedMatchDate = form.watch("matchDate");
+useEffect(() => {
+  const sid = seasonIdForDate(watchedMatchDate, seasons);
+  form.setValue("seasonId", sid);
+}, [watchedMatchDate, seasons, form]);
   const [selectedFine, setSelectedFine] = useState<number | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<
     string[] | undefined
