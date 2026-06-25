@@ -21,6 +21,17 @@ export const subscriptionSchema = z.object({
 
 export type zsubscriptionSchema = z.infer<typeof subscriptionSchema>;
 
+// Used when raising a subscription for a whole team. Dates are derived from the
+// chosen season server-side, so there are no past/future date constraints here.
+export const teamSubscriptionSchema = z.object({
+  subscriptionType: z.string().min(1, { message: "Type is required" }).max(255),
+  season: z.string().min(1, { message: "Season is required" }).max(255),
+  description: z.string().max(255).optional(),
+  amount: z.coerce.number().positive({ message: "Amount must be greater than 0" }),
+});
+
+export type zTeamSubscriptionSchema = z.infer<typeof teamSubscriptionSchema>;
+
 export const updateSubscriptionSchema = subscriptionSchema.partial().extend({
   id: z.number().optional(),
   playerId: z
