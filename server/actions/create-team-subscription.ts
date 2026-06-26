@@ -50,6 +50,6 @@ export const createTeamSubscription = actionClient
     } catch (error) {
       if (error instanceof Error && error.message.includes("Permission denied")) return { error: error.message };
       console.error("createTeamSubscription error:", error);
-      return { error: JSON.stringify(error) };
+      return { error: "Failed to create subscription" };
     }
   });
