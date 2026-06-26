@@ -1,14 +1,6 @@
+import { redirect } from "next/navigation";
 
-import SubscriptionForm from "@/components/subscriptions/add-subscription";
-import { Suspense } from "react";
-
-
-export default function AddFineType() {
-    return (
-        <div>
-            <Suspense>
-                <SubscriptionForm />
-            </Suspense>
-        </div>
-    );
+// Subscriptions are now created from the Team Subscriptions settings page.
+export default function AddSubscriptionPage() {
+  redirect("/settings/team-subscriptions");
 }

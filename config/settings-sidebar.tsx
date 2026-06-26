@@ -1,5 +1,5 @@
 import { SidebarItem } from "@/components/ui/app-sidebar";
-import { Banknote, CalendarSync, Home, Locate, Plus, Settings, Shield, Sun, Trophy, Users } from "lucide-react";
+import { Banknote, CalendarSync, CreditCard, Home, Locate, Plus, Settings, Shield, Sun, Trophy, Users } from "lucide-react";
 
 export const settingsSidebarItems: SidebarItem[] = [
   {
@@ -91,6 +91,11 @@ export const settingsSidebarItems: SidebarItem[] = [
         icon: <Plus className="h-4 w-4" />,
       },
     ],
+  },
+  {
+    label: "Team Subscriptions",
+    href: "/settings/team-subscriptions",
+    icon: <CreditCard className="h-4 w-4" />,
   },
   {
     label: "Team Settings",
