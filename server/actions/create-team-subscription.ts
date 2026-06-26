@@ -29,9 +29,8 @@ export const createTeamSubscription = actionClient
       if (playerIds.length === 0) return { error: "No players on the active team" };
 
       const seasonRecord = await db.query.seasons.findFirst({ where: eq(seasons.name, season) });
-      const startDate = seasonRecord?.startDate ?? new Date();
-      const endDate = seasonRecord?.endDate ?? new Date();
-
+      if (!seasonRecord) return { error: "Season not found" };
+      const { startDate, endDate } = seasonRecord;
       await db.insert(subscriptions).values(
         playerIds.map((playerId) => ({
           playerId,
