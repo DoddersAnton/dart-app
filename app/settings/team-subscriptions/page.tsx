@@ -43,7 +43,7 @@ export default async function TeamSubscriptionsPage() {
   // Group into "raised" batches by season + type.
   const groupMap = new Map<string, SubGroup>();
   for (const s of subs) {
-    const key = `${s.season}__${s.subscriptionType}`;
+    const key = `${s.season}__${s.subscriptionType}__${s.amount}__${s.startDate?.toISOString() ?? ""}__${s.endDate?.toISOString() ?? ""}`;
     let g = groupMap.get(key);
     if (!g) {
       g = {
