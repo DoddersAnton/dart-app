@@ -1,8 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { and, eq } from "drizzle-orm";
 import { db } from "..";
-import { subscriptions } from "../schema";
+import { subscriptions, playerTeams } from "../schema";
 import { requireTeamAdmin } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 
