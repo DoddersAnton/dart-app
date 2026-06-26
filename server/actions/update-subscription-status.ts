@@ -13,6 +13,21 @@ export async function updateSubscriptionStatus(params: {
 }): Promise<{ success: string } | { error: string }> {
   try {
     await requireTeamAdmin();
+
+    const cookieStore = await cookies();
+    const activeTeamId = cookieStore.get("active-team-id")?.value
+      ? parseInt(cookieStore.get("active-team-id")!.value)
+      : null;
+    if (!activeTeamId) return { error: "No active team selected" };
+
+    const sub = await db.query.subscriptions.findFirst({ where: eq(subscriptions.id, params.id) });
+    if (!sub) return { error: "Subscription not found" };
+
+    const membership = await db.query.playerTeams.findFirst({
+      where: and(eq(playerTeams.teamId, activeTeamId), eq(playerTeams.playerId, sub.playerId)),
+    });
+    if (!membership) return { error: "Permission denied — subscription not in active team" };
+
     await db
       .update(subscriptions)
       .set({ status: params.status, updatedAt: new Date() })
