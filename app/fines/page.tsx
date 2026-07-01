@@ -58,7 +58,7 @@ export default async function Page() {
   const seasonList = seasons
     .slice()
     .sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
-    .map((s) => ({ id: s.id, name: s.name }));
+    .map((s) => ({ id: s.id, name: s.name, startDate: s.startDate.toISOString(), lastSeasonId: s.lastSeasonId ?? null }));
 
   return (
     <div className="w-full mt-22 lg:w-[80%] px-2 mx-auto">

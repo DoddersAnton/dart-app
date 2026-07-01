@@ -14,7 +14,7 @@ const actionClient = createSafeActionClient();
 
 export const createSeason = actionClient
 .schema(addSeasonSchema)
-.action(async ({ parsedInput: { id, name, startDate, endDate
+.action(async ({ parsedInput: { id, name, startDate, endDate, lastSeasonId
  } }) => {
     try {
       
@@ -33,8 +33,9 @@ export const createSeason = actionClient
             name: name ?? undefined,
             startDate: startDate ?? undefined,
             endDate: endDate ?? undefined,
+            lastSeasonId: lastSeasonId ?? null,
             createdAt: existingSeason.createdAt
-            
+
           })
           .where(id ? eq(seasons.id, id) : undefined)
           .returning();
@@ -50,8 +51,9 @@ export const createSeason = actionClient
        name: name ?? undefined,
             startDate: startDate ?? undefined,
             endDate: endDate ?? undefined,
+            lastSeasonId: lastSeasonId ?? null,
             createdAt: new Date()
-            
+
       })
       .returning();
 

@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, timestamp, varchar, real, boolean } from "drizzle-orm/pg-core";
+import { integer, pgTable, serial, timestamp, varchar, real, boolean, AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 
@@ -282,6 +282,8 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
     startDate: timestamp("start_date").notNull(),
     endDate: timestamp("end_date").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
+    // The preceding season — used e.g. by the fines "this vs last season" comparison.
+    lastSeasonId: integer("last_season_id").references((): AnyPgColumn => seasons.id, { onDelete: "set null" }),
   });
 
 

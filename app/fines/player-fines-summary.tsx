@@ -27,7 +27,7 @@ import { FineSeasonComparison } from "./fine-season-comparison";
 
 export interface FineSummaryProps {
   myPlayerId?: number | null;
-  seasons?: { id: number; name: string }[];
+  seasons?: { id: number; name: string; startDate?: string; lastSeasonId?: number | null }[];
   playerFinesData: {
     id: number;
     player: string;
@@ -254,7 +254,7 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId, seasons = [] }
                     selected={dateRange}
                     onSelect={setDateRange}
                     numberOfMonths={1}
-                    initialFocus
+                    autoFocus
                   />
                 </PopoverContent>
               </Popover>
@@ -345,7 +345,7 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId, seasons = [] }
           />
         </TabsContent>
         <TabsContent value="charts" className="space-y-4">
-          <FineSeasonComparison playerFinesData={playerFinesData} seasons={seasons} />
+          <FineSeasonComparison playerFinesData={playerFinesData} seasons={seasons} selectedSeasonId={filterSeason} />
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <FineChart playerFinesData={filteredFines} />
             <FineTypeBarChart playerFinesData={filteredFines} />

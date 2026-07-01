@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import Link from "next/link";
 
@@ -14,6 +15,8 @@ interface SeasonCardProps {
   name: string;
   fromSeasonDate: string | null;
   toSeasonDate: string | null;
+  isCurrent?: boolean;
+  isLast?: boolean;
 }
 
 export default function SeasonCard({
@@ -21,6 +24,8 @@ export default function SeasonCard({
   name,
   fromSeasonDate,
   toSeasonDate,
+  isCurrent,
+  isLast,
 }: SeasonCardProps) {
   const icon = name.toLowerCase().includes("summer") ? (
     <SunIcon className="h-4 w-4 text-muted-foreground" />
@@ -34,9 +39,11 @@ export default function SeasonCard({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {icon}
             <CardTitle className="text-base">{name}</CardTitle>
+            {isCurrent && <Badge className="bg-green-600 hover:bg-green-600 text-xs">Current season</Badge>}
+            {isLast && <Badge variant="secondary" className="text-xs">Last season</Badge>}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

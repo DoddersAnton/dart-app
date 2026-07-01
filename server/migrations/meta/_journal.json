@@ -176,6 +176,13 @@
       "when": 1782301549387,
       "tag": "0024_brown_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782937697347,
+      "tag": "0025_yummy_colossus",
+      "breakpoints": true
     }
   ]
 }

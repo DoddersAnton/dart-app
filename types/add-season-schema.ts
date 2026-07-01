@@ -7,6 +7,8 @@ export const addSeasonSchema = z.object({
     }),
     startDate: z.date(),
     endDate: z.date(),
+    // The preceding season (optional).
+    lastSeasonId: z.number().int().positive().nullable().optional(),
 
 });
 
