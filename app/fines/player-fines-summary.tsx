@@ -254,7 +254,7 @@ export function PlayerFinesSummary({ playerFinesData, myPlayerId, seasons = [] }
                     selected={dateRange}
                     onSelect={setDateRange}
                     numberOfMonths={1}
-                    autoFocus
+                    initialFocus
                   />
                 </PopoverContent>
               </Popover>
