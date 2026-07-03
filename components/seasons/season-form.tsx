@@ -36,8 +36,9 @@ import { format } from "date-fns/format";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "../calendar";
 import { createSeason } from "@/server/actions/create-season";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
-export default function SeasonForm() {
+export default function SeasonForm({ seasons = [] }: { seasons?: { id: number; name: string }[] }) {
   const form = useForm<zSeasonSchema>({
     resolver: zodResolver(addSeasonSchema),
     mode: "onChange",
@@ -62,7 +63,8 @@ export default function SeasonForm() {
         form.setValue("name", data.success.name ?? "");
         form.setValue("startDate", data.success.startDate ?? "");
         form.setValue("endDate", data.success.endDate ?? "");
-     
+        form.setValue("lastSeasonId", data.success.lastSeasonId ?? null);
+
       }
     }
   };
@@ -236,6 +238,35 @@ export default function SeasonForm() {
                         </Popover>
                       </FormControl>
 
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="lastSeasonId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last season</FormLabel>
+                      <Select
+                        value={field.value ? String(field.value) : "none"}
+                        onValueChange={(v) => field.onChange(v === "none" ? null : Number(v))}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select the preceding season" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {seasons
+                            .filter((s) => String(s.id) !== editMode)
+                            .map((s) => (
+                              <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

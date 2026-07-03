@@ -40,7 +40,16 @@ const navLinks = [
     ],
   },
   { titleEng: "Players", img: "/dart-img.png", navDescriptionEng: "Player information", href: "/players", subLinks: [] },
-  { titleEng: "Matches", img: "/dart-img.png", navDescriptionEng: "Fixtures and results", href: "/fixtures", subLinks: [] },
+  {
+    titleEng: "Matches",
+    img: "/dart-img.png",
+    navDescriptionEng: "Fixtures and results",
+    href: "/fixtures",
+    subLinks: [
+      { titleEng: "Fixtures", descriptionEng: "All fixtures and results", href: "/fixtures" },
+      { titleEng: "Schedule", descriptionEng: "Build and view the season schedule", href: "/fixtures/schedule" },
+    ],
+  },
   { titleEng: "Reports", img: "/dart-img.png", navDescriptionEng: "League reports and stats", href: "/reports", subLinks: [] },
   {
     titleEng: "Settings",

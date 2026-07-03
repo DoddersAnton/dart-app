@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, timestamp, varchar, real, boolean } from "drizzle-orm/pg-core";
+import { integer, pgTable, serial, timestamp, varchar, real, boolean, AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 
@@ -49,6 +49,12 @@ export const players = pgTable("players", {
     seasonId: integer("season_id").references(() => seasons.id, { onDelete: "set null" }),
   });
 
+  export const division = pgTable("division", {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  });
+
   export const fixtures = pgTable("fixtures", {
     id: serial("id").primaryKey(),
     homeTeam: varchar("home_team", { length: 255 }).notNull(),
@@ -63,6 +69,10 @@ export const players = pgTable("players", {
     league: varchar("league", { length: 255 }).notNull(),
     season: varchar("season", { length: 255 }).notNull(),
     seasonsId: integer("seasons_id").references(() => seasons.id, { onDelete: "set null" }),
+    // League week number this fixture belongs to (nullable; set by the schedule builder).
+    weekNo: integer("week_no"),
+    // Division this fixture belongs to (nullable).
+    divisionId: integer("division_id").references(() => division.id, { onDelete: "set null" }),
     matchStatus: varchar("match_status", { length: 255 }).notNull(),
     // @deprecated — use homeTeamId/awayTeamId + activeTeamId to derive win/loss dynamically. Remove once multi-team is fully live.
     isAppTeamWin: boolean("is_app_team_win").default(false).notNull(),
@@ -282,6 +292,8 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
     startDate: timestamp("start_date").notNull(),
     endDate: timestamp("end_date").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
+    // The preceding season — used e.g. by the fines "this vs last season" comparison.
+    lastSeasonId: integer("last_season_id").references((): AnyPgColumn => seasons.id, { onDelete: "set null" }),
   });
 
 
