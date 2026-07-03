@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus, ArrowLeftRight } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus, ArrowLeftRight, AlertTriangle, Users } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -44,7 +44,9 @@ import { saveRoundAuto } from "@/server/actions/save-round-auto";
 import { deleteLastRound } from "@/server/actions/delete-last-round";
 import { updateLegRoundPlayers } from "@/server/actions/update-leg-round-players";
 import { broadcastGameState } from "@/server/actions/broadcast-game-state";
+import { getTeamPlayers } from "@/server/actions/get-team-players";
 import { minDartsForCheckout } from "@/lib/dart-stats";
+import { MultiSelect } from "../ui/multi-select";
 import CreateRoundFine from "./create-round-fine";
 
 type Round = {
@@ -224,6 +226,9 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const realAway = gameData.awayPlayers;
   const homeIsReal = realHome.length > 0;
   const awayIsReal = realAway.length > 0;
+  // A side backed by a real team (may have no players assigned yet) — editable via "Edit players".
+  const homeHasTeam = gameData.homeTeamId != null;
+  const awayHasTeam = gameData.awayTeamId != null;
   // The free-text opposing list fills whichever side has no real roster (the opponent).
   const freeTextSide: "home" | "away" | null =
     !homeIsReal && awayIsReal ? "home" : homeIsReal && !awayIsReal ? "away" : (!homeIsReal && !awayIsReal ? "away" : null);
@@ -306,6 +311,55 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
   const removeOpposingPlayer = (id: string) =>
     setOpposingPlayers((prev) => prev.filter((p) => p.id !== id));
+
+  // Edit real team rosters mid-setup (e.g. a player was added to the team after the game was created).
+  type RosterOption = { id: number; name: string; nickname: string | null };
+  const [showEditPlayers, setShowEditPlayers] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [savingPlayers, setSavingPlayers] = useState(false);
+  const [editHomeRoster, setEditHomeRoster] = useState<RosterOption[]>([]);
+  const [editAwayRoster, setEditAwayRoster] = useState<RosterOption[]>([]);
+  const [editHomeIds, setEditHomeIds] = useState<number[]>([]);
+  const [editAwayIds, setEditAwayIds] = useState<number[]>([]);
+
+  const openEditPlayers = async () => {
+    setShowEditPlayers(true);
+    setLoadingEdit(true);
+    const [h, a] = await Promise.all([
+      homeHasTeam ? getTeamPlayers(gameData.homeTeamId!) : Promise.resolve([]),
+      awayHasTeam ? getTeamPlayers(gameData.awayTeamId!) : Promise.resolve([]),
+    ]);
+    setEditHomeRoster(h);
+    setEditAwayRoster(a);
+    setEditHomeIds(homeOrder.map((p) => p.id!).filter(Boolean));
+    setEditAwayIds(awayOrder.map((p) => p.id!).filter(Boolean));
+    setLoadingEdit(false);
+  };
+
+  const saveEditPlayers = async () => {
+    setSavingPlayers(true);
+    try {
+      const res = await createGame({
+        id: gameData.id,
+        fixtureId: gameData.fixtureId,
+        homeTeamScore: homeLegs,
+        awayTeamScore: awayLegs,
+        gameType: gameData.gameType,
+        homePlayerList: homeHasTeam ? editHomeIds : [],
+        awayPlayerList: awayHasTeam ? editAwayIds : [],
+      });
+      if (res?.data?.error) {
+        toast.error("Failed to update players");
+        setSavingPlayers(false);
+        return;
+      }
+      toast.success("Players updated");
+      window.location.reload();
+    } catch {
+      toast.error("Failed to update players");
+      setSavingPlayers(false);
+    }
+  };
 
   const setSideIndex = (side: "home" | "away", idx: number) =>
     side === "home" ? setHomePlayerIndex(idx) : setAwayPlayerIndex(idx);
@@ -1027,6 +1081,18 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             <DialogTitle>Opposing team players</DialogTitle>
             <DialogDescription>Add and order the opposing team&apos;s players for rotation tracking.</DialogDescription>
           </DialogHeader>
+
+          <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+            <p className="text-amber-700 dark:text-amber-400">
+              These players are tracked for this game only and aren&apos;t saved to the database.{" "}
+              <Link href="/players/add-player" target="_blank" className="font-semibold underline hover:no-underline">
+                Create a real player
+              </Link>{" "}
+              to keep their stats permanently.
+            </p>
+          </div>
+
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleOpposingDragEnd}>
             <SortableContext items={opposingPlayers.map((p) => p.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2 py-1">
@@ -1053,6 +1119,59 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         </DialogContent>
       </Dialog>
 
+      {/* Edit players dialog — refresh team rosters before the game starts */}
+      <Dialog open={showEditPlayers} onOpenChange={setShowEditPlayers}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit players</DialogTitle>
+            <DialogDescription>Update each team&apos;s players from the current roster. Only available before the game starts.</DialogDescription>
+          </DialogHeader>
+          {loadingEdit ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Loading rosters…</p>
+          ) : (
+            <div className="space-y-3 py-1">
+              {homeHasTeam && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{gameData.homeTeam} players</p>
+                  <MultiSelect
+                    options={editHomeRoster.map((p) => ({ value: String(p.id), label: p.name + (p.nickname ? ` (${p.nickname})` : "") }))}
+                    defaultValue={editHomeIds.map(String)}
+                    onValueChange={(vals) => setEditHomeIds(vals.map((v) => parseInt(v, 10)))}
+                    placeholder="Select players"
+                    variant="inverted"
+                    animation={0}
+                    maxCount={5}
+                  />
+                </div>
+              )}
+              {awayHasTeam && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{gameData.awayTeam} players</p>
+                  <MultiSelect
+                    options={editAwayRoster.map((p) => ({ value: String(p.id), label: p.name + (p.nickname ? ` (${p.nickname})` : "") }))}
+                    defaultValue={editAwayIds.map(String)}
+                    onValueChange={(vals) => setEditAwayIds(vals.map((v) => parseInt(v, 10)))}
+                    placeholder="Select players"
+                    variant="inverted"
+                    animation={0}
+                    maxCount={5}
+                  />
+                </div>
+              )}
+              {!homeHasTeam && !awayHasTeam && (
+                <p className="text-sm text-muted-foreground">Neither team has a linked roster to edit.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" size="sm" onClick={() => setShowEditPlayers(false)} disabled={savingPlayers}>Cancel</Button>
+            <Button size="sm" onClick={saveEditPlayers} disabled={savingPlayers || loadingEdit}>
+              {savingPlayers ? "Saving…" : "Update players"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <Link href={`/fixtures/${gameData.fixtureId}`}>
@@ -1064,6 +1183,11 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           <Target className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">{gameData.gameType}</span>
           <Badge variant="outline" className="text-xs">Leg {currentLeg}</Badge>
+          {!orderLocked && (homeHasTeam || awayHasTeam) && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit players" onClick={openEditPlayers}>
+              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          )}
           <Link href={`/games/${gameData.id}/display`} target="_blank">
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Open display mode">
               <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
