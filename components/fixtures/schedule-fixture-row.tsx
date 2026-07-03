@@ -111,7 +111,19 @@ export function ScheduleFixtureRow({
       </Link>
 
       {canManage && (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (next) {
+              setWeek(fixture.weekNo != null ? String(fixture.weekNo) : "");
+              setHs(String(fixture.homeTeamScore));
+              setAs(String(fixture.awayTeamScore));
+              setStatus((fixture.matchStatus || "scheduled").toLowerCase());
+              setDivisionId(fixture.divisionId);
+            }
+          }}
+        >
           <PopoverTrigger asChild>
             <button className="text-muted-foreground hover:text-foreground shrink-0" title="Edit fixture">
               <Pencil className="h-3.5 w-3.5" />
