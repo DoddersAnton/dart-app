@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function SchedulesIndexPage() {
   const [seasons, allFixtures] = await Promise.all([
     db.query.seasons.findMany({ orderBy: (s, { desc }) => [desc(s.startDate)] }),
-    db.query.fixtures.findMany(),
+    db.query.fixtures.findMany({ columns: { seasonsId: true } }),
   ]);
 
   const countBySeason = new Map<number, number>();
