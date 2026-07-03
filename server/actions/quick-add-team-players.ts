@@ -18,12 +18,12 @@ export async function quickAddTeamPlayers(params: {
       .filter((p) => p.name.length > 0);
     if (rows.length === 0) return { error: "Add at least one player name" };
 
-    for (const r of rows) {
-      const [created] = await db.insert(players).values({ name: r.name, nickname: r.nickname }).returning();
-      if (created) {
-        // New player — this is their only team, so make it their default.
-        await db.insert(playerTeams).values({ playerId: created.id, teamId: params.teamId, isDefault: true });
-      }
+    const createdPlayers = await db.insert(players).values(rows).returning();
+
+    if (createdPlayers.length > 0) {
+      await db.insert(playerTeams).values(
+        createdPlayers.map((p) => ({ playerId: p.id, teamId: params.teamId, isDefault: true })),
+      );
     }
 
     revalidatePath("/settings/teams");
