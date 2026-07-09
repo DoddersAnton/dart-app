@@ -4,15 +4,12 @@ import { getFixtureKpis } from "@/server/actions/get-fixture-kpis";
 import { getGamesSummaryBySeason } from "@/server/actions/get-player-games-summary";
 import { playerFines, playerTeams } from "@/server/schema";
 import { ReportsClient } from "./reports-client";
-import { cookies } from "next/headers";
+import { getActiveTeamId } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const cookieStore = await cookies();
-  const activeTeamId = cookieStore.get("active-team-id")?.value
-    ? parseInt(cookieStore.get("active-team-id")!.value)
-    : null;
+  const activeTeamId = await getActiveTeamId();
 
   // Players on the active team (for fines leaderboard)
   const teamPlayerIds = activeTeamId

@@ -23,10 +23,14 @@ type SideStats = {
   legsSingles: number;
   points: number;
   darts: number;
+  first9Points: number;
+  first9Darts: number;
+  first15Points: number;
+  first15Darts: number;
 };
 
 function emptyStats(): SideStats {
-  return { games: 0, legs: 0, legsTeam: 0, legsDoubles: 0, legsSingles: 0, points: 0, darts: 0 };
+  return { games: 0, legs: 0, legsTeam: 0, legsDoubles: 0, legsSingles: 0, points: 0, darts: 0, first9Points: 0, first9Darts: 0, first15Points: 0, first15Darts: 0 };
 }
 
 function accumulate(games: FixtureReportGame[], side: "home" | "away"): SideStats {
@@ -42,11 +46,27 @@ function accumulate(games: FixtureReportGame[], side: "home" | "away"): SideStat
     const { points, darts } = sideTotals(g.rounds, side);
     s.points += points;
     s.darts += darts;
+
+    // First 9 / first 15 darts = the first three / five visits of each leg.
+    const legNums = [...new Set(g.rounds.map((r) => r.leg))];
+    for (const leg of legNums) {
+      const ordered = g.rounds
+        .filter((r) => r.leg === leg)
+        .sort((a, b) => a.roundNumber - b.roundNumber);
+      ordered.forEach((r, i) => {
+        const score = side === "home" ? r.homeScore : r.awayScore;
+        const darts = (side === "home" ? r.homeDartsUsed : r.awayDartsUsed) ?? r.dartsUsed ?? 3;
+        if (i < 3) { s.first9Points += score; s.first9Darts += darts; }
+        if (i < 5) { s.first15Points += score; s.first15Darts += darts; }
+      });
+    }
   }
   return s;
 }
 
 const oneDA = (s: SideStats) => (s.darts > 0 ? s.points / s.darts : null);
+const first9DA = (s: SideStats) => (s.first9Darts > 0 ? (s.first9Points / s.first9Darts) * 3 : null);
+const first15DA = (s: SideStats) => (s.first15Darts > 0 ? (s.first15Points / s.first15Darts) * 3 : null);
 
 function SummaryRow({ team, stats, totals = false }: { team: string; stats: SideStats; totals?: boolean }) {
   const one = oneDA(stats);
@@ -63,6 +83,8 @@ function SummaryRow({ team, stats, totals = false }: { team: string; stats: Side
       <td className="py-1.5 px-3 text-center tabular-nums">{fmtInt(stats.darts)}</td>
       <td className="py-1.5 px-3 text-center tabular-nums text-blue-600 dark:text-blue-400">{fmt(one)}</td>
       <td className="py-1.5 px-3 text-center tabular-nums text-blue-600 dark:text-blue-400">{fmt(three)}</td>
+      <td className="py-1.5 px-3 text-center tabular-nums text-blue-600 dark:text-blue-400">{fmt(first9DA(stats))}</td>
+      <td className="py-1.5 px-3 text-center tabular-nums text-blue-600 dark:text-blue-400">{fmt(first15DA(stats))}</td>
     </tr>
   );
 }
@@ -80,6 +102,9 @@ function LegRows({ leg, rounds, gameType }: { leg: number; rounds: GameRound[]; 
   const awayAvg = sideThreeDartAvg(rounds, "away");
   const homeWon = homeRem === 0;
   const awayWon = awayRem === 0;
+  // Darts used on the checkout — the dart count of the round that reached zero.
+  const homeCheckoutDarts = homeWon ? rows.find((r) => r.homeRem === 0)?.homeDartsUsed ?? null : null;
+  const awayCheckoutDarts = awayWon ? rows.find((r) => r.awayRem === 0)?.awayDartsUsed ?? null : null;
 
   return (
     <>
@@ -98,19 +123,25 @@ function LegRows({ leg, rounds, gameType }: { leg: number; rounds: GameRound[]; 
             <span className={r.homeScore === 180 ? "font-black text-amber-500" : r.homeScore >= 100 ? "font-bold text-orange-500" : ""}>{r.homeScore}</span>
           </td>
           <td className={`py-1 px-3 text-center tabular-nums ${r.homeRem <= 170 ? "text-amber-500" : "text-muted-foreground"}`}>{r.homeRem}</td>
+          <td className={`py-1 px-3 text-center tabular-nums ${r.awayRem <= 170 ? "text-amber-500" : "text-muted-foreground"}`}>{r.awayRem}</td>
           <td className="py-1 px-3 text-center tabular-nums">
             <span className={r.awayScore === 180 ? "font-black text-amber-500" : r.awayScore >= 100 ? "font-bold text-orange-500" : ""}>{r.awayScore}</span>
           </td>
-          <td className={`py-1 px-3 text-center tabular-nums ${r.awayRem <= 170 ? "text-amber-500" : "text-muted-foreground"}`}>{r.awayRem}</td>
           <td className="py-1 px-3 text-muted-foreground truncate max-w-[90px]">{r.awayPlayerName ?? "–"}</td>
         </tr>
       ))}
       <tr className="border-t border-border/50 bg-muted/20">
         <td colSpan={2} className="py-1 px-3 text-[11px] font-semibold text-muted-foreground">3-dart avg</td>
-        <td className="py-1 px-3 text-center text-[11px] font-semibold tabular-nums text-blue-600 dark:text-blue-400">{fmt(homeAvg)}</td>
-        <td />
-        <td className="py-1 px-3 text-center text-[11px] font-semibold tabular-nums text-blue-600 dark:text-blue-400">{fmt(awayAvg)}</td>
+        <td className="py-1 px-3 text-center text-[11px] font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+          {fmt(homeAvg)}
+          {homeCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({homeCheckoutDarts}d co)</span> : null}
+        </td>
         <td colSpan={2} />
+        <td className="py-1 px-3 text-center text-[11px] font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+          {fmt(awayAvg)}
+          {awayCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({awayCheckoutDarts}d co)</span> : null}
+        </td>
+        <td />
       </tr>
     </>
   );
@@ -135,6 +166,10 @@ export default function MatchReport({ games }: { games: FixtureReportGame[] }) {
     legsSingles: homeStats.legsSingles + awayStats.legsSingles,
     points: homeStats.points + awayStats.points,
     darts: homeStats.darts + awayStats.darts,
+    first9Points: homeStats.first9Points + awayStats.first9Points,
+    first9Darts: homeStats.first9Darts + awayStats.first9Darts,
+    first15Points: homeStats.first15Points + awayStats.first15Points,
+    first15Darts: homeStats.first15Darts + awayStats.first15Darts,
   };
 
   return (
@@ -156,6 +191,8 @@ export default function MatchReport({ games }: { games: FixtureReportGame[] }) {
                 <th className="py-2 px-3 text-center font-medium text-muted-foreground">Darts</th>
                 <th className="py-2 px-3 text-center font-medium text-muted-foreground">1DA</th>
                 <th className="py-2 px-3 text-center font-medium text-muted-foreground">3DA</th>
+                <th className="py-2 px-3 text-center font-medium text-muted-foreground">F9</th>
+                <th className="py-2 px-3 text-center font-medium text-muted-foreground">F15</th>
               </tr>
             </thead>
             <tbody>
@@ -166,7 +203,7 @@ export default function MatchReport({ games }: { games: FixtureReportGame[] }) {
           </table>
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5">
-          Team / Dbls / Sgls = legs won by game type. 1DA = points ÷ darts; 3DA = 1DA × 3.
+          Team / Dbls / Sgls = legs won by game type. 1DA = points ÷ darts; 3DA = 1DA × 3. F9 / F15 = 3-dart avg over the first 9 / 15 darts of each leg.
         </p>
       </div>
 
@@ -190,8 +227,8 @@ export default function MatchReport({ games }: { games: FixtureReportGame[] }) {
                         <th className="py-1.5 px-3 text-left font-medium text-muted-foreground">{homeTeam}</th>
                         <th className="py-1.5 px-3 text-center font-medium text-muted-foreground">Score</th>
                         <th className="py-1.5 px-3 text-center font-medium text-muted-foreground">Left</th>
-                        <th className="py-1.5 px-3 text-center font-medium text-muted-foreground">Score</th>
                         <th className="py-1.5 px-3 text-center font-medium text-muted-foreground">Left</th>
+                        <th className="py-1.5 px-3 text-center font-medium text-muted-foreground">Score</th>
                         <th className="py-1.5 px-3 text-left font-medium text-muted-foreground">{awayTeam}</th>
                       </tr>
                     </thead>

@@ -45,13 +45,20 @@ function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
+function LegTable({ leg, rounds, homeTeam, awayTeam, gameType, nickById }: {
   leg: number;
   rounds: GameRound[];
   homeTeam: string;
   awayTeam: string;
   gameType: string;
+  nickById: Map<number, string | null>;
 }) {
+  // Format a player as "Name (Nickname)" when a nickname exists.
+  const fmtPlayer = (name: string | null, id: number | null) => {
+    if (!name) return "–";
+    const nick = id != null ? nickById.get(id) : null;
+    return nick ? `${name} (${nick})` : name;
+  };
   const startScore = INITIAL_SCORE[gameType] ?? 501;
   let homeRemaining = startScore;
   let awayRemaining = startScore;
@@ -67,6 +74,10 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
 
   const legHomeAvg = sideThreeDartAvg(rounds, "home");
   const legAwayAvg = sideThreeDartAvg(rounds, "away");
+
+  // Darts used on the checkout — the dart count of the round that reached zero.
+  const homeCheckoutDarts = homeWon ? rows.find((r) => r.homeRemaining === 0)?.homeDartsUsed ?? null : null;
+  const awayCheckoutDarts = awayWon ? rows.find((r) => r.awayRemaining === 0)?.awayDartsUsed ?? null : null;
 
   return (
     <div className="space-y-2">
@@ -97,14 +108,14 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
             {rows.map((r, idx) => (
               <tr key={r.id} className={`border-t border-border/50 ${idx % 2 === 0 ? "" : "bg-muted/20"}`}>
                 <td className="py-1.5 px-3 text-muted-foreground tabular-nums">{r.roundNumber}</td>
-                <td className="py-1.5 px-3 min-w-[80px] text-muted-foreground truncate">{r.homePlayerName ?? "–"}</td>
+                <td className="py-1.5 px-3 min-w-[80px] text-muted-foreground truncate">{fmtPlayer(r.homePlayerName, r.homePlayerId)}</td>
                 <td className="py-1.5 px-3 text-center tabular-nums">
                   <span className={r.homeScore === 180 ? "font-black text-amber-500 underline decoration-2 underline-offset-2" : r.homeScore >= 100 ? "font-bold text-orange-500 underline underline-offset-2" : "font-medium"}>{r.homeScore}</span>
                 </td>
                 <td className={`py-1.5 px-3 text-center tabular-nums text-xs ${r.homeRemaining <= 170 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
                   {r.homeRemaining}
                 </td>
-                <td className="py-1.5 px-3 min-w-[80px] text-muted-foreground truncate">{r.awayPlayerName ?? "–"}</td>
+                <td className="py-1.5 px-3 min-w-[80px] text-muted-foreground truncate">{fmtPlayer(r.awayPlayerName, r.awayPlayerId)}</td>
                 <td className="py-1.5 px-3 text-center tabular-nums">
                   <span className={r.awayScore === 180 ? "font-black text-amber-500 underline decoration-2 underline-offset-2" : r.awayScore >= 100 ? "font-bold text-orange-500 underline underline-offset-2" : "font-medium"}>{r.awayScore}</span>
                 </td>
@@ -123,11 +134,13 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
                 <td colSpan={2} className="py-1.5 px-3 text-xs font-semibold text-muted-foreground">3-dart avg</td>
                 <td className="py-1.5 px-3 text-center text-xs font-semibold tabular-nums text-blue-600 dark:text-blue-400">
                   {legHomeAvg !== null ? legHomeAvg.toFixed(1) : "–"}
+                  {homeCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({homeCheckoutDarts}d co)</span> : null}
                 </td>
                 <td />
                 <td />
                 <td className="py-1.5 px-3 text-center text-xs font-semibold tabular-nums text-blue-600 dark:text-blue-400">
                   {legAwayAvg !== null ? legAwayAvg.toFixed(1) : "–"}
+                  {awayCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({awayCheckoutDarts}d co)</span> : null}
                 </td>
                 <td colSpan={2} />
               </tr>
@@ -141,6 +154,7 @@ function LegTable({ leg, rounds, homeTeam, awayTeam, gameType }: {
 
 export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: GameWithPlayers; maxLegsPerGame?: number }) {
   const legs = [...new Set(gameData.rounds.map((r) => r.leg))].sort((a, b) => a - b);
+  const nickById = new Map<number, string | null>(gameData.players.map((p) => [p.id, p.nickname]));
   const hasRounds = gameData.rounds.length > 0;
   const { homeAvg, awayAvg, playerAverages } = computeAverages(gameData.rounds);
 
@@ -379,6 +393,7 @@ export default function GameCard({ gameData, maxLegsPerGame = 3 }: { gameData: G
                   homeTeam={gameData.homeTeam}
                   awayTeam={gameData.awayTeam}
                   gameType={gameData.gameType}
+                  nickById={nickById}
                 />
               </React.Fragment>
             ))}

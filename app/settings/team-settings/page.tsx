@@ -1,19 +1,15 @@
-import { cookies } from "next/headers";
 import { db } from "@/server";
 import { eq } from "drizzle-orm";
 import { team, teamPhotos, teamSponsors, playerTeams, players } from "@/server/schema";
 import { TeamSettingsForm } from "@/components/teams/team-settings-form";
-import { isCaptain, isTeamAdmin, TeamRole } from "@/lib/permissions";
+import { isCaptain, isTeamAdmin, getActiveTeamId, TeamRole } from "@/lib/permissions";
 import { getTeamJoinRequests } from "@/server/actions/get-team-join-requests";
 import { AlertCircle, Lock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamSettingsPage() {
-  const cookieStore = await cookies();
-  const activeTeamId = cookieStore.get("active-team-id")?.value
-    ? parseInt(cookieStore.get("active-team-id")!.value)
-    : null;
+  const activeTeamId = await getActiveTeamId();
 
   if (!activeTeamId) {
     return (

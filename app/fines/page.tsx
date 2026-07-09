@@ -4,16 +4,13 @@ import { auth } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 import { players as playersTable, playerFines } from "@/server/schema";
 import { PlayerFinesSummary } from "./player-fines-summary";
-import { cookies } from "next/headers";
+import { getActiveTeamId } from "@/lib/permissions";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const { userId: clerkUserId } = await auth();
 
-  const cookieStore = await cookies();
-  const activeTeamId = cookieStore.get("active-team-id")?.value
-    ? parseInt(cookieStore.get("active-team-id")!.value)
-    : null;
+  const activeTeamId = await getActiveTeamId();
 
   const [players, linkedPlayer] = await Promise.all([
     db.query.players.findMany(),

@@ -47,6 +47,17 @@ export function computeAverages(rounds: GameRound[]) {
   return { homeAvg, awayAvg, playerAverages };
 }
 
+// ── Turn-score validity ──────────────────────────────────────────────────────
+
+// Scores in 0..180 that cannot be thrown with three darts, despite being ≤ 180.
+const IMPOSSIBLE_THREE_DART_SCORES = new Set([163, 166, 169, 172, 173, 175, 176, 178, 179]);
+
+/** True when `score` is a value actually achievable with three darts (0..180, excluding the impossible totals). */
+export function isPossibleThreeDartScore(score: number): boolean {
+  if (!Number.isInteger(score) || score < 0 || score > 180) return false;
+  return !IMPOSSIBLE_THREE_DART_SCORES.has(score);
+}
+
 // ── Checkout dart-count rules ────────────────────────────────────────────────
 
 // A score finishable with a single dart: an even double (2..40) or the bullseye (50).

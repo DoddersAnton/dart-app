@@ -14,9 +14,28 @@ async function getCurrentPlayer() {
 }
 
 export async function getActiveTeamId(): Promise<number | null> {
+  const player = await getCurrentPlayer();
+  if (!player) return null;
+
+  const memberships = await db.query.playerTeams.findMany({
+    where: eq(playerTeams.playerId, player.id),
+  });
+  if (memberships.length === 0) return null;
+
   const cookieStore = await cookies();
   const v = cookieStore.get("active-team-id")?.value;
-  return v ? parseInt(v) : null;
+  const cookieTeamId = v ? parseInt(v) : null;
+
+  // Only honour the cookie when the current user actually belongs to that team.
+  // The cookie is not cleared on sign-out, so a stale value from a previous
+  // user/session would otherwise leak another team's data even though the nav
+  // bar (which validates membership) shows the correct fallback team.
+  if (cookieTeamId && memberships.some((m) => m.teamId === cookieTeamId)) {
+    return cookieTeamId;
+  }
+
+  const fallback = memberships.find((m) => m.isDefault) ?? memberships[0];
+  return fallback.teamId;
 }
 
 /** Returns the current user's role for the active team, or null if not determinable. */

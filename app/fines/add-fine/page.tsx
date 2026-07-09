@@ -5,14 +5,11 @@ import { getFines } from "@/server/actions/get-fines";
 import { getPlayers } from "@/server/actions/get-players";
 import { getSeasonOptions } from "@/server/actions/get-season-options";
 import { Suspense } from "react";
-import { cookies } from "next/headers";
+import { getActiveTeamId } from "@/lib/permissions";
 
 export default async function AddFine() {
 
-    const cookieStore = await cookies();
-    const activeTeamId = cookieStore.get("active-team-id")?.value
-      ? parseInt(cookieStore.get("active-team-id")!.value)
-      : null;
+    const activeTeamId = await getActiveTeamId();
 
     const playersData = await getPlayers();
     const finesData = await getFines();

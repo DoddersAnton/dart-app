@@ -48,6 +48,7 @@ const navLinks = [
     subLinks: [
       { titleEng: "Fixtures", descriptionEng: "All fixtures and results", href: "/fixtures" },
       { titleEng: "Schedule", descriptionEng: "Build and view the season schedule", href: "/fixtures/schedule" },
+      { titleEng: "League Table", descriptionEng: "Division standings and movement", href: "/fixtures/league-table" },
     ],
   },
   { titleEng: "Reports", img: "/dart-img.png", navDescriptionEng: "League reports and stats", href: "/reports", subLinks: [] },

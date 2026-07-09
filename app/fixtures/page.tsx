@@ -6,16 +6,13 @@ import { getGamesSummaryBySeason } from "@/server/actions/get-player-games-summa
 import { getFixturesAvailabilitySummary } from "@/server/actions/get-fixtures-availability-summary";
 import { getPlayerByUserId } from "@/server/actions/get-player-by-user-id";
 import { currentUser } from "@clerk/nextjs/server";
-import { cookies } from "next/headers";
+import { getActiveTeamId } from "@/lib/permissions";
 export const dynamic = "force-dynamic";
 
 export default async function FixturesPage() {
     const user = await currentUser();
 
-    const cookieStore = await cookies();
-    const activeTeamId = cookieStore.get("active-team-id")?.value
-      ? parseInt(cookieStore.get("active-team-id")!.value)
-      : null;
+    const activeTeamId = await getActiveTeamId();
 
     const [fixtureList, fixtureKpis, playerList, availabilitySummary, linkedPlayer] = await Promise.all([
         getFixtureList(activeTeamId),

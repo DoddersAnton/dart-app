@@ -27,8 +27,8 @@ export type GameStateBroadcast = {
   homeTeam: string;
   awayTeam: string;
   currentThrowSide?: "home" | "away";
-  homePlayers?: Array<{ name: string; isNext: boolean }>;
-  awayPlayers?: Array<{ name: string; isNext: boolean }>;
+  homePlayers?: Array<{ name: string; nickname?: string | null; isNext: boolean }>;
+  awayPlayers?: Array<{ name: string; nickname?: string | null; isNext: boolean }>;
 };
 
 export async function broadcastGameState(

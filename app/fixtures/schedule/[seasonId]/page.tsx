@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarDays, Layers } from "lucide-react";
 
 import { db } from "@/server";
-import { fixtures as fixturesTable, seasons as seasonsTable } from "@/server/schema";
-import { isLeagueAdmin } from "@/lib/permissions";
+import { fixtures as fixturesTable, seasons as seasonsTable, leagueTable } from "@/server/schema";
+import { isLeagueAdmin, getActiveTeamId } from "@/lib/permissions";
 import { WeekBuilder } from "@/components/fixtures/week-builder";
+import { SubmitWeekButton } from "@/components/fixtures/submit-week-button";
 import { ScheduleFixtureRow, type ScheduleFixture } from "@/components/fixtures/schedule-fixture-row";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,13 +20,12 @@ export default async function SeasonSchedulePage({ params }: { params: Promise<{
   const { seasonId } = await params;
   const sid = Number(seasonId);
 
-  const cookieStore = await cookies();
-  const activeTeamId = cookieStore.get("active-team-id")?.value ? parseInt(cookieStore.get("active-team-id")!.value) : null;
+  const activeTeamId = await getActiveTeamId();
 
   const season = await db.query.seasons.findFirst({ where: eq(seasonsTable.id, sid) });
   if (!season) notFound();
 
-  const [seasonFixtures, teams, divisions, canManage] = await Promise.all([
+  const [seasonFixtures, teams, divisions, canManage, submittedRows] = await Promise.all([
     db.query.fixtures.findMany({
       where: eq(fixturesTable.seasonsId, sid),
       orderBy: (f, { asc }) => [asc(f.weekNo), asc(f.matchDate)],
@@ -34,7 +33,11 @@ export default async function SeasonSchedulePage({ params }: { params: Promise<{
     db.query.team.findMany({ orderBy: (t, { asc }) => [asc(t.name)] }),
     db.query.division.findMany({ orderBy: (d, { asc }) => [asc(d.name)] }),
     isLeagueAdmin(),
+    db.query.leagueTable.findMany({ where: eq(leagueTable.seasonsId, sid) }),
   ]);
+
+  // Which (division, week) pairs have already been submitted to the league.
+  const submittedKeys = new Set(submittedRows.map((r) => `${r.divisionId ?? "none"}-${r.weekNo}`));
 
   type Fx = (typeof seasonFixtures)[number];
 
@@ -71,7 +74,7 @@ export default async function SeasonSchedulePage({ params }: { params: Promise<{
   const divisionSelect = divisions.map((d) => ({ id: d.id, name: d.name }));
 
   // A division's fixtures grouped by week.
-  const renderWeeks = (list: Fx[]) => {
+  const renderWeeks = (list: Fx[], divisionId: number | null) => {
     const weeks = new Map<number, Fx[]>();
     const noWeek: Fx[] = [];
     for (const f of list) {
@@ -88,6 +91,8 @@ export default async function SeasonSchedulePage({ params }: { params: Promise<{
         {wns.map((wk) => {
           const wl = weeks.get(wk)!;
           const date = wl[0]?.matchDate;
+          const allComplete = wl.length > 0 && wl.every((f) => f.matchStatus === "completed");
+          const alreadySubmitted = submittedKeys.has(`${divisionId ?? "none"}-${wk}`);
           return (
             <Card key={wk}>
               <CardHeader className="pb-2">
@@ -99,6 +104,15 @@ export default async function SeasonSchedulePage({ params }: { params: Promise<{
                     </Badge>
                   )}
                   <span className="text-xs text-muted-foreground font-normal ml-auto">{wl.length} game{wl.length !== 1 ? "s" : ""}</span>
+                  {canManage && (
+                    <SubmitWeekButton
+                      seasonId={sid}
+                      divisionId={divisionId}
+                      weekNo={wk}
+                      allComplete={allComplete}
+                      alreadySubmitted={alreadySubmitted}
+                    />
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0 space-y-1">
@@ -161,7 +175,7 @@ export default async function SeasonSchedulePage({ params }: { params: Promise<{
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Layers className="h-4 w-4 text-muted-foreground" /> {d.name}
               </h2>
-              {renderWeeks(seasonFixtures.filter((f) => f.divisionId === d.id))}
+              {renderWeeks(seasonFixtures.filter((f) => f.divisionId === d.id), d.id)}
             </div>
           ))}
           {noDivision.length > 0 && (
@@ -169,7 +183,7 @@ export default async function SeasonSchedulePage({ params }: { params: Promise<{
               <h2 className="text-lg font-semibold flex items-center gap-2 text-muted-foreground">
                 <Layers className="h-4 w-4" /> No division
               </h2>
-              {renderWeeks(noDivision)}
+              {renderWeeks(noDivision, null)}
             </div>
           )}
         </div>

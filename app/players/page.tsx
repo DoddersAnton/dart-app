@@ -11,16 +11,12 @@ import { eq } from "drizzle-orm";
 import { playerTeams } from "@/server/schema";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { cookies } from "next/headers";
-import { isTeamAdmin } from "@/lib/permissions";
+import { isTeamAdmin, getActiveTeamId } from "@/lib/permissions";
 import { PlayerCardList } from "./player-card-list";
 export const dynamic = "force-dynamic";
 
 export default async function GetFineTypePage() {
-  const cookieStore = await cookies();
-  const activeTeamId = cookieStore.get("active-team-id")?.value
-    ? parseInt(cookieStore.get("active-team-id")!.value)
-    : null;
+  const activeTeamId = await getActiveTeamId();
 
   // Get player IDs for the active team, then fetch only those players
   const allPlayers = await db.query.players.findMany();

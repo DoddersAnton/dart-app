@@ -426,3 +426,36 @@ export const practiceRoundsRelations = relations(practiceRounds, ({ one }) => ({
   game: one(practiceGames, { fields: [practiceRounds.practiceGameId], references: [practiceGames.id] }),
   practicePlayer: one(practicePlayers, { fields: [practiceRounds.practicePlyrId], references: [practicePlayers.id] }),
 }));
+// League table — a per-week snapshot of cumulative division standings. A row is
+// written for each team when a week is "submitted to the league". Rank movement
+// is derived by comparing rank to the same team's most recent earlier snapshot.
+export const leagueTable = pgTable("league_table", {
+  id: serial("id").primaryKey(),
+  seasonsId: integer("seasons_id").notNull().references(() => seasons.id, { onDelete: "cascade" }),
+  divisionId: integer("division_id").references(() => division.id, { onDelete: "cascade" }),
+  weekNo: integer("week_no").notNull(),
+  teamId: integer("team_id").notNull().references(() => team.id, { onDelete: "cascade" }),
+  played: integer("played").default(0).notNull(),
+  wins: integer("wins").default(0).notNull(),
+  draws: integer("draws").default(0).notNull(),
+  losses: integer("losses").default(0).notNull(),
+  legsFor: integer("legs_for").default(0).notNull(),
+  legsAgainst: integer("legs_against").default(0).notNull(),
+  points: integer("points").default(0).notNull(),
+  rank: integer("rank").notNull(),
+  // Rank in this team's most recent earlier submitted week (null = new entry).
+  previousRank: integer("previous_rank"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// League completion flag per (season, division). Presence of completedAt means the
+// league's standings are final.
+export const leagueStatus = pgTable("league_status", {
+  id: serial("id").primaryKey(),
+  seasonsId: integer("seasons_id").notNull().references(() => seasons.id, { onDelete: "cascade" }),
+  divisionId: integer("division_id").references(() => division.id, { onDelete: "cascade" }),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
