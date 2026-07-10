@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from ".";
-import { leagueTable } from "./schema";
+import { leagueStatus, leagueTable } from "./schema";
 
 // A single team's record going into a week's standings snapshot.
 export type TeamStanding = {
@@ -25,6 +25,16 @@ export async function writeWeekStandings(
   teams: TeamStanding[],
 ): Promise<void> {
   const divCond = divisionId == null ? isNull(leagueTable.divisionId) : eq(leagueTable.divisionId, divisionId);
+
+  const statusDivCond = divisionId == null ? isNull(leagueStatus.divisionId) : eq(leagueStatus.divisionId, divisionId);
+  const status = await db.query.leagueStatus.findFirst({
+    where: and(eq(leagueStatus.seasonsId, seasonId), statusDivCond),
+  });
+  if (status?.completedAt) {
+    throw new Error("League is marked complete — standings are locked.");
+  }
+
+  
 
   const standings = teams.map((t) => ({ ...t, points: t.legsFor }));
   standings.sort((x, y) =>
