@@ -1,5 +1,5 @@
-import { integer, pgTable, serial, timestamp, varchar, real, boolean, AnyPgColumn } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { integer, pgTable, serial, timestamp, varchar, real, boolean, AnyPgColumn, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
 
 
 export const players = pgTable("players", {
@@ -447,7 +447,15 @@ export const leagueTable = pgTable("league_table", {
   previousRank: integer("previous_rank"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("league_table_season_division_week_idx").on(table.seasonsId, table.divisionId, table.weekNo),
+  uniqueIndex("league_table_season_division_week_team_unique").on(
+    table.seasonsId,
+    sql`coalesce(${table.divisionId}, -1)`,
+    table.weekNo,
+    table.teamId,
+  ),
+]);
 
 // League completion flag per (season, division). Presence of completedAt means the
 // league's standings are final.
