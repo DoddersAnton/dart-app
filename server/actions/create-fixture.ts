@@ -132,7 +132,7 @@ seasonId, league
 
       // Auto-create pending availability records — only for the players of the
       // home and away teams that are actually playing, not the whole league.
-      const isScheduled = matchStatus === "Scheduled" || matchDate > new Date();
+      const isScheduled = (matchStatus ?? "").toLowerCase() === "scheduled" || matchDate > new Date();
       if (newFixture && isScheduled) {
         const teamPlayerRows = await db.query.playerTeams.findMany({
           where: inArray(playerTeams.teamId, [homeTeam.id, awayTeam.id]),
