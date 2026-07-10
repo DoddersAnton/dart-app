@@ -6,13 +6,14 @@ import { getPusherClient } from "@/lib/pusher-client";
 import { GameStateBroadcast } from "@/server/actions/broadcast-game-state";
 import { GameWithPlayers } from "@/types/game-with-players";
 import { Badge } from "@/components/ui/badge";
-import { Target, UserIcon, Users2Icon, UsersIcon } from "lucide-react";
+import { Target, UserIcon, Users2Icon, UsersIcon, RotateCw } from "lucide-react";
 
 type SiblingGame = {
   id: number;
   gameType: string;
   homeTeamScore: number;
   awayTeamScore: number;
+  players?: { id: number; name: string; nickname?: string | null }[];
 };
 
 const gameTypeIcon: Record<string, React.ReactNode> = {
@@ -115,8 +116,8 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
     rounds: currentRounds,
     homeTeam: gameData.homeTeam,
     awayTeam: gameData.awayTeam,
-    homePlayers: gameData.homePlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === homeIdx : i === 0 })),
-    awayPlayers: gameData.awayPlayers.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === awayIdx : i === 0 })),
+    homePlayers: gameData.homePlayers.map((p, i) => ({ name: p.name, nickname: p.nickname ?? null, isNext: shouldRotate ? i === homeIdx : i === 0 })),
+    awayPlayers: gameData.awayPlayers.map((p, i) => ({ name: p.name, nickname: p.nickname ?? null, isNext: shouldRotate ? i === awayIdx : i === 0 })),
   };
 }
 
@@ -130,10 +131,13 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
   const seenRounds = useRef(new Set(state.rounds.map((r) => r.roundNumber)));
   const hadPending = useRef(!!state.pendingRound);
 
+  const lastUpdateRef = useRef<number>(Date.now());
+
   useEffect(() => {
     const pusher = getPusherClient();
     const channel = pusher.subscribe(`game-${gameData.id}`);
     channel.bind("round-update", (data: GameStateBroadcast) => {
+      lastUpdateRef.current = Date.now();
       setState(data);
     });
     return () => {
@@ -141,6 +145,16 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
       pusher.unsubscribe(`game-${gameData.id}`);
     };
   }, [gameData.id]);
+
+  // Auto-refresh: if no live update has arrived for 3 minutes (e.g. the socket
+  // silently dropped), reload to re-sync from the server. Decided games stop.
+  useEffect(() => {
+    if (state.winner && state.isGameDecided) return;
+    const interval = setInterval(() => {
+      if (Date.now() - lastUpdateRef.current > 180_000) window.location.reload();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [state.winner, state.isGameDecided]);
 
   // Seed free-text opponent names from localStorage into whichever side has no real roster.
   useEffect(() => {
@@ -217,12 +231,21 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
           <span className="text-xl font-semibold">{gameData.gameType}</span>
           <Badge variant="outline" className="text-base px-3 py-1">Leg {state.currentLeg}</Badge>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-          </span>
-          <span className="text-base text-muted-foreground">Live</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </span>
+            <span className="text-base text-muted-foreground">Live</span>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            title="Refresh"
+            className="flex items-center justify-center h-9 w-9 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <RotateCw className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
@@ -313,7 +336,10 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
                           ? "bg-amber-100 border-amber-500 dark:bg-amber-950/60 ring-2 ring-amber-500"
                           : "bg-muted border-border"
                       }`}>
-                        <span className="font-semibold leading-tight">{p.name || <span className="italic text-muted-foreground">?</span>}</span>
+                        <span className="flex flex-col leading-tight">
+                          <span className="font-semibold">{p.name || <span className="italic text-muted-foreground">?</span>}</span>
+                          {p.nickname && <span className="text-xs font-normal text-muted-foreground">{p.nickname}</span>}
+                        </span>
                         {p.isNext && <span className="text-xs font-bold text-amber-600 uppercase tracking-wide">Next</span>}
                       </div>
                     ))}
@@ -325,7 +351,10 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
                           ? "bg-amber-50 border-amber-400 dark:bg-amber-950/40 ring-2 ring-amber-400"
                           : "bg-muted/50 border-border"
                       }`}>
-                        <span className="font-semibold leading-tight">{p.name || <span className="italic text-muted-foreground">?</span>}</span>
+                        <span className="flex flex-col leading-tight">
+                          <span className="font-semibold">{p.name || <span className="italic text-muted-foreground">?</span>}</span>
+                          {p.nickname && <span className="text-xs font-normal text-muted-foreground">{p.nickname}</span>}
+                        </span>
                         {p.isNext && <span className="text-xs font-bold text-amber-600 uppercase tracking-wide">Next</span>}
                       </div>
                     ))}
@@ -426,7 +455,14 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
                     }`}
                   >
                     {gameTypeIcon[g.gameType] ?? <Target className="h-3.5 w-3.5" />}
-                    <span>{g.gameType}</span>
+                    <span className="flex flex-col leading-tight text-left">
+                      <span>{g.gameType}</span>
+                      {g.players && g.players.length > 0 && (
+                        <span className="text-xs font-normal opacity-80 max-w-[180px] truncate">
+                          {g.players.map((p) => p.name).join(", ")}
+                        </span>
+                      )}
+                    </span>
                     <span className="tabular-nums text-xs opacity-80">{g.homeTeamScore}–{g.awayTeamScore}</span>
                   </div>
                 </Link>

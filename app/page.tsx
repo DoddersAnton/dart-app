@@ -1,17 +1,13 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { cookies } from "next/headers";
 import { Home } from "@/components/home/home";
 import { getPlayerByUserId } from "@/server/actions/get-player-by-user-id";
 import { getTeamHomepageData } from "@/server/actions/get-team-homepage-data";
+import { getActiveTeamId } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [user, cookieStore] = await Promise.all([currentUser(), cookies()]);
-
-  const activeTeamId = cookieStore.get("active-team-id")?.value
-    ? parseInt(cookieStore.get("active-team-id")!.value)
-    : null;
+  const [user, activeTeamId] = await Promise.all([currentUser(), getActiveTeamId()]);
 
   let linkedPlayer: { id: number; name: string; imgUrl: string | null } | null = null;
   if (user) {

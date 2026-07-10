@@ -2,9 +2,9 @@
 import { createSafeActionClient } from "next-safe-action";
 //import { currentUser } from "@clerk/nextjs/server";
 import { db } from "..";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { attendance, fixtures, locations, players, seasons, team } from "../schema";
+import { attendance, fixtures, locations, playerTeams, seasons, team } from "../schema";
 import { createFixtureSchema } from "@/types/add-fixture-schema";
 
 const actionClient = createSafeActionClient();
@@ -130,14 +130,18 @@ seasonId, league
       })
       .returning();
 
-      // Auto-create pending availability records for all players
-      const isScheduled = matchStatus === "Scheduled" || matchDate > new Date();
+      // Auto-create pending availability records — only for the players of the
+      // home and away teams that are actually playing, not the whole league.
+      const isScheduled = (matchStatus ?? "").toLowerCase() === "scheduled" || matchDate > new Date();
       if (newFixture && isScheduled) {
-        const allPlayers = await db.query.players.findMany();
-        if (allPlayers.length > 0) {
+        const teamPlayerRows = await db.query.playerTeams.findMany({
+          where: inArray(playerTeams.teamId, [homeTeam.id, awayTeam.id]),
+        });
+        const playerIds = [...new Set(teamPlayerRows.map((r) => r.playerId))];
+        if (playerIds.length > 0) {
           await db.insert(attendance).values(
-            allPlayers.map((p) => ({
-              playerId: p.id,
+            playerIds.map((pid) => ({
+              playerId: pid,
               fixtureId: newFixture.id,
               attending: null,
               createdAt: new Date(),

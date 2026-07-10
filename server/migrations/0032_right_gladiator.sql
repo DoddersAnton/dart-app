@@ -1,0 +1,2 @@
+CREATE INDEX "league_table_season_division_week_idx" ON "league_table" USING btree ("seasons_id","division_id","week_no");--> statement-breakpoint
+CREATE UNIQUE INDEX "league_table_season_division_week_team_unique" ON "league_table" USING btree ("seasons_id",coalesce("division_id", -1),"week_no","team_id");

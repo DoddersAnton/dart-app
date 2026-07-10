@@ -237,6 +237,11 @@ function fixtureItem({
             <span>{fixtureData.matchLocation}</span>
           </div>
           <div className="flex items-center gap-1">
+            <Link href={`/fixtures/${fixtureData.id}`}>
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
+                <EyeIcon className="h-3.5 w-3.5" /> View
+              </Button>
+            </Link>
             <DropdownMenu key={fixtureData.id}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-7 w-7">

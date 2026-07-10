@@ -40,7 +40,13 @@ export async function getFixtureReport(fixtureId: number) {
     ]);
 
     const playerMap = Object.fromEntries(allPlayers.map((p) => [p.id, p]));
-    const nameOf = (id: number | null) => (id != null ? playerMap[id]?.name ?? "Unknown" : null);
+    // Include the nickname in brackets when the player has one.
+    const nameOf = (id: number | null) => {
+      if (id == null) return null;
+      const p = playerMap[id];
+      if (!p) return "Unknown";
+      return p.nickname ? `${p.name} (${p.nickname})` : p.name;
+    };
 
     const homeTeam = homeTeamRecord?.name ?? fixture.homeTeam ?? "Home";
     const awayTeam = awayTeamRecord?.name ?? fixture.awayTeam ?? "Away";

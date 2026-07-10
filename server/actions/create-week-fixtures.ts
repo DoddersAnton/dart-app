@@ -2,7 +2,7 @@
 
 import { db } from "..";
 import { eq, inArray } from "drizzle-orm";
-import { fixtures, team, locations, seasons, players, attendance } from "../schema";
+import { fixtures, team, locations, seasons, playerTeams, attendance } from "../schema";
 import { requireLeagueAdmin } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 
@@ -67,19 +67,30 @@ export async function createWeekFixtures(params: {
 
     const inserted = await db.insert(fixtures).values(rows).returning();
 
-    const allPlayers = await db.query.players.findMany();
-    if (allPlayers.length > 0 && inserted.length > 0) {
-      await db.insert(attendance).values(
-        inserted.flatMap((f) =>
-          allPlayers.map((pl) => ({
-            playerId: pl.id,
-            fixtureId: f.id,
-            attending: null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })),
-        ),
-      );
+    // Availability records are only for the players of the two teams playing each
+    // fixture — not the whole league.
+    const teamPlayerRows = await db.query.playerTeams.findMany({ where: inArray(playerTeams.teamId, teamIds) });
+    const playersByTeam = new Map<number, number[]>();
+    for (const tp of teamPlayerRows) {
+      const arr = playersByTeam.get(tp.teamId) ?? [];
+      arr.push(tp.playerId);
+      playersByTeam.set(tp.teamId, arr);
+    }
+    const attendanceRows = inserted.flatMap((f) => {
+      const ids = new Set<number>([
+        ...(f.homeTeamId ? playersByTeam.get(f.homeTeamId) ?? [] : []),
+        ...(f.awayTeamId ? playersByTeam.get(f.awayTeamId) ?? [] : []),
+      ]);
+      return [...ids].map((pid) => ({
+        playerId: pid,
+        fixtureId: f.id,
+        attending: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+    });
+    if (attendanceRows.length > 0) {
+      await db.insert(attendance).values(attendanceRows);
     }
 
     revalidatePath(`/fixtures/schedule/${params.seasonId}`);

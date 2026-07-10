@@ -153,7 +153,7 @@ export default function FixtureCard({
   const { games, loading, error, fetchGames } = useGamesByFixture(fixtureData.id);
   const reportGames = useFixtureReport(fixtureData.id);
   const hasReport = reportGames.some((g) => g.rounds.length > 0);
-  const [reportOpen, setReportOpen] = useState(false);
+  const [fixtureTab, setFixtureTab] = useState<"games" | "report">("games");
 
   const [notesOpen, setNotesOpen] = useState(!!(fixtureData.notes));
   const [editingNotes, setEditingNotes] = useState(false);
@@ -462,36 +462,33 @@ export default function FixtureCard({
         </Card>
       )}
 
-      {/* Match Report */}
-      {hasReport && (
-        <Card>
-          <CardHeader className="pb-2">
-            <button
-              className="flex items-center justify-between w-full text-left"
-              onClick={() => setReportOpen((v) => !v)}
-            >
-              <CardTitle className="text-base">Match Report</CardTitle>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${reportOpen ? "rotate-180" : ""}`} />
-            </button>
-          </CardHeader>
-          {reportOpen && (
-            <CardContent className="pt-0">
-              <MatchReport games={reportGames} />
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {/* Games */}
+      {/* Games / Match Report — pill-tabbed */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Games</CardTitle>
-            <GameFormPopup fixtureId={fixtureData.id} onGameAdded={fetchGames} />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex rounded-lg border p-0.5 text-sm font-medium">
+              <button
+                className={`px-3 py-1.5 rounded-md transition-colors ${fixtureTab === "games" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                onClick={() => setFixtureTab("games")}
+              >
+                Game details
+              </button>
+              <button
+                disabled={!hasReport}
+                className={`px-3 py-1.5 rounded-md transition-colors ${fixtureTab === "report" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"} ${!hasReport ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
+                onClick={() => hasReport && setFixtureTab("report")}
+                title={hasReport ? undefined : "No round data recorded yet"}
+              >
+                Match report
+              </button>
+            </div>
+            {fixtureTab === "games" && <GameFormPopup fixtureId={fixtureData.id} onGameAdded={fetchGames} />}
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {fixtureTab === "report" && hasReport ? (
+            <MatchReport games={reportGames} />
+          ) : loading ? (
             <div className="space-y-3">
               <Skeleton className="h-20 w-full rounded-lg" />
               <Skeleton className="h-20 w-full rounded-lg" />

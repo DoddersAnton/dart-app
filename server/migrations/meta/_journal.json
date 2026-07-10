@@ -211,6 +211,27 @@
       "when": 1783078712833,
       "tag": "0029_free_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1783630722020,
+      "tag": "0030_brave_crystal",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1783632922715,
+      "tag": "0031_secret_skin",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1783664391754,
+      "tag": "0032_right_gladiator",
+      "breakpoints": true
     }
   ]
 }

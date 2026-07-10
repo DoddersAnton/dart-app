@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus, ArrowLeftRight, AlertTriangle, Users } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus, ArrowLeftRight, AlertTriangle, Users, CircleOff } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -45,7 +45,7 @@ import { deleteLastRound } from "@/server/actions/delete-last-round";
 import { updateLegRoundPlayers } from "@/server/actions/update-leg-round-players";
 import { broadcastGameState } from "@/server/actions/broadcast-game-state";
 import { getTeamPlayers } from "@/server/actions/get-team-players";
-import { minDartsForCheckout } from "@/lib/dart-stats";
+import { minDartsForCheckout, isPossibleThreeDartScore } from "@/lib/dart-stats";
 import { MultiSelect } from "../ui/multi-select";
 import CreateRoundFine from "./create-round-fine";
 
@@ -159,7 +159,9 @@ const CHECKOUT_HINTS: Record<number, string> = {
   3: "1 D1", 2: "D1",
 };
 
-type OpposingPlayer = { id: string; name: string };
+// An opposing-side player: either a real database player (playerId set — stats are
+// tracked) or a local free-text override (playerId undefined — this game only).
+type OpposingPlayer = { id: string; name: string; playerId?: number; nickname?: string | null };
 
 function SortablePlayerRow({ player }: { player: SidePlayer }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id! });
@@ -199,17 +201,26 @@ function SortableOpposingRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+  const isDbPlayer = player.playerId != null;
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 touch-none">
       <button {...listeners} {...attributes} className="text-muted-foreground cursor-grab active:cursor-grabbing">
         <GripVertical className="h-4 w-4" />
       </button>
-      <Input
-        value={player.name}
-        onChange={(e) => onNameChange(player.id, e.target.value)}
-        className="flex-1 h-8 text-sm"
-        placeholder="Player name"
-      />
+      {isDbPlayer ? (
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className="text-sm font-medium truncate">{player.name}</span>
+          {player.nickname && <span className="text-xs text-muted-foreground truncate">({player.nickname})</span>}
+          <Badge variant="secondary" className="text-[10px] shrink-0">DB</Badge>
+        </div>
+      ) : (
+        <Input
+          value={player.name}
+          onChange={(e) => onNameChange(player.id, e.target.value)}
+          className="flex-1 h-8 text-sm"
+          placeholder="Player name"
+        />
+      )}
       <button onClick={() => onDelete(player.id)} className="text-muted-foreground hover:text-destructive shrink-0">
         <X className="h-4 w-4" />
       </button>
@@ -255,10 +266,10 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   // Resolved rosters used for rotation / attribution (real order, or free-text fallback).
   const homeRoster: SidePlayer[] = homeIsReal
     ? homeOrder
-    : freeTextSide === "home" ? opposingPlayers.map((o) => ({ name: o.name })) : [];
+    : freeTextSide === "home" ? opposingPlayers.map((o) => ({ id: o.playerId, name: o.name, nickname: o.nickname })) : [];
   const awayRoster: SidePlayer[] = awayIsReal
     ? awayOrder
-    : freeTextSide === "away" ? opposingPlayers.map((o) => ({ name: o.name })) : [];
+    : freeTextSide === "away" ? opposingPlayers.map((o) => ({ id: o.playerId, name: o.name, nickname: o.nickname })) : [];
 
   const shouldRotate = gameData.gameType === "Team Game" || gameData.gameType === "Doubles";
   const isSingles = gameData.gameType === "Singles";
@@ -293,6 +304,11 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [pendingThrowApplied, setPendingThrowApplied] = useState(0);
   const [showOpposingEdit, setShowOpposingEdit] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
+  const scoreInputRef = useRef<HTMLInputElement>(null);
+
+  // Keep the score input focused so scoring can continue without re-tapping it —
+  // after each submitted throw, side switch, or when a fine flow finishes.
+  const focusScoreInput = () => requestAnimationFrame(() => scoreInputRef.current?.focus());
 
   const hasPendingThrow = currentThrowSide !== firstThrowTeam;
   const pendingThrowScore = hasPendingThrow ? currentRound[firstThrowTeam] : undefined;
@@ -306,6 +322,16 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const addOpposingPlayer = () =>
     setOpposingPlayers((prev) => [...prev, { id: Math.random().toString(36).slice(2), name: "" }]);
 
+  // Add a real database player to the opposing side (default path — their stats are tracked).
+  const addOpposingFromDb = (playerId: number) => {
+    const player = playersListData.find((p) => p.id === playerId);
+    if (!player) return;
+    setOpposingPlayers((prev) => {
+      if (prev.some((o) => o.playerId === playerId)) return prev; // already added
+      return [...prev, { id: Math.random().toString(36).slice(2), name: player.name, playerId: player.id, nickname: player.nickname }];
+    });
+  };
+
   const updateOpposingPlayerName = (id: string, name: string) =>
     setOpposingPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
 
@@ -314,7 +340,6 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
   // Edit real team rosters mid-setup (e.g. a player was added to the team after the game was created).
   type RosterOption = { id: number; name: string; nickname: string | null };
-  const [showEditPlayers, setShowEditPlayers] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [savingPlayers, setSavingPlayers] = useState(false);
   const [editHomeRoster, setEditHomeRoster] = useState<RosterOption[]>([]);
@@ -322,8 +347,11 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [editHomeIds, setEditHomeIds] = useState<number[]>([]);
   const [editAwayIds, setEditAwayIds] = useState<number[]>([]);
 
-  const openEditPlayers = async () => {
-    setShowEditPlayers(true);
+  // Open the single unified players dialog. If either side is a real team, load
+  // its roster for the multi-select; the same dialog also manages opposing players.
+  const openPlayersDialog = async () => {
+    setShowOpposingEdit(true);
+    if (!homeHasTeam && !awayHasTeam) return;
     setLoadingEdit(true);
     const [h, a] = await Promise.all([
       homeHasTeam ? getTeamPlayers(gameData.homeTeamId!) : Promise.resolve([]),
@@ -416,6 +444,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     }
   }, [rounds]);
 
+  // Return focus to the score input after each throw / side switch so the
+  // scorer can keep typing the next value without tapping back into the box.
+  useEffect(() => {
+    if (!winner) focusScoreInput();
+  }, [rounds.length, currentThrowSide, winner]);
+
   // Load / persist free-text opposing players via localStorage
   useEffect(() => {
     try {
@@ -438,8 +472,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
   // Build the home/away broadcast roster arrays with the "next" flag.
   const broadcastRosters = (nextHomeIdx: number, nextAwayIdx: number) => ({
-    homePlayers: homeRoster.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextHomeIdx : i === 0 })),
-    awayPlayers: awayRoster.map((p, i) => ({ name: p.name, isNext: shouldRotate ? i === nextAwayIdx : i === 0 })),
+    homePlayers: homeRoster.map((p, i) => ({ name: p.name, nickname: p.nickname ?? null, isNext: shouldRotate ? i === nextHomeIdx : i === 0 })),
+    awayPlayers: awayRoster.map((p, i) => ({ name: p.name, nickname: p.nickname ?? null, isNext: shouldRotate ? i === nextAwayIdx : i === 0 })),
   });
 
   const broadcastRoundList = (list: Round[]) =>
@@ -466,11 +500,28 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       toast.error("Score cannot be negative");
       return;
     }
+    if (!isPossibleThreeDartScore(score)) {
+      toast.error(`${score} is not a possible 3-dart score`);
+      return;
+    }
+
+    const remaining = currentThrowSide === "home" ? homeScore : awayScore;
+
+    // Guard the checkout BEFORE mutating any score. If this throw finishes the
+    // leg (reaches exactly 0) we must have a valid dart count first — otherwise
+    // an early return below would leave the side deducted to 0 with no winner
+    // recorded, stranding the game (and showing a false "Bust" on re-entry).
+    if (remaining - score === 0) {
+      const minDarts = minDartsForCheckout(remaining) ?? 1;
+      if (selectedDarts === null || selectedDarts < minDarts) {
+        toast.error(`Select darts used for the checkout (minimum ${minDarts})`);
+        return;
+      }
+    }
 
     // Clear pending fine offer on each new throw
     setPendingFineOffer(null);
 
-    const remaining = currentThrowSide === "home" ? homeScore : awayScore;
 
     // Auto-fine check — fires for the throwing side if that team has fines enabled and the thrower is a real player.
     const throwerSideFinesEnabled = currentThrowSide === "home" ? gameData.homeTeamFinesEnabled : gameData.awayTeamFinesEnabled;
@@ -769,6 +820,26 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     if (!fine) { toast.error("Fine not found"); return; }
     executeFine({ playerId: pendingFineOffer.playerId, fineId: fine.id, matchDate: new Date(), quantity: 1, notes: `Fine during ${gameData.gameType}`, teamId: pendingFineOffer.teamId ?? undefined });
     setPendingFineOffer(null);
+    focusScoreInput();
+  };
+
+  // Whether the currently-throwing side has team fines enabled.
+  const currentSideFinesEnabled = currentThrowSide === "home" ? gameData.homeTeamFinesEnabled : gameData.awayTeamFinesEnabled;
+  const outOfBoardFine = finesData.find((f) => /out of the board|off the board|out of board|outside the board/i.test(f.title));
+
+  // Quick fine for a dart thrown outside the board — one tap, no dialog.
+  const submitOutOfBoardFine = () => {
+    if (!currentThrower?.id) return;
+    if (!outOfBoardFine) { toast.error('No "out of the board" fine type is configured'); return; }
+    executeFine({
+      playerId: currentThrower.id,
+      fineId: outOfBoardFine.id,
+      matchDate: new Date(),
+      quantity: 1,
+      notes: `Out of the board during ${gameData.gameType}`,
+      teamId: (currentThrowSide === "home" ? gameData.homeTeamId : gameData.awayTeamId) ?? undefined,
+    });
+    focusScoreInput();
   };
 
   const handleSaveEdit = (idx: number) => {
@@ -1016,12 +1087,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">{teamName} players</p>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={() => setShowOpposingEdit(true)}>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={openPlayersDialog}>
             <Pencil className="h-3 w-3" /> Edit
           </Button>
         </div>
         {roster.length === 0 ? (
-          <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs h-8" onClick={() => setShowOpposingEdit(true)}>
+          <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs h-8" onClick={openPlayersDialog}>
             <Plus className="h-3.5 w-3.5" /> Add opposing players
           </Button>
         ) : (
@@ -1074,100 +1145,115 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         />
       )}
 
-      {/* Opposing players edit dialog */}
+      {/* Unified players dialog — team rosters (from DB) and opposing players in one place */}
       <Dialog open={showOpposingEdit} onOpenChange={setShowOpposingEdit}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Opposing team players</DialogTitle>
-            <DialogDescription>Add and order the opposing team&apos;s players for rotation tracking.</DialogDescription>
+            <DialogTitle>Manage players</DialogTitle>
+            <DialogDescription>Choose players from the database, or add local names for anyone not yet in the app.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-900 dark:bg-amber-950/20">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-            <p className="text-amber-700 dark:text-amber-400">
-              These players are tracked for this game only and aren&apos;t saved to the database.{" "}
-              <Link href="/players/add-player" target="_blank" className="font-semibold underline hover:no-underline">
-                Create a real player
-              </Link>{" "}
-              to keep their stats permanently.
-            </p>
-          </div>
-
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleOpposingDragEnd}>
-            <SortableContext items={opposingPlayers.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2 py-1">
-                {opposingPlayers.map((p) => (
-                  <SortableOpposingRow
-                    key={p.id}
-                    player={p}
-                    onNameChange={updateOpposingPlayerName}
-                    onDelete={removeOpposingPlayer}
-                  />
-                ))}
-                {opposingPlayers.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No players added yet.</p>
+          {/* Real team rosters — pick from the linked team's database roster */}
+          {(homeHasTeam || awayHasTeam) && (
+            loadingEdit ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Loading rosters…</p>
+            ) : (
+              <div className="space-y-3 py-1">
+                {homeHasTeam && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{gameData.homeTeam} players</p>
+                    <MultiSelect
+                      options={editHomeRoster.map((p) => ({ value: String(p.id), label: p.name + (p.nickname ? ` (${p.nickname})` : "") }))}
+                      defaultValue={editHomeIds.map(String)}
+                      onValueChange={(vals) => setEditHomeIds(vals.map((v) => parseInt(v, 10)))}
+                      placeholder="Select players"
+                      variant="inverted"
+                      animation={0}
+                      maxCount={5}
+                    />
+                  </div>
                 )}
+                {awayHasTeam && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{gameData.awayTeam} players</p>
+                    <MultiSelect
+                      options={editAwayRoster.map((p) => ({ value: String(p.id), label: p.name + (p.nickname ? ` (${p.nickname})` : "") }))}
+                      defaultValue={editAwayIds.map(String)}
+                      onValueChange={(vals) => setEditAwayIds(vals.map((v) => parseInt(v, 10)))}
+                      placeholder="Select players"
+                      variant="inverted"
+                      animation={0}
+                      maxCount={5}
+                    />
+                  </div>
+                )}
+                <Button size="sm" className="w-full" onClick={saveEditPlayers} disabled={savingPlayers}>
+                  {savingPlayers ? "Saving…" : "Update team players"}
+                </Button>
               </div>
-            </SortableContext>
-          </DndContext>
-          <DialogFooter className="flex-row gap-2 sm:justify-between">
-            <Button variant="outline" size="sm" onClick={addOpposingPlayer} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add player
-            </Button>
-            <Button size="sm" onClick={() => setShowOpposingEdit(false)}>Done</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            )
+          )}
 
-      {/* Edit players dialog — refresh team rosters before the game starts */}
-      <Dialog open={showEditPlayers} onOpenChange={setShowEditPlayers}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Edit players</DialogTitle>
-            <DialogDescription>Update each team&apos;s players from the current roster. Only available before the game starts.</DialogDescription>
-          </DialogHeader>
-          {loadingEdit ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Loading rosters…</p>
-          ) : (
-            <div className="space-y-3 py-1">
-              {homeHasTeam && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">{gameData.homeTeam} players</p>
-                  <MultiSelect
-                    options={editHomeRoster.map((p) => ({ value: String(p.id), label: p.name + (p.nickname ? ` (${p.nickname})` : "") }))}
-                    defaultValue={editHomeIds.map(String)}
-                    onValueChange={(vals) => setEditHomeIds(vals.map((v) => parseInt(v, 10)))}
-                    placeholder="Select players"
-                    variant="inverted"
-                    animation={0}
-                    maxCount={5}
-                  />
-                </div>
-              )}
-              {awayHasTeam && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">{gameData.awayTeam} players</p>
-                  <MultiSelect
-                    options={editAwayRoster.map((p) => ({ value: String(p.id), label: p.name + (p.nickname ? ` (${p.nickname})` : "") }))}
-                    defaultValue={editAwayIds.map(String)}
-                    onValueChange={(vals) => setEditAwayIds(vals.map((v) => parseInt(v, 10)))}
-                    placeholder="Select players"
-                    variant="inverted"
-                    animation={0}
-                    maxCount={5}
-                  />
-                </div>
-              )}
-              {!homeHasTeam && !awayHasTeam && (
-                <p className="text-sm text-muted-foreground">Neither team has a linked roster to edit.</p>
-              )}
+          {/* Opposing side — default to database players, allow local overrides */}
+          {freeTextSide && (
+            <div className="space-y-3 border-t pt-3">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {(freeTextSide === "home" ? gameData.homeTeam : gameData.awayTeam)} — add from database
+                </p>
+                <Select value="" onValueChange={(val) => addOpposingFromDb(Number(val))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a player…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {playersListData
+                      .filter((p) => !opposingPlayers.some((o) => o.playerId === p.id))
+                      .map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          <span className="font-medium">{p.name}</span>
+                          {p.nickname && <span className="text-muted-foreground ml-1.5 text-xs">({p.nickname})</span>}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+                <p className="text-amber-700 dark:text-amber-400">
+                  Local names (without a <span className="font-semibold">DB</span> tag) are tracked for this game only.{" "}
+                  <Link href="/players/add-player" target="_blank" className="font-semibold underline hover:no-underline">
+                    Create a real player
+                  </Link>{" "}
+                  to keep their stats permanently.
+                </p>
+              </div>
+
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleOpposingDragEnd}>
+                <SortableContext items={opposingPlayers.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2 py-1">
+                    {opposingPlayers.map((p) => (
+                      <SortableOpposingRow
+                        key={p.id}
+                        player={p}
+                        onNameChange={updateOpposingPlayerName}
+                        onDelete={removeOpposingPlayer}
+                      />
+                    ))}
+                    {opposingPlayers.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No players added yet.</p>
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
+              <Button variant="outline" size="sm" onClick={addOpposingPlayer} className="w-full gap-1.5">
+                <Plus className="h-4 w-4" /> Add local name
+              </Button>
             </div>
           )}
-          <DialogFooter className="flex-row gap-2 sm:justify-end">
-            <Button variant="outline" size="sm" onClick={() => setShowEditPlayers(false)} disabled={savingPlayers}>Cancel</Button>
-            <Button size="sm" onClick={saveEditPlayers} disabled={savingPlayers || loadingEdit}>
-              {savingPlayers ? "Saving…" : "Update players"}
-            </Button>
+
+          <DialogFooter>
+            <Button size="sm" onClick={() => setShowOpposingEdit(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1183,8 +1269,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           <Target className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">{gameData.gameType}</span>
           <Badge variant="outline" className="text-xs">Leg {currentLeg}</Badge>
-          {!orderLocked && (homeHasTeam || awayHasTeam) && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit players" onClick={openEditPlayers}>
+          {!orderLocked && (homeHasTeam || awayHasTeam || freeTextSide) && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Manage players" onClick={openPlayersDialog}>
               <Users className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           )}
@@ -1338,7 +1424,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
               return { ...r, idx, homeRem, awayRem };
             });
             return (
-              <div ref={historyRef} className="max-h-48 overflow-y-auto">
+              <div ref={historyRef} className="max-h-28 overflow-y-auto">
                 {/* Column headers */}
                 <div className="grid grid-cols-2 divide-x border-b bg-muted/30 sticky top-0 z-10">
                   <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground text-center uppercase tracking-wide truncate">{gameData.homeTeam}</p>
@@ -1525,7 +1611,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             const team = currentThrowSide === "home" ? gameData.homeTeam : gameData.awayTeam;
             const entered = currentRound[field];
             const isOver180 = typeof entered === "number" && entered > 180;
-            const preview = typeof entered === "number" && entered > 0 && !isOver180
+            const isImpossible = typeof entered === "number" && !isOver180 && !isPossibleThreeDartScore(entered);
+            const preview = typeof entered === "number" && entered > 0 && !isOver180 && !isImpossible
               ? remaining - entered
               : null;
             const isBust = preview !== null && preview < 0;
@@ -1553,13 +1640,14 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                 )}
                 <Input
                   key={currentThrowSide}
+                  ref={scoreInputRef}
                   type="number"
                   inputMode="numeric"
                   min={0}
                   max={180}
                   placeholder="0"
                   autoFocus
-                  className={`text-center text-2xl font-bold h-14 ${isOver180 ? "border-destructive" : isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
+                  className={`text-center text-2xl font-bold h-14 ${isOver180 || isImpossible ? "border-destructive" : isBust ? "border-destructive" : isCheckout ? "border-green-500" : ""}`}
                   value={currentRound[field] ?? ""}
                   onChange={(e) => {
                     const v = e.target.value === "" ? undefined : Number(e.target.value);
@@ -1570,6 +1658,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                   onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
                 />
                 {isOver180 && <p className="text-xs text-destructive text-center font-semibold">Max score is 180</p>}
+                {!isOver180 && isImpossible && <p className="text-xs text-destructive text-center font-semibold">{entered} isn&apos;t a possible 3-dart score</p>}
                 {!isOver180 && isBust && <p className="text-xs text-destructive text-center font-semibold">Bust!</p>}
                 {!isOver180 && isCheckout && (() => {
                   const minDarts = minDartsForCheckout(remaining) ?? 1;
@@ -1616,6 +1705,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
               disabled={(() => {
                 const f = currentThrowSide === "home" ? currentRound.home : currentRound.away;
                 const rem = currentThrowSide === "home" ? homeScore : awayScore;
+                if (typeof f === "number" && !isPossibleThreeDartScore(f)) return true; // invalid score
                 if (typeof f !== "number" || rem - f !== 0) return false; // not a checkout
                 const min = minDartsForCheckout(rem) ?? 1;
                 return selectedDarts === null || selectedDarts < min;
@@ -1644,6 +1734,18 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
+            {currentSideFinesEnabled && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={submitOutOfBoardFine}
+                disabled={!currentThrower?.id}
+                title="Quick fine — dart out of the board"
+                className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+              >
+                <CircleOff className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="outline"
               size="icon"

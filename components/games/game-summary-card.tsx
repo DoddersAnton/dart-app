@@ -82,6 +82,11 @@ export default function GamesSummaryCard({
           </div>
           <div className="flex items-center gap-2">
             {resultBadge}
+            <Link href={`/games/${gameSummary.id}`}>
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
+                <EyeIcon className="h-3.5 w-3.5" /> View
+              </Button>
+            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">

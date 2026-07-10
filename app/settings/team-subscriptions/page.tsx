@@ -1,17 +1,13 @@
-import { cookies } from "next/headers";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/server";
 import { playerTeams, subscriptions as subsTable, team as teamTable } from "@/server/schema";
-import { isTeamAdmin } from "@/lib/permissions";
+import { isTeamAdmin, getActiveTeamId } from "@/lib/permissions";
 import { TeamSubscriptionsClient, SubGroup } from "@/components/subscriptions/team-subscriptions-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamSubscriptionsPage() {
-  const cookieStore = await cookies();
-  const activeTeamId = cookieStore.get("active-team-id")?.value
-    ? parseInt(cookieStore.get("active-team-id")!.value)
-    : null;
+  const activeTeamId = await getActiveTeamId();
 
   if (!activeTeamId) {
     return (

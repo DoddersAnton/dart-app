@@ -6,7 +6,8 @@ import { NavWrapper } from "@/components/nav/nav-wrapper";
 import Toaster from "@/components/ui/toaster";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TeamProvider } from "@/contexts/team-context";
-import { headers, cookies } from "next/headers";
+import { headers } from "next/headers";
+import { getActiveTeamId } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "SGOR+",
@@ -18,12 +19,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [headersList, cookieStore] = await Promise.all([headers(), cookies()]);
+  const [headersList, activeTeamId] = await Promise.all([headers(), getActiveTeamId()]);
   const pathname = headersList.get("x-pathname") ?? "";
   const isDisplayRoute = /^\/games\/\d+\/display/.test(pathname);
-
-  const activeTeamIdRaw = cookieStore.get("active-team-id")?.value;
-  const activeTeamId = activeTeamIdRaw ? parseInt(activeTeamIdRaw) : null;
 
   return (
     <ThemeProvider
