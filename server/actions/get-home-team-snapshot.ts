@@ -31,7 +31,7 @@ export type HomeTeamSnapshot = {
 };
 
 // Statuses that mean a fixture is over and shouldn't appear in "upcoming".
-const FINISHED_STATUSES = ["completed", "cancelled"];
+const FINISHED_STATUSES = ["completed", "cancelled", "in progress"];
 
 export async function getHomeTeamSnapshot(activeTeamId?: number | null): Promise<HomeTeamSnapshot> {
   const empty: HomeTeamSnapshot = { upcomingFixtures: [], league: null };
