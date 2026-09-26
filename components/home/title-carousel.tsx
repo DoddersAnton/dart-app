@@ -21,10 +21,10 @@ type Slide = {
 };
 
 const slides: Slide[] = [
-  { label: "Fines", tagline: "Every missed double, logged.", href: "/fines", icon: <Coins className="h-7 w-7" />, accent: "from-amber-500/25 to-orange-500/10" },
+  { label: "Fines", tagline: "Team fines logged.", href: "/fines", icon: <Coins className="h-7 w-7" />, accent: "from-amber-500/25 to-orange-500/10" },
   { label: "Players", tagline: "Profiles, form and history.", href: "/players", icon: <Users className="h-7 w-7" />, accent: "from-sky-500/25 to-blue-500/10" },
   { label: "Matches", tagline: "Fixtures, results, live scoring.", href: "/fixtures", icon: <Trophy className="h-7 w-7" />, accent: "from-emerald-500/25 to-green-500/10" },
-  { label: "League", tagline: "Standings that update weekly.", href: "/fixtures/league-table", icon: <Sparkles className="h-7 w-7" />, accent: "from-violet-500/25 to-fuchsia-500/10" },
+  { label: "League", tagline: "League results that update weekly.", href: "/fixtures/league-table", icon: <Sparkles className="h-7 w-7" />, accent: "from-violet-500/25 to-fuchsia-500/10" },
   { label: "Schedule", tagline: "Plan the whole season ahead.", href: "/fixtures/schedule", icon: <CalendarDays className="h-7 w-7" />, accent: "from-rose-500/25 to-pink-500/10" },
   { label: "Reports", tagline: "Insights the captain actually wants.", href: "/reports", icon: <BarChart3 className="h-7 w-7" />, accent: "from-cyan-500/25 to-teal-500/10" },
 ];
@@ -33,9 +33,15 @@ const COUNT = slides.length;
 const STEP = 360 / COUNT;
 const RADIUS = 320; // px — distance of each card from the ring centre
 
+type Dims = { radius: number; cardW: number; cardH: number; boxW: number; boxH: number };
+
+const DIMS_DESKTOP: Dims = { radius: RADIUS, cardW: 280, cardH: 200, boxW: 300, boxH: 210 };
+const DIMS_TABLET: Dims = { radius: 240, cardW: 250, cardH: 180, boxW: 280, boxH: 200 };
+const DIMS_MOBILE: Dims = { radius: 150, cardW: 200, cardH: 150, boxW: 220, boxH: 160 };
+
 export function TitleCarousel() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [radius, setRadius] = useState(RADIUS);
+  const [dims, setDims] = useState<Dims>(DIMS_DESKTOP);
 
   // Scroll progress across the carousel section drives the ring rotation.
   const { scrollYProgress } = useScroll({
@@ -58,13 +64,13 @@ export function TitleCarousel() {
   });
 
   useEffect(() => {
-    const setResponsiveRadius = () => {
+    const setResponsiveDims = () => {
       const w = window.innerWidth;
-      setRadius(w < 480 ? 190 : w < 768 ? 250 : RADIUS);
+      setDims(w < 480 ? DIMS_MOBILE : w < 768 ? DIMS_TABLET : DIMS_DESKTOP);
     };
-    setResponsiveRadius();
-    window.addEventListener("resize", setResponsiveRadius);
-    return () => window.removeEventListener("resize", setResponsiveRadius);
+    setResponsiveDims();
+    window.addEventListener("resize", setResponsiveDims);
+    return () => window.removeEventListener("resize", setResponsiveDims);
   }, []);
 
   const nudge = (dir: number) => {
@@ -89,19 +95,33 @@ export function TitleCarousel() {
           Everything your darts team needs, in one place
         </h2>
 
-        {/* 3D ring */}
+        {/* 3D ring — the wrapper clips side cards so they can't overflow the
+            viewport, and touch-action: pan-y keeps vertical finger-scroll working. */}
         <div
-          className="relative"
-          style={{ perspective: 1200, width: 300, height: 210 }}
+          className="relative flex w-full items-center justify-center overflow-hidden"
+          style={{ height: dims.boxH + 80, touchAction: "pan-y" }}
         >
-          <motion.div
-            className="absolute inset-0"
-            style={{ transformStyle: "preserve-3d", rotateY }}
+          <div
+            className="relative"
+            style={{ perspective: 1200, width: dims.boxW, height: dims.boxH }}
           >
-            {slides.map((slide, i) => (
-              <Card key={slide.label} slide={slide} index={i} radius={radius} rotateY={rotateY} />
-            ))}
-          </motion.div>
+            <motion.div
+              className="absolute inset-0"
+              style={{ transformStyle: "preserve-3d", rotateY }}
+            >
+              {slides.map((slide, i) => (
+                <Card
+                  key={slide.label}
+                  slide={slide}
+                  index={i}
+                  radius={dims.radius}
+                  cardW={dims.cardW}
+                  cardH={dims.cardH}
+                  rotateY={rotateY}
+                />
+              ))}
+            </motion.div>
+          </div>
         </div>
 
         {/* Controls */}
@@ -131,11 +151,15 @@ function Card({
   slide,
   index,
   radius,
+  cardW,
+  cardH,
   rotateY,
 }: {
   slide: Slide;
   index: number;
   radius: number;
+  cardW: number;
+  cardH: number;
   rotateY: ReturnType<typeof useMotionValue<number>>;
 }) {
   const baseAngle = index * STEP;
@@ -162,7 +186,8 @@ function Card({
       <motion.div style={{ opacity, scale }}>
         <Link href={slide.href} className="block">
           <div
-            className={`group relative flex h-[200px] w-[280px] flex-col justify-between rounded-2xl border bg-gradient-to-br ${slide.accent} bg-card/80 p-6 shadow-xl backdrop-blur-sm transition-colors hover:border-primary`}
+            style={{ width: cardW, height: cardH }}
+            className={`group relative flex flex-col justify-between rounded-2xl border bg-gradient-to-br ${slide.accent} bg-card/80 p-5 shadow-xl backdrop-blur-sm transition-colors hover:border-primary sm:p-6`}
           >
             <div className="flex items-center gap-3 text-foreground">
               <span className="flex h-12 w-12 items-center justify-center rounded-xl border bg-background/70">
@@ -170,8 +195,8 @@ function Card({
               </span>
             </div>
             <div>
-              <p className="text-3xl font-extrabold tracking-tight">{slide.label}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{slide.tagline}</p>
+              <p className="text-2xl font-extrabold tracking-tight sm:text-3xl">{slide.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{slide.tagline}</p>
             </div>
             <span className="absolute right-5 top-5 text-xs font-medium text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
               Open →
