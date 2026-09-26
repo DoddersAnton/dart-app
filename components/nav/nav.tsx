@@ -62,6 +62,7 @@ const navLinks = [
       { titleEng: "Teams", descriptionEng: "Manage teams", href: "/settings/teams" },
       { titleEng: "Seasons", descriptionEng: "Manage seasons", href: "/settings/seasons" },
       { titleEng: "Award Types", descriptionEng: "Manage player award types", href: "/settings/award-types" },
+      { titleEng: "Team Subscriptions", descriptionEng: "Manage team subscription plans", href: "/settings/team-subscriptions" },
       { titleEng: "Team Settings", descriptionEng: "Logo, fines toggle and team config", href: "/settings/team-settings" },
       { titleEng: "App Settings", descriptionEng: "Game rules and app configuration", href: "/settings/app-settings" },
     ],
