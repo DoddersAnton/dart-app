@@ -1,10 +1,16 @@
 "use server";
 
-import { and, asc, desc, eq, gte, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import { db } from "..";
-import { fixtures as fixturesTable, leagueTable, seasons as seasonsTable, team as teamTable } from "../schema";
-import { getLeagueTableData } from "./get-league-table";
-import { NO_DIVISION, type LeagueRow } from "@/lib/league-table";
+import {
+  division as divisionTable,
+  fixtures as fixturesTable,
+  leagueStatus,
+  leagueTable,
+  seasons as seasonsTable,
+  team as teamTable,
+} from "../schema";
+import { type LeagueRow } from "@/lib/league-table";
 
 export type UpcomingFixture = {
   id: number;
@@ -86,8 +92,7 @@ export async function getHomeTeamSnapshot(activeTeamId?: number | null): Promise
 }
 
 async function getActiveTeamLeagueSnapshot(activeTeamId: number): Promise<HomeLeagueSnapshot | null> {
-  // Every league-table row the active team appears in, newest season first.
-  const teamRows = await db
+  const latestTeamRow = await db
     .select({
       seasonsId: leagueTable.seasonsId,
       divisionId: leagueTable.divisionId,
@@ -96,25 +101,65 @@ async function getActiveTeamLeagueSnapshot(activeTeamId: number): Promise<HomeLe
     .from(leagueTable)
     .innerJoin(seasonsTable, eq(leagueTable.seasonsId, seasonsTable.id))
     .where(eq(leagueTable.teamId, activeTeamId))
-    .orderBy(desc(seasonsTable.startDate), desc(leagueTable.weekNo));
+    .orderBy(desc(seasonsTable.startDate), desc(leagueTable.weekNo))
+    .limit(1);
 
-  if (teamRows.length === 0) return null;
+  const latestSnapshot = latestTeamRow[0];
+  if (!latestSnapshot) return null;
 
-  const { seasonsId, divisionId } = teamRows[0];
-  const divisionParam = divisionId == null ? NO_DIVISION : divisionId;
+  const { seasonsId, divisionId, weekNo } = latestSnapshot;
+  const divisionCondition = divisionId == null ? isNull(leagueTable.divisionId) : eq(leagueTable.divisionId, divisionId);
+  const statusDivisionCondition = divisionId == null ? isNull(leagueStatus.divisionId) : eq(leagueStatus.divisionId, divisionId);
 
-  const data = await getLeagueTableData(seasonsId, divisionParam);
-  if (data.rows.length === 0) return null;
+  const [seasonRecord, divisionRecord, status, latestRows] = await Promise.all([
+    db.query.seasons.findFirst({
+      where: eq(seasonsTable.id, seasonsId),
+    }),
+    divisionId == null
+      ? Promise.resolve(null)
+      : db.query.division.findFirst({
+          where: eq(divisionTable.id, divisionId),
+        }),
+    db.query.leagueStatus.findFirst({
+      where: and(eq(leagueStatus.seasonsId, seasonsId), statusDivisionCondition),
+    }),
+    db.query.leagueTable.findMany({
+      where: and(eq(leagueTable.seasonsId, seasonsId), divisionCondition, eq(leagueTable.weekNo, weekNo)),
+      orderBy: [asc(leagueTable.rank)],
+    }),
+  ]);
 
-  const seasonName = data.seasons.find((s) => s.id === data.selectedSeasonId)?.name ?? "Current season";
-  const divisionName = data.divisions.find((d) => d.id === data.selectedDivisionId)?.name ?? null;
+  if (latestRows.length === 0) return null;
+
+  const teamIds = [...new Set(latestRows.map((row) => row.teamId))];
+  const teamRecords = teamIds.length
+    ? await db.query.team.findMany({ where: inArray(teamTable.id, teamIds) })
+    : [];
+  const teamNameById = new Map(teamRecords.map((team) => [team.id, team.name]));
+
+  const rows: LeagueRow[] = latestRows.map((row) => ({
+    rank: row.rank,
+    previousRank: row.previousRank,
+    teamId: row.teamId,
+    teamName: teamNameById.get(row.teamId) ?? `Team ${row.teamId}`,
+    played: row.played,
+    wins: row.wins,
+    draws: row.draws,
+    losses: row.losses,
+    legsFor: row.legsFor,
+    legsAgainst: row.legsAgainst,
+    points: row.points,
+  }));
+
+  const seasonName = seasonRecord?.name ?? "Current season";
+  const divisionName = divisionRecord?.name ?? null;
 
   return {
     seasonName,
     divisionName: divisionName === "No division" ? null : divisionName,
-    weekNo: data.weekNo,
-    isComplete: data.isComplete,
-    rows: data.rows,
+    weekNo,
+    isComplete: status?.completedAt != null,
+    rows,
     activeTeamId,
   };
 }
