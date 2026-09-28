@@ -2,6 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { Home } from "@/components/home/home";
 import { getPlayerByUserId } from "@/server/actions/get-player-by-user-id";
 import { getTeamHomepageData } from "@/server/actions/get-team-homepage-data";
+import { getHomeTeamSnapshot } from "@/server/actions/get-home-team-snapshot";
 import { getActiveTeamId } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,9 @@ export default async function Page() {
     }
   }
 
-  const teamData = activeTeamId ? await getTeamHomepageData(activeTeamId) : null;
+  const [teamData, snapshot] = activeTeamId
+    ? await Promise.all([getTeamHomepageData(activeTeamId), getHomeTeamSnapshot(activeTeamId)])
+    : [null, null];
 
   return (
     <div>
@@ -26,6 +29,7 @@ export default async function Page() {
         userImageUrl={user?.imageUrl ?? null}
         linkedPlayer={linkedPlayer}
         teamData={teamData}
+        snapshot={snapshot}
       />
     </div>
   );
