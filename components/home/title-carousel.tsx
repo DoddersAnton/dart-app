@@ -132,7 +132,7 @@ export function TitleCarousel() {
           >
             ‹
           </button>
-          <span className="text-xs text-muted-foreground">Scroll to explore</span>
+          <span className="text-xs text-muted-foreground">explore the site</span>
           <button
             onClick={() => nudge(-1)}
             aria-label="Next"
