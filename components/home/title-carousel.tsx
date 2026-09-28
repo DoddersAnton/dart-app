@@ -21,12 +21,12 @@ type Slide = {
 };
 
 const slides: Slide[] = [
-  { label: "Fines", tagline: "Team fines logged.", href: "/fines", icon: <Coins className="h-7 w-7" />, accent: "from-amber-500/25 to-orange-500/10" },
-  { label: "Players", tagline: "Profiles, form and history.", href: "/players", icon: <Users className="h-7 w-7" />, accent: "from-sky-500/25 to-blue-500/10" },
-  { label: "Matches", tagline: "Fixtures, results, live scoring.", href: "/fixtures", icon: <Trophy className="h-7 w-7" />, accent: "from-emerald-500/25 to-green-500/10" },
-  { label: "League", tagline: "League results that update weekly.", href: "/fixtures/league-table", icon: <Sparkles className="h-7 w-7" />, accent: "from-violet-500/25 to-fuchsia-500/10" },
-  { label: "Schedule", tagline: "Plan the whole season ahead.", href: "/fixtures/schedule", icon: <CalendarDays className="h-7 w-7" />, accent: "from-rose-500/25 to-pink-500/10" },
-  { label: "Reports", tagline: "Insights the captain actually wants.", href: "/reports", icon: <BarChart3 className="h-7 w-7" />, accent: "from-cyan-500/25 to-teal-500/10" },
+  { label: "Fines", tagline: "Team fines logged.", href: "/fines", icon: <Coins className="h-5 w-5 sm:h-7 sm:w-7" />, accent: "from-amber-500/25 to-orange-500/10" },
+  { label: "Players", tagline: "Profiles, form and history.", href: "/players", icon: <Users className="h-5 w-5 sm:h-7 sm:w-7" />, accent: "from-sky-500/25 to-blue-500/10" },
+  { label: "Matches", tagline: "Fixtures, results, live scoring.", href: "/fixtures", icon: <Trophy className="h-5 w-5 sm:h-7 sm:w-7" />, accent: "from-emerald-500/25 to-green-500/10" },
+  { label: "League", tagline: "League results that update weekly.", href: "/fixtures/league-table", icon: <Sparkles className="h-5 w-5 sm:h-7 sm:w-7" />, accent: "from-violet-500/25 to-fuchsia-500/10" },
+  { label: "Schedule", tagline: "Plan the whole season ahead.", href: "/fixtures/schedule", icon: <CalendarDays className="h-5 w-5 sm:h-7 sm:w-7" />, accent: "from-rose-500/25 to-pink-500/10" },
+  { label: "Reports", tagline: "Insights the captain actually wants.", href: "/reports", icon: <BarChart3 className="h-5 w-5 sm:h-7 sm:w-7" />, accent: "from-cyan-500/25 to-teal-500/10" },
 ];
 
 const COUNT = slides.length;
@@ -34,9 +34,9 @@ const STEP = 360 / COUNT;
 
 type Dims = { radius: number; cardW: number; cardH: number; boxW: number; boxH: number };
 
-const DIMS_DESKTOP: Dims = { radius: 290, cardW: 240, cardH: 170, boxW: 260, boxH: 180 };
-const DIMS_TABLET: Dims = { radius: 215, cardW: 215, cardH: 155, boxW: 240, boxH: 172 };
-const DIMS_MOBILE: Dims = { radius: 135, cardW: 175, cardH: 130, boxW: 195, boxH: 140 };
+const DIMS_DESKTOP: Dims = { radius: 300, cardW: 240, cardH: 170, boxW: 260, boxH: 180 };
+const DIMS_TABLET: Dims = { radius: 250, cardW: 210, cardH: 150, boxW: 235, boxH: 168 };
+const DIMS_MOBILE: Dims = { radius: 195, cardW: 165, cardH: 120, boxW: 185, boxH: 130 };
 
 export function TitleCarousel() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -186,18 +186,18 @@ function Card({
         <Link href={slide.href} className="block">
           <div
             style={{ width: cardW, height: cardH }}
-            className={`group relative flex flex-col justify-between rounded-2xl border bg-gradient-to-br ${slide.accent} bg-card/80 p-5 shadow-xl backdrop-blur-sm transition-colors hover:border-primary sm:p-6`}
+            className={`group relative flex flex-col justify-between rounded-2xl border bg-gradient-to-br ${slide.accent} bg-card/80 p-3.5 shadow-xl backdrop-blur-sm transition-colors hover:border-primary sm:p-6`}
           >
-            <div className="flex items-center gap-3 text-foreground">
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl border bg-background/70">
+            <div className="flex items-center gap-2 text-foreground sm:gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg border bg-background/70 sm:h-12 sm:w-12 sm:rounded-xl">
                 {slide.icon}
               </span>
             </div>
             <div>
-              <p className="text-2xl font-extrabold tracking-tight sm:text-3xl">{slide.label}</p>
-              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{slide.tagline}</p>
+              <p className="text-lg font-extrabold leading-tight tracking-tight sm:text-3xl">{slide.label}</p>
+              <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground sm:mt-1 sm:text-sm">{slide.tagline}</p>
             </div>
-            <span className="absolute right-5 top-5 text-xs font-medium text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="absolute right-3 top-3 text-[10px] font-medium text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 sm:right-5 sm:top-5 sm:text-xs">
               Open →
             </span>
           </div>
