@@ -31,13 +31,12 @@ const slides: Slide[] = [
 
 const COUNT = slides.length;
 const STEP = 360 / COUNT;
-const RADIUS = 320; // px — distance of each card from the ring centre
 
 type Dims = { radius: number; cardW: number; cardH: number; boxW: number; boxH: number };
 
-const DIMS_DESKTOP: Dims = { radius: RADIUS, cardW: 280, cardH: 200, boxW: 300, boxH: 210 };
-const DIMS_TABLET: Dims = { radius: 240, cardW: 250, cardH: 180, boxW: 280, boxH: 200 };
-const DIMS_MOBILE: Dims = { radius: 150, cardW: 200, cardH: 150, boxW: 220, boxH: 160 };
+const DIMS_DESKTOP: Dims = { radius: 290, cardW: 240, cardH: 170, boxW: 260, boxH: 180 };
+const DIMS_TABLET: Dims = { radius: 215, cardW: 215, cardH: 155, boxW: 240, boxH: 172 };
+const DIMS_MOBILE: Dims = { radius: 135, cardW: 175, cardH: 130, boxW: 195, boxH: 140 };
 
 export function TitleCarousel() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -82,7 +81,7 @@ export function TitleCarousel() {
       {/* Sticky stage is only as tall as its content (not the full viewport) so
           there's no empty space beneath it before the next section. No overflow
           clipping here, so the ambient glow can bleed softly past the edges. */}
-      <div className="sticky top-[75px] flex flex-col items-center pt-6 pb-8 sm:pt-10">
+      <div className="sticky top-[75px] flex flex-col items-center overflow-x-clip pt-6 pb-8 sm:pt-10">
         {/* Ambient glow — extends beyond the stage so it fades out at the edges */}
         <div className="pointer-events-none absolute -inset-x-40 -inset-y-32 -z-10">
           <div className="absolute left-1/2 top-1/2 h-[640px] w-[640px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
@@ -99,7 +98,7 @@ export function TitleCarousel() {
             viewport, and touch-action: pan-y keeps vertical finger-scroll working. */}
         <div
           className="relative flex w-full items-center justify-center overflow-hidden"
-          style={{ height: dims.boxH + 80, touchAction: "pan-y" }}
+          style={{ height: dims.boxH + 150, touchAction: "pan-y" }}
         >
           <div
             className="relative"
