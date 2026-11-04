@@ -26,7 +26,7 @@ export const createGameRounds = actionClient
         if (!existingGame) return { error: "Game not found" };
 
         for (const round of gameRounds) {
-            const { roundNo, roundLeg, homeTeamScore, awayTeamScore, homePlayerId, awayPlayerId, homeDartsUsed, awayDartsUsed } = round;
+            const { roundNo, roundLeg, homeTeamScore, awayTeamScore, homePlayerId, awayPlayerId, homeDartsUsed, awayDartsUsed, homeDartsAtDouble, awayDartsAtDouble } = round;
 
             if(!homePlayerId && !awayPlayerId) continue;
 
@@ -44,6 +44,8 @@ export const createGameRounds = actionClient
                 awayScore: awayTeamScore ?? 0,
                 homeDartsUsed: homeDartsUsed,
                 awayDartsUsed: awayDartsUsed,
+                homeDartsAtDouble: homeDartsAtDouble ?? 0,
+                awayDartsAtDouble: awayDartsAtDouble ?? 0,
               })
               .returning();
         }

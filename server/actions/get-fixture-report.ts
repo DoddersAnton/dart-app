@@ -20,7 +20,10 @@ export async function getFixtureReport(fixtureId: number) {
     const fixture = await db.query.fixtures.findFirst({ where: (f) => eq(f.id, fixtureId) });
     if (!fixture) return { error: "Fixture not found" };
 
-    const games = await db.query.games.findMany({ where: (g) => eq(g.fixtureId, fixtureId) });
+    const games = await db.query.games.findMany({
+      where: (g) => eq(g.fixtureId, fixtureId),
+      orderBy: (g, { asc, sql }) => [sql`${g.sequence} asc nulls last`, asc(g.id)],
+    });
     if (games.length === 0) return { success: [] as FixtureReportGame[] };
 
     const gameIds = games.map((g) => g.id);
@@ -75,6 +78,8 @@ export async function getFixtureReport(fixtureId: number) {
           dartsUsed: r.dartsUsed,
           homeDartsUsed: r.homeDartsUsed,
           awayDartsUsed: r.awayDartsUsed,
+          homeDartsAtDouble: r.homeDartsAtDouble,
+          awayDartsAtDouble: r.awayDartsAtDouble,
           fineAdded: r.fineAdded,
         })),
     }));

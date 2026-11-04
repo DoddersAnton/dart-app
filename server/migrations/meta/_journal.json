@@ -232,6 +232,13 @@
       "when": 1783664391754,
       "tag": "0032_right_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793827966578,
+      "tag": "0033_premium_skullbuster",
+      "breakpoints": true
     }
   ]
 }

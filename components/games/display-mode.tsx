@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getPusherClient } from "@/lib/pusher-client";
 import { GameStateBroadcast } from "@/server/actions/broadcast-game-state";
+import { getNextGame, type NextGame } from "@/server/actions/get-next-game";
+import { describeNextGame } from "./next-game-button";
 import { GameWithPlayers } from "@/types/game-with-players";
 import { Badge } from "@/components/ui/badge";
 import { Target, UserIcon, Users2Icon, UsersIcon, RotateCw } from "lucide-react";
@@ -15,6 +17,9 @@ type SiblingGame = {
   awayTeamScore: number;
   players?: { id: number; name: string; nickname?: string | null }[];
 };
+
+// Seconds the final result stays on screen before the next game's display loads.
+const NEXT_GAME_SECONDS = 10;
 
 const gameTypeIcon: Record<string, React.ReactNode> = {
   "Team Game": <Users2Icon className="h-3.5 w-3.5" />,
@@ -132,6 +137,44 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
   const hadPending = useRef(!!state.pendingRound);
 
   const lastUpdateRef = useRef<number>(Date.now());
+
+  // Next game in the fixture's sequence — previewed once this game is decided, and
+  // loaded automatically after a countdown once the tracker has saved the result.
+  const [nextGame, setNextGame] = useState<NextGame | null | undefined>(undefined);
+  const [nextGameCountdown, setNextGameCountdown] = useState<number | null>(null);
+  useEffect(() => {
+    if (!state.isGameDecided) {
+      setNextGame(undefined);
+      return;
+    }
+    let active = true;
+    getNextGame(gameData.fixtureId, gameData.id).then((g) => active && setNextGame(g));
+    return () => { active = false; };
+  }, [state.isGameDecided, gameData.fixtureId, gameData.id]);
+  useEffect(() => {
+    if (state.gameSaved && nextGame) setNextGameCountdown(NEXT_GAME_SECONDS);
+    else setNextGameCountdown(null);
+  }, [state.gameSaved, nextGame]);
+  useEffect(() => {
+    if (nextGameCountdown === null || !nextGame) return;
+    if (nextGameCountdown <= 0) {
+      window.location.href = `/games/${nextGame.id}/display`;
+      return;
+    }
+    const t = setTimeout(() => setNextGameCountdown((c) => (c === null ? null : c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [nextGameCountdown, nextGame]);
+
+  // Local countdown to the next leg, started whenever the tracker broadcasts one.
+  const [legCountdown, setLegCountdown] = useState<number | null>(null);
+  useEffect(() => {
+    setLegCountdown(state.nextLegCountdown ?? null);
+  }, [state]);
+  useEffect(() => {
+    if (legCountdown === null || legCountdown <= 0) return;
+    const t = setTimeout(() => setLegCountdown((c) => (c === null ? null : c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [legCountdown]);
 
   useEffect(() => {
     const pusher = getPusherClient();
@@ -259,7 +302,33 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
               {state.isGameDecided ? "wins the game!" : `wins leg ${state.currentLeg}!`}
             </p>
             {!state.isGameDecided && (
-              <p className="text-xl text-muted-foreground animate-pulse">Awaiting next leg...</p>
+              legCountdown !== null ? (
+                <div className="space-y-1">
+                  <p className="text-2xl font-semibold text-muted-foreground">Starting new leg...</p>
+                  <p
+                    key={legCountdown}
+                    className="text-8xl font-black tabular-nums text-green-600 animate-in zoom-in-50 fade-in duration-300"
+                  >
+                    {legCountdown > 0 ? legCountdown : "Go!"}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xl text-muted-foreground animate-pulse">Awaiting next leg...</p>
+              )
+            )}
+            {state.isGameDecided && nextGame && (
+              <div className="pt-3 space-y-1">
+                <p className="text-3xl font-bold">Next up: {nextGame.gameType}</p>
+                <p className="text-2xl text-muted-foreground">{describeNextGame(nextGame)}</p>
+                {nextGameCountdown !== null ? (
+                  <p className="text-xl text-muted-foreground">Loading in {nextGameCountdown}s…</p>
+                ) : (
+                  <p className="text-xl text-muted-foreground animate-pulse">Waiting for the result to be saved…</p>
+                )}
+              </div>
+            )}
+            {state.isGameDecided && state.gameSaved && nextGame === null && (
+              <p className="pt-3 text-3xl font-bold text-muted-foreground">That&apos;s the match — all games played.</p>
             )}
           </div>
         )}

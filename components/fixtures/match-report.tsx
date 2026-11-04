@@ -27,10 +27,13 @@ type SideStats = {
   first9Darts: number;
   first15Points: number;
   first15Darts: number;
+  // Checkouts that had "darts at double" recorded, and the darts thrown at a double for them.
+  checkoutsTracked: number;
+  dartsAtDouble: number;
 };
 
 function emptyStats(): SideStats {
-  return { games: 0, legs: 0, legsTeam: 0, legsDoubles: 0, legsSingles: 0, points: 0, darts: 0, first9Points: 0, first9Darts: 0, first15Points: 0, first15Darts: 0 };
+  return { games: 0, legs: 0, legsTeam: 0, legsDoubles: 0, legsSingles: 0, points: 0, darts: 0, first9Points: 0, first9Darts: 0, first15Points: 0, first15Darts: 0, checkoutsTracked: 0, dartsAtDouble: 0 };
 }
 
 function accumulate(games: FixtureReportGame[], side: "home" | "away"): SideStats {
@@ -46,6 +49,14 @@ function accumulate(games: FixtureReportGame[], side: "home" | "away"): SideStat
     const { points, darts } = sideTotals(g.rounds, side);
     s.points += points;
     s.darts += darts;
+
+    for (const r of g.rounds) {
+      const atDouble = side === "home" ? r.homeDartsAtDouble : r.awayDartsAtDouble;
+      if (atDouble > 0) {
+        s.checkoutsTracked += 1;
+        s.dartsAtDouble += atDouble;
+      }
+    }
 
     // First 9 / first 15 darts = the first three / five visits of each leg.
     const legNums = [...new Set(g.rounds.map((r) => r.leg))];
@@ -67,6 +78,8 @@ function accumulate(games: FixtureReportGame[], side: "home" | "away"): SideStat
 const oneDA = (s: SideStats) => (s.darts > 0 ? s.points / s.darts : null);
 const first9DA = (s: SideStats) => (s.first9Darts > 0 ? (s.first9Points / s.first9Darts) * 3 : null);
 const first15DA = (s: SideStats) => (s.first15Darts > 0 ? (s.first15Points / s.first15Darts) * 3 : null);
+// Checkout % = checkouts hit ÷ darts thrown at a double (only where it was recorded).
+const checkoutPct = (s: SideStats) => (s.dartsAtDouble > 0 ? (s.checkoutsTracked / s.dartsAtDouble) * 100 : null);
 
 function SummaryRow({ team, stats, totals = false }: { team: string; stats: SideStats; totals?: boolean }) {
   const one = oneDA(stats);
@@ -85,6 +98,10 @@ function SummaryRow({ team, stats, totals = false }: { team: string; stats: Side
       <td className="py-1.5 px-3 text-center tabular-nums text-blue-600 dark:text-blue-400">{fmt(three)}</td>
       <td className="py-1.5 px-3 text-center tabular-nums text-blue-600 dark:text-blue-400">{fmt(first9DA(stats))}</td>
       <td className="py-1.5 px-3 text-center tabular-nums text-blue-600 dark:text-blue-400">{fmt(first15DA(stats))}</td>
+      <td className="py-1.5 px-3 text-center tabular-nums">{stats.dartsAtDouble || "–"}</td>
+      <td className="py-1.5 px-3 text-center tabular-nums text-green-600 dark:text-green-400">
+        {checkoutPct(stats) === null ? "–" : `${checkoutPct(stats)!.toFixed(0)}%`}
+      </td>
     </tr>
   );
 }
@@ -103,8 +120,12 @@ function LegRows({ leg, rounds, gameType }: { leg: number; rounds: GameRound[]; 
   const homeWon = homeRem === 0;
   const awayWon = awayRem === 0;
   // Darts used on the checkout — the dart count of the round that reached zero.
-  const homeCheckoutDarts = homeWon ? rows.find((r) => r.homeRem === 0)?.homeDartsUsed ?? null : null;
-  const awayCheckoutDarts = awayWon ? rows.find((r) => r.awayRem === 0)?.awayDartsUsed ?? null : null;
+  const homeCheckoutRound = homeWon ? rows.find((r) => r.homeRem === 0) : undefined;
+  const awayCheckoutRound = awayWon ? rows.find((r) => r.awayRem === 0) : undefined;
+  const homeCheckoutDarts = homeCheckoutRound?.homeDartsUsed ?? null;
+  const awayCheckoutDarts = awayCheckoutRound?.awayDartsUsed ?? null;
+  const homeAtDouble = homeCheckoutRound?.homeDartsAtDouble || null;
+  const awayAtDouble = awayCheckoutRound?.awayDartsAtDouble || null;
 
   return (
     <>
@@ -134,12 +155,12 @@ function LegRows({ leg, rounds, gameType }: { leg: number; rounds: GameRound[]; 
         <td colSpan={2} className="py-1 px-3 text-[11px] font-semibold text-muted-foreground">3-dart avg</td>
         <td className="py-1 px-3 text-center text-[11px] font-semibold tabular-nums text-blue-600 dark:text-blue-400">
           {fmt(homeAvg)}
-          {homeCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({homeCheckoutDarts}d co)</span> : null}
+          {homeCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({homeCheckoutDarts}d co{homeAtDouble ? `, ${homeAtDouble} @D` : ""})</span> : null}
         </td>
         <td colSpan={2} />
         <td className="py-1 px-3 text-center text-[11px] font-semibold tabular-nums text-blue-600 dark:text-blue-400">
           {fmt(awayAvg)}
-          {awayCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({awayCheckoutDarts}d co)</span> : null}
+          {awayCheckoutDarts ? <span className="ml-1 font-normal text-muted-foreground">({awayCheckoutDarts}d co{awayAtDouble ? `, ${awayAtDouble} @D` : ""})</span> : null}
         </td>
         <td />
       </tr>
@@ -170,6 +191,8 @@ export default function MatchReport({ games }: { games: FixtureReportGame[] }) {
     first9Darts: homeStats.first9Darts + awayStats.first9Darts,
     first15Points: homeStats.first15Points + awayStats.first15Points,
     first15Darts: homeStats.first15Darts + awayStats.first15Darts,
+    checkoutsTracked: homeStats.checkoutsTracked + awayStats.checkoutsTracked,
+    dartsAtDouble: homeStats.dartsAtDouble + awayStats.dartsAtDouble,
   };
 
   return (
@@ -193,6 +216,8 @@ export default function MatchReport({ games }: { games: FixtureReportGame[] }) {
                 <th className="py-2 px-3 text-center font-medium text-muted-foreground">3DA</th>
                 <th className="py-2 px-3 text-center font-medium text-muted-foreground">F9</th>
                 <th className="py-2 px-3 text-center font-medium text-muted-foreground">F15</th>
+                <th className="py-2 px-3 text-center font-medium text-muted-foreground">D@D</th>
+                <th className="py-2 px-3 text-center font-medium text-muted-foreground">CO%</th>
               </tr>
             </thead>
             <tbody>
@@ -203,7 +228,7 @@ export default function MatchReport({ games }: { games: FixtureReportGame[] }) {
           </table>
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5">
-          Team / Dbls / Sgls = legs won by game type. 1DA = points ÷ darts; 3DA = 1DA × 3. F9 / F15 = 3-dart avg over the first 9 / 15 darts of each leg.
+          Team / Dbls / Sgls = legs won by game type. 1DA = points ÷ darts; 3DA = 1DA × 3. F9 / F15 = 3-dart avg over the first 9 / 15 darts of each leg. D@D = darts at a double; CO% = checkouts ÷ darts at a double (only checkouts where it was recorded).
         </p>
       </div>
 

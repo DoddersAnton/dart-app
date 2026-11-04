@@ -13,6 +13,8 @@ export const addGameRoundsSchema = z.object({
     awayPlayerId: z.number().optional(),
     homeDartsUsed: z.number().optional(),
     awayDartsUsed: z.number().optional(),
+    homeDartsAtDouble: z.number().int().min(0).optional(),
+    awayDartsAtDouble: z.number().int().min(0).optional(),
   })),
   
 });

@@ -7,6 +7,8 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  Flag,
+  ListOrdered,
   Clock,
   MapPin,
   MoreHorizontal,
@@ -23,6 +25,7 @@ import { deleteGame } from "@/server/actions/delete-game";
 import { updateFixtureNotes } from "@/server/actions/update-fixture-notes";
 import { updateFixtureStatus } from "@/server/actions/update-fixture-status";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -30,6 +33,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
 import GameFormPopup from "./add-game-popup";
+import SinglesDrawDialog from "./singles-draw-dialog";
+import GameSequenceEditor from "./game-sequence-editor";
+import NextGameButton from "../games/next-game-button";
 import GamesSummaryCard, { GameSummary } from "../games/game-summary-card";
 import MatchReport from "./match-report";
 import { useTeam } from "@/contexts/team-context";
@@ -154,12 +160,16 @@ export default function FixtureCard({
   const reportGames = useFixtureReport(fixtureData.id);
   const hasReport = reportGames.some((g) => g.rounds.length > 0);
   const [fixtureTab, setFixtureTab] = useState<"games" | "report">("games");
+  const [reordering, setReordering] = useState(false);
 
   const [notesOpen, setNotesOpen] = useState(!!(fixtureData.notes));
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState(fixtureData.notes ?? "");
   const [savingNotes, setSavingNotes] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(fixtureData.matchStatus);
+  // The server can change the status (e.g. auto-complete when the last game is
+  // recorded) — follow it whenever fresh fixture data arrives.
+  useEffect(() => { setCurrentStatus(fixtureData.matchStatus); }, [fixtureData.matchStatus]);
 
   const { activeTeamId } = useTeam();
   // Derive win/loss from the active team context: check which side the active team is on,
@@ -170,15 +180,24 @@ export default function FixtureCard({
       ? fixtureData.awayTeamScore > fixtureData.homeTeamScore
       : fixtureData.homeTeamScore > fixtureData.awayTeamScore;
 
+  const router = useRouter();
   const { execute: executeStatusUpdate, status: statusUpdateStatus } = useAction(updateFixtureStatus, {
-    onSuccess: (data) => {
-      if (data.data?.error) toast.error(data.data.error);
-      else if (data.data?.success) {
-        toast.success(data.data.success);
-        setCurrentStatus("in progress");
+    onSuccess: ({ data, input }) => {
+      if (data?.error) toast.error(data.error);
+      else if (data?.success) {
+        toast.success(data.success);
+        setCurrentStatus(input.status);
+        // Pull the final score / result from the server once the match is complete.
+        if (input.status === "completed") router.refresh();
       }
     },
   });
+
+  // Re-fetch games and the fixture itself (score + status may have changed server-side).
+  const handleGamesChanged = () => {
+    fetchGames();
+    router.refresh();
+  };
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);
@@ -208,7 +227,8 @@ export default function FixtureCard({
 
   const isInProgress = currentStatus === "in progress";
   const isCancelled = currentStatus === "cancelled";
-  const isScheduled = !isInProgress && !isCancelled && (currentStatus === "scheduled" ||
+  const isCompleted = currentStatus === "completed";
+  const isScheduled = !isInProgress && !isCancelled && !isCompleted && (currentStatus === "scheduled" ||
     (fixtureData.matchDate ? new Date(fixtureData.matchDate) > new Date() : false));
 
   const going = availability.filter((r) => r.attending === true);
@@ -270,6 +290,13 @@ export default function FixtureCard({
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <span className="h-2 w-2 rounded-full bg-red-500" /> Start Match
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!isInProgress || statusUpdateStatus === "executing"}
+                    onClick={() => executeStatusUpdate({ id: fixtureData.id, status: "completed" })}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Flag className="h-4 w-4" /> Complete Match
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/fixtures/edit-fixture?id=${fixtureData.id}`} className="flex items-center gap-2 cursor-pointer">
@@ -465,7 +492,7 @@ export default function FixtureCard({
       {/* Games / Match Report — pill-tabbed */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex rounded-lg border p-0.5 text-sm font-medium">
               <button
                 className={`px-3 py-1.5 rounded-md transition-colors ${fixtureTab === "games" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
@@ -482,7 +509,23 @@ export default function FixtureCard({
                 Match report
               </button>
             </div>
-            {fixtureTab === "games" && <GameFormPopup fixtureId={fixtureData.id} onGameAdded={fetchGames} />}
+            {fixtureTab === "games" && (
+              <div className="flex items-center gap-2">
+                {!loading && games.length > 1 && !reordering && (
+                  <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setReordering(true)}>
+                    <ListOrdered className="h-4 w-4" /> Order
+                  </Button>
+                )}
+                {!loading && !games.some((g) => g.gameType === "Singles") && (
+                  <SinglesDrawDialog
+                    fixtureId={fixtureData.id}
+                    goingPlayerIds={going.map((r) => r.playerId)}
+                    onApplied={handleGamesChanged}
+                  />
+                )}
+                <GameFormPopup fixtureId={fixtureData.id} onGameAdded={handleGamesChanged} />
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -495,8 +538,24 @@ export default function FixtureCard({
             </div>
           ) : error ? (
             <p className="text-sm text-destructive">{error}</p>
+          ) : games.length > 0 && reordering ? (
+            <GameSequenceEditor
+              fixtureId={fixtureData.id}
+              games={games}
+              onDone={(saved) => {
+                setReordering(false);
+                if (saved) fetchGames();
+              }}
+            />
           ) : games.length > 0 ? (
             <div className="space-y-3">
+              {!isCompleted && !isCancelled && (
+                // Re-mount whenever scores change so the next game is re-evaluated.
+                <NextGameButton
+                  key={games.map((g) => `${g.id}:${g.homeTeamScore}-${g.awayTeamScore}`).join("|")}
+                  fixtureId={fixtureData.id}
+                />
+              )}
               {games.map((game) => (
                 <GamesSummaryCard key={game.id} gameSummary={game} handleDeleteGame={handleDeleteGame} fixtureStatus={currentStatus} />
               ))}

@@ -123,6 +123,8 @@ export default function FixtureForm() {
     resolver: zodResolver(createFixtureSchema),
     defaultValues: {
       matchStatus: "scheduled",
+      homeTeamScore: 0,
+      awayTeamScore: 0,
     },
     mode: "onChange",
   });

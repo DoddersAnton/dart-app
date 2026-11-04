@@ -10,6 +10,10 @@ export type GameStateBroadcast = {
   currentLeg: number;
   winner: "home" | "away" | null;
   isGameDecided?: boolean;
+  // Seconds until the next leg auto-starts after a leg win (display counts down locally).
+  nextLegCountdown?: number;
+  // The final result has been saved — the display may move on to the next game.
+  gameSaved?: boolean;
   rounds: Array<{
     roundNumber: number;
     homePlayerName?: string;

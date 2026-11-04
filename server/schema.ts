@@ -87,6 +87,8 @@ export const players = pgTable("players", {
     homeTeamScore: integer("home_team_score").default(0).notNull(),
     awayTeamScore: integer("away_team_score").default(0).notNull(),
     gameType: varchar("game_type", { length: 255 }).notNull(),
+    // Play order within the fixture (1-based). Null = unsequenced, falls after sequenced games by id.
+    sequence: integer("sequence"),
     // @deprecated — derive from fixture homeTeamId/awayTeamId + activeTeamId. Remove once multi-team is fully live.
     isAppTeamWin: boolean("is_app_team_win").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
@@ -115,6 +117,10 @@ export const players = pgTable("players", {
     dartsUsed: integer("darts_used").default(3).notNull(),
     homeDartsUsed: integer("home_darts_used"),
     awayDartsUsed: integer("away_darts_used"),
+    // Optional checkout metric: darts thrown at a double by the side that checked out
+    // (0 = not recorded). Drives the checkout % in the fixture report.
+    homeDartsAtDouble: integer("home_darts_at_double").default(0).notNull(),
+    awayDartsAtDouble: integer("away_darts_at_double").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     fineAdded: boolean("fine_added").default(false).notNull(),
