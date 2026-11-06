@@ -308,6 +308,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   );
   // savedRoundCount tracks how many completed rounds are persisted in DB for the current leg
   const [savedRoundCount, setSavedRoundCount] = useState(init.restoredRounds.length);
+  const savedRoundCountRef = useRef(init.restoredRounds.length);
+  const pendingAutoSaves = useRef<Promise<void>[]>([]);
   const [legCountdown, setLegCountdown] = useState<number | null>(null);
   const [gameSaved, setGameSaved] = useState(false);
   const countdownDismissed = useRef(false);
@@ -323,6 +325,18 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   // Keep the score input focused so scoring can continue without re-tapping it —
   // after each submitted throw, side switch, or when a fine flow finishes.
   const focusScoreInput = () => requestAnimationFrame(() => scoreInputRef.current?.focus());
+
+  const saveRoundAutomatically = (params: Parameters<typeof saveRoundAuto>[0]) => {
+    const save = saveRoundAuto(params)
+      .then(({ success }) => {
+        if (success) {
+          savedRoundCountRef.current += 1;
+          setSavedRoundCount(savedRoundCountRef.current);
+        }
+      })
+      .catch(() => {});
+    pendingAutoSaves.current.push(save);
+  };
 
   const hasPendingThrow = currentThrowSide !== firstThrowTeam;
   const pendingThrowScore = hasPendingThrow ? currentRound[firstThrowTeam] : undefined;
@@ -584,8 +598,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       const updatedRounds = [...rounds, newRound];
       setRounds(updatedRounds);
       if (homePlayerId || awayPlayerId) {
-        saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId, awayPlayerId, homeScore: home, awayScore: away, homeDartsUsed, awayDartsUsed, homeDartsAtDouble, awayDartsAtDouble })
-          .then(() => setSavedRoundCount((c) => c + 1));
+        saveRoundAutomatically({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId, awayPlayerId, homeScore: home, awayScore: away, homeDartsUsed, awayDartsUsed, homeDartsAtDouble, awayDartsAtDouble });
       }
       const newHomeLegs = roundWinner === "home" ? homeLegs + 1 : homeLegs;
       const newAwayLegs = roundWinner === "away" ? awayLegs + 1 : awayLegs;
@@ -685,8 +698,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     setPendingThrowApplied(0);
 
     if (homeThrower?.id || awayThrower?.id) {
-      saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId: homeThrower?.id, awayPlayerId: awayThrower?.id, homeScore: home, awayScore: away, homeDartsUsed: 3, awayDartsUsed: 3 })
-        .then(() => setSavedRoundCount((c) => c + 1));
+      saveRoundAutomatically({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId: homeThrower?.id, awayPlayerId: awayThrower?.id, homeScore: home, awayScore: away, homeDartsUsed: 3, awayDartsUsed: 3 });
     }
 
     const nextHomeIdx = shouldRotate && homeRoster.length > 0 ? (homePlayerIndex + 1) % homeRoster.length : homePlayerIndex;
@@ -730,9 +742,10 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     setWinner(null);
 
     // Delete from DB if this round was auto-saved
-    if (savedRoundCount >= rounds.length) {
+    if (savedRoundCountRef.current >= rounds.length) {
       deleteLastRound({ gameId: gameData.id, leg: currentLeg, roundNumber: last.roundNumber });
-      setSavedRoundCount((c) => Math.max(0, c - 1));
+      savedRoundCountRef.current = Math.max(0, savedRoundCountRef.current - 1);
+      setSavedRoundCount(savedRoundCountRef.current);
     }
 
     // Compute previous indices before rotation for the broadcast
@@ -912,13 +925,17 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const saveAndAdvance = async (finish: boolean, exitAfterSave = false) => {
     setSaving(true);
     try {
+      await Promise.all(pendingAutoSaves.current);
+      pendingAutoSaves.current = [];
+      const persistedRoundCount = savedRoundCountRef.current;
+
       // Rounds are auto-saved per throw — only save any that slipped through (e.g. no playerId)
-      const unsavedRounds = rounds.slice(savedRoundCount);
+      const unsavedRounds = rounds.slice(persistedRoundCount);
       if (unsavedRounds.length > 0) {
         await createGameRounds({
           gameId: gameData.id,
           gameRounds: unsavedRounds.map((r, idx) => ({
-            roundNo: savedRoundCount + idx + 1,
+            roundNo: persistedRoundCount + idx + 1,
             roundLeg: currentLeg,
             homeTeamScore: r.home ?? 0,
             awayTeamScore: r.away ?? 0,
@@ -987,6 +1004,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setFirstThrowTeam(nextFirstThrowTeam);
         setCurrentThrowSide(nextFirstThrowTeam);
         setPendingThrowApplied(0);
+        savedRoundCountRef.current = 0;
         setSavedRoundCount(0);
         setCurrentRound({});
         broadcastGameState(gameData.id, {
