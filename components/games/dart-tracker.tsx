@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
-import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus, ArrowLeftRight, AlertTriangle, Users, CircleOff } from "lucide-react";
+import { Flag, RotateCcw, ChevronDown, ArrowLeft, Target, GripVertical, Settings, Pencil, Check, X, Monitor, Plus, Minus, ArrowLeftRight, AlertTriangle, Users, CircleOff } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -44,6 +44,7 @@ import { saveRoundAuto } from "@/server/actions/save-round-auto";
 import { deleteLastRound } from "@/server/actions/delete-last-round";
 import { updateLegRoundPlayers } from "@/server/actions/update-leg-round-players";
 import { broadcastGameState } from "@/server/actions/broadcast-game-state";
+import NextGameButton from "./next-game-button";
 import { getTeamPlayers } from "@/server/actions/get-team-players";
 import { minDartsForCheckout, isPossibleThreeDartScore } from "@/lib/dart-stats";
 import { MultiSelect } from "../ui/multi-select";
@@ -61,6 +62,8 @@ type Round = {
   away?: number;
   homeDartsUsed?: number;
   awayDartsUsed?: number;
+  homeDartsAtDouble?: number;
+  awayDartsAtDouble?: number;
 };
 
 type FineData = { id: number; title: string; description: string | null; amount: number; createdAt: string | null };
@@ -110,6 +113,8 @@ function computeInitialState(gameData: GameWithPlayers, initialScore: number) {
         away: r.awayScore,
         homeDartsUsed: r.homeDartsUsed ?? undefined,
         awayDartsUsed: r.awayDartsUsed ?? undefined,
+        homeDartsAtDouble: r.homeDartsAtDouble,
+        awayDartsAtDouble: r.awayDartsAtDouble,
       }));
       return { currentLeg, homeLegs, awayLegs, homeScore, awayScore, restoredRounds };
     } else {
@@ -162,6 +167,9 @@ const CHECKOUT_HINTS: Record<number, string> = {
 // An opposing-side player: either a real database player (playerId set — stats are
 // tracked) or a local free-text override (playerId undefined — this game only).
 type OpposingPlayer = { id: string; name: string; playerId?: number; nickname?: string | null };
+
+// Seconds between a leg win and the next leg auto-starting.
+const LEG_COUNTDOWN_SECONDS = 3;
 
 function SortablePlayerRow({ player }: { player: SidePlayer }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id! });
@@ -285,6 +293,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const [pendingFinePlayerId, setPendingFinePlayerId] = useState<number | null>(null);
   const [pendingFineOffer, setPendingFineOffer] = useState<{ playerId: number; playerName: string; fineTitle: string; teamId: number | null } | null>(null);
   const [selectedDarts, setSelectedDarts] = useState<1 | 2 | 3 | null>(null);
+  // Optional checkout metric — darts thrown at a double for this checkout (0 = not recorded).
+  const [dartsAtDouble, setDartsAtDouble] = useState(0);
   const [finesData, setFinesData] = useState<FineData[]>([]);
   const [playersListData, setPlayersListData] = useState<PlayerData[]>([]);
   const [saving, setSaving] = useState(false);
@@ -298,6 +308,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   );
   // savedRoundCount tracks how many completed rounds are persisted in DB for the current leg
   const [savedRoundCount, setSavedRoundCount] = useState(init.restoredRounds.length);
+  const savedRoundCountRef = useRef(init.restoredRounds.length);
+  const pendingAutoSaves = useRef<Promise<void>[]>([]);
+  const [legCountdown, setLegCountdown] = useState<number | null>(null);
+  const [gameSaved, setGameSaved] = useState(false);
+  const countdownDismissed = useRef(false);
+  const advancingLeg = useRef(false);
   const [currentThrowSide, setCurrentThrowSide] = useState<"home" | "away">(
     (init.currentLeg - 1) % 2 === 0 ? "home" : "away"
   );
@@ -309,6 +325,18 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   // Keep the score input focused so scoring can continue without re-tapping it —
   // after each submitted throw, side switch, or when a fine flow finishes.
   const focusScoreInput = () => requestAnimationFrame(() => scoreInputRef.current?.focus());
+
+  const saveRoundAutomatically = (params: Parameters<typeof saveRoundAuto>[0]) => {
+    const save = saveRoundAuto(params)
+      .then(({ success }) => {
+        if (success) {
+          savedRoundCountRef.current += 1;
+          setSavedRoundCount(savedRoundCountRef.current);
+        }
+      })
+      .catch(() => {});
+    pendingAutoSaves.current.push(save);
+  };
 
   const hasPendingThrow = currentThrowSide !== firstThrowTeam;
   const pendingThrowScore = hasPendingThrow ? currentRound[firstThrowTeam] : undefined;
@@ -554,7 +582,10 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       homeDartsUsed: number | undefined, awayDartsUsed: number | undefined,
       finalHomeScore: number, finalAwayScore: number, roundWinner: "home" | "away",
     ) => {
+      const homeDartsAtDouble = roundWinner === "home" ? dartsAtDouble : 0;
+      const awayDartsAtDouble = roundWinner === "away" ? dartsAtDouble : 0;
       setSelectedDarts(null);
+      setDartsAtDouble(0);
       setCurrentThrowSide(firstThrowTeam);
       setPendingThrowApplied(0);
       const newRound: Round = {
@@ -562,12 +593,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         homePlayerId, awayPlayerId,
         homePlayerName: homeThrower?.name, awayPlayerName: awayThrower?.name,
         home, away, fineAdded: false, homeDartsUsed, awayDartsUsed,
+        homeDartsAtDouble, awayDartsAtDouble,
       };
       const updatedRounds = [...rounds, newRound];
       setRounds(updatedRounds);
       if (homePlayerId || awayPlayerId) {
-        saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId, awayPlayerId, homeScore: home, awayScore: away, homeDartsUsed, awayDartsUsed })
-          .then(() => setSavedRoundCount((c) => c + 1));
+        saveRoundAutomatically({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId, awayPlayerId, homeScore: home, awayScore: away, homeDartsUsed, awayDartsUsed, homeDartsAtDouble, awayDartsAtDouble });
       }
       const newHomeLegs = roundWinner === "home" ? homeLegs + 1 : homeLegs;
       const newAwayLegs = roundWinner === "away" ? awayLegs + 1 : awayLegs;
@@ -667,8 +698,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     setPendingThrowApplied(0);
 
     if (homeThrower?.id || awayThrower?.id) {
-      saveRoundAuto({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId: homeThrower?.id, awayPlayerId: awayThrower?.id, homeScore: home, awayScore: away, homeDartsUsed: 3, awayDartsUsed: 3 })
-        .then(() => setSavedRoundCount((c) => c + 1));
+      saveRoundAutomatically({ gameId: gameData.id, leg: currentLeg, roundNumber, homePlayerId: homeThrower?.id, awayPlayerId: awayThrower?.id, homeScore: home, awayScore: away, homeDartsUsed: 3, awayDartsUsed: 3 });
     }
 
     const nextHomeIdx = shouldRotate && homeRoster.length > 0 ? (homePlayerIndex + 1) % homeRoster.length : homePlayerIndex;
@@ -712,9 +742,10 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     setWinner(null);
 
     // Delete from DB if this round was auto-saved
-    if (savedRoundCount >= rounds.length) {
+    if (savedRoundCountRef.current >= rounds.length) {
       deleteLastRound({ gameId: gameData.id, leg: currentLeg, roundNumber: last.roundNumber });
-      setSavedRoundCount((c) => Math.max(0, c - 1));
+      savedRoundCountRef.current = Math.max(0, savedRoundCountRef.current - 1);
+      setSavedRoundCount(savedRoundCountRef.current);
     }
 
     // Compute previous indices before rotation for the broadcast
@@ -814,6 +845,20 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     toast.success("Throwing order switched");
   };
 
+  // Push the current state (throwing order, who throws first, scores) to the
+  // display view. Rounds normally trigger a broadcast, but order changes made
+  // before the first throw don't — this lets the scorer sync the monitor up front.
+  const handleUpdateDisplay = async () => {
+    await broadcastGameState(gameData.id, {
+      homeScore, awayScore, homeLegs, awayLegs, currentLeg, winner,
+      rounds: broadcastRoundList(rounds),
+      homeTeam: gameData.homeTeam, awayTeam: gameData.awayTeam,
+      currentThrowSide,
+      ...broadcastRosters(homePlayerIndex, awayPlayerIndex),
+    });
+    toast.success("Display updated");
+  };
+
   const submitPendingFine = () => {
     if (!pendingFineOffer) return;
     const fine = finesData.find((f) => f.title === pendingFineOffer.fineTitle);
@@ -877,16 +922,20 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     setEditingRoundIdx(null);
   };
 
-  const saveAndAdvance = async (finish: boolean) => {
+  const saveAndAdvance = async (finish: boolean, exitAfterSave = false) => {
     setSaving(true);
     try {
+      await Promise.all(pendingAutoSaves.current);
+      pendingAutoSaves.current = [];
+      const persistedRoundCount = savedRoundCountRef.current;
+
       // Rounds are auto-saved per throw — only save any that slipped through (e.g. no playerId)
-      const unsavedRounds = rounds.slice(savedRoundCount);
+      const unsavedRounds = rounds.slice(persistedRoundCount);
       if (unsavedRounds.length > 0) {
         await createGameRounds({
           gameId: gameData.id,
           gameRounds: unsavedRounds.map((r, idx) => ({
-            roundNo: savedRoundCount + idx + 1,
+            roundNo: persistedRoundCount + idx + 1,
             roundLeg: currentLeg,
             homeTeamScore: r.home ?? 0,
             awayTeamScore: r.away ?? 0,
@@ -894,6 +943,8 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
             awayPlayerId: r.awayPlayerId,
             homeDartsUsed: r.homeDartsUsed,
             awayDartsUsed: r.awayDartsUsed,
+            homeDartsAtDouble: r.homeDartsAtDouble,
+            awayDartsAtDouble: r.awayDartsAtDouble,
           })),
         });
       }
@@ -912,6 +963,11 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         });
       }
 
+      if (exitAfterSave) {
+        window.location.href = `/fixtures/${gameData.fixtureId}`;
+        return;
+      }
+
       if (finish || gameDecided) {
         broadcastGameState(gameData.id, {
           homeScore: homeScore,
@@ -921,13 +977,14 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           currentLeg,
           winner,
           isGameDecided: true,
+          gameSaved: true,
           rounds: broadcastRoundList(rounds),
           homeTeam: gameData.homeTeam,
           awayTeam: gameData.awayTeam,
           ...broadcastRosters(homePlayerIndex, awayPlayerIndex),
         });
         toast.success("Game saved!");
-        window.location.href = `/fixtures/${gameData.fixtureId}`;
+        setGameSaved(true);
       } else {
         const nextLeg = currentLeg + 1;
         if (nextLeg > maxLegsPerGame) {
@@ -947,6 +1004,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
         setFirstThrowTeam(nextFirstThrowTeam);
         setCurrentThrowSide(nextFirstThrowTeam);
         setPendingThrowApplied(0);
+        savedRoundCountRef.current = 0;
         setSavedRoundCount(0);
         setCurrentRound({});
         broadcastGameState(gameData.id, {
@@ -976,6 +1034,53 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
   const legsToWin = Math.ceil(maxLegsPerGame / 2);
   const gameDecided = homeLegs >= legsToWin || awayLegs >= legsToWin;
 
+  // After a leg win (game not yet decided) the next leg starts automatically
+  // after a short countdown, mirrored on the display. Cancelling falls back to
+  // the manual "Start next leg" / "Finish game" buttons for this leg.
+  const broadcastLegWon = (nextLegCountdown?: number) =>
+    broadcastGameState(gameData.id, {
+      homeScore, awayScore, homeLegs, awayLegs, currentLeg, winner,
+      isGameDecided: false,
+      rounds: broadcastRoundList(rounds),
+      homeTeam: gameData.homeTeam, awayTeam: gameData.awayTeam,
+      currentThrowSide: firstThrowTeam,
+      ...broadcastRosters(homePlayerIndex, awayPlayerIndex),
+      nextLegCountdown,
+    });
+
+  useEffect(() => {
+    if (!winner) {
+      countdownDismissed.current = false;
+      setLegCountdown(null);
+      return;
+    }
+    if (gameDecided || countdownDismissed.current) return;
+    setLegCountdown(LEG_COUNTDOWN_SECONDS);
+    broadcastLegWon(LEG_COUNTDOWN_SECONDS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winner, gameDecided]);
+
+  useEffect(() => {
+    if (legCountdown === null) return;
+    if (legCountdown > 0) {
+      const t = setTimeout(() => setLegCountdown((c) => (c === null ? null : c - 1)), 1000);
+      return () => clearTimeout(t);
+    }
+    if (advancingLeg.current) return;
+    advancingLeg.current = true;
+    saveAndAdvance(false).finally(() => {
+      advancingLeg.current = false;
+      setLegCountdown(null);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legCountdown]);
+
+  const cancelLegCountdown = () => {
+    countdownDismissed.current = true;
+    setLegCountdown(null);
+    broadcastLegWon();
+  };
+
   // Per-player average for a side's player (DB rounds + current unsaved rounds).
   const playerAvgFor = (side: "home" | "away", playerId?: number): string | null => {
     if (!playerId) return null;
@@ -1001,6 +1106,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           <p className="text-sm text-muted-foreground">
             This game has already been decided ({homeLegs}–{awayLegs} legs).
           </p>
+          <NextGameButton fixtureId={gameData.fixtureId} currentGameId={gameData.id} className="block mt-2" />
           <Link href={`/games/${gameData.id}`}>
             <Button variant="outline" className="w-full mt-2">View game summary</Button>
           </Link>
@@ -1380,6 +1486,13 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
       {renderRosterSection("home")}
       {renderRosterSection("away")}
 
+      {/* Sync the display once the throwing order is set, before the first throw */}
+      {!winner && rounds.length === 0 && (
+        <Button variant="outline" className="w-full gap-2" onClick={handleUpdateDisplay}>
+          <Monitor className="h-4 w-4" /> Update display with player order
+        </Button>
+      )}
+
       {/* Winner banner */}
       {winner && (
         <div className="rounded-xl bg-green-500/10 border border-green-500 p-4 text-center space-y-3">
@@ -1392,16 +1505,38 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
               🎯 {winner === "home" ? gameData.homeTeam : gameData.awayTeam} wins leg {currentLeg}!
             </p>
           )}
-          <div className="flex gap-2 justify-center">
-            {!gameDecided && (
-              <Button variant="outline" disabled={saving} onClick={() => saveAndAdvance(false)}>
-                {saving ? "Saving..." : "Start next leg"}
+          {gameSaved ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Game saved.</p>
+              <NextGameButton fixtureId={gameData.fixtureId} currentGameId={gameData.id} className="block" />
+              <Link href={`/fixtures/${gameData.fixtureId}`} className="block">
+                <Button variant="outline" className="w-full">Back to fixture</Button>
+              </Link>
+            </div>
+          ) : !gameDecided && (legCountdown !== null || saving) ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Starting new leg...</p>
+              <p key={legCountdown ?? "go"} className="text-5xl font-black tabular-nums text-green-600 animate-in zoom-in-50 fade-in duration-300">
+                {legCountdown && legCountdown > 0 ? legCountdown : "Go!"}
+              </p>
+              {legCountdown !== null && legCountdown > 0 && (
+                <Button variant="ghost" size="sm" onClick={cancelLegCountdown}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-2 justify-center">
+              {!gameDecided && (
+                <Button variant="outline" disabled={saving} onClick={() => saveAndAdvance(false)}>
+                  {saving ? "Saving..." : "Start next leg"}
+                </Button>
+              )}
+              <Button disabled={saving} onClick={() => saveAndAdvance(true)}>
+                {saving ? "Saving..." : "Finish game"}
               </Button>
-            )}
-            <Button disabled={saving} onClick={() => saveAndAdvance(true)}>
-              {saving ? "Saving..." : "Finish game"}
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1653,7 +1788,10 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                     const v = e.target.value === "" ? undefined : Number(e.target.value);
                     setCurrentRound((prev) => ({ ...prev, [field]: v }));
                     // Clear a stale dart selection unless the new entry is still a checkout.
-                    if (!(typeof v === "number" && remaining - v === 0)) setSelectedDarts(null);
+                    if (!(typeof v === "number" && remaining - v === 0)) {
+                      setSelectedDarts(null);
+                      setDartsAtDouble(0);
+                    }
                   }}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmitRound()}
                 />
@@ -1686,6 +1824,19 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                           Darts used is required to finish the leg{minDarts > 1 ? ` — at least ${minDarts} for this checkout` : ""}.
                         </p>
                       )}
+                      {/* Optional — includes misses at a double in earlier visits this leg */}
+                      <div className="flex items-center gap-2 justify-center">
+                        <p className="text-xs font-medium text-muted-foreground">Darts at double:</p>
+                        <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Decrease darts at double"
+                          disabled={dartsAtDouble <= 0}
+                          onClick={() => setDartsAtDouble((d) => Math.max(0, d - 1))}
+                        ><Minus className="h-3.5 w-3.5" /></Button>
+                        <span className="w-8 text-center text-sm font-bold tabular-nums">{dartsAtDouble || "–"}</span>
+                        <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Increase darts at double"
+                          onClick={() => setDartsAtDouble((d) => d + 1)}
+                        ><Plus className="h-3.5 w-3.5" /></Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground text-center">Optional — include misses at a double from earlier visits.</p>
                     </div>
                   );
                 })()}
@@ -1762,7 +1913,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
       {/* Finish without winner */}
       {!winner && rounds.length > 0 && (
-        <Button variant="ghost" size="sm" className="w-full text-muted-foreground" disabled={saving} onClick={() => saveAndAdvance(true)}>
+        <Button variant="ghost" size="sm" className="w-full text-muted-foreground" disabled={saving} onClick={() => saveAndAdvance(false, true)}>
           {saving ? "Saving..." : "Save & exit without finishing leg"}
         </Button>
       )}

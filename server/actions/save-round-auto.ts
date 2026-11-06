@@ -13,6 +13,8 @@ export async function saveRoundAuto(params: {
   awayScore: number;
   homeDartsUsed?: number;
   awayDartsUsed?: number;
+  homeDartsAtDouble?: number;
+  awayDartsAtDouble?: number;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     await db.insert(rounds).values({
@@ -25,6 +27,8 @@ export async function saveRoundAuto(params: {
       awayScore: params.awayScore,
       homeDartsUsed: params.homeDartsUsed,
       awayDartsUsed: params.awayDartsUsed,
+      homeDartsAtDouble: params.homeDartsAtDouble ?? 0,
+      awayDartsAtDouble: params.awayDartsAtDouble ?? 0,
     });
     return { success: true };
   } catch (error) {

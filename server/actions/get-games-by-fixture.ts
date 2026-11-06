@@ -8,6 +8,7 @@ export async function getGamesByFixture(fixtureId: number) {
   try {
     const games = await db.query.games.findMany({
       where: (game) => eq(game.fixtureId, fixtureId),
+      orderBy: (game, { asc, sql }) => [sql`${game.sequence} asc nulls last`, asc(game.id)],
     });
 
     const fixture = await db.query.fixtures.findFirst({

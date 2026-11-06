@@ -20,11 +20,32 @@ async function recalculateFixtureScore(fixtureId: number) {
   const homeWins = allGames.filter(g => g.homeTeamScore >= legsToWin).length;
   const awayWins = allGames.filter(g => g.awayTeamScore >= legsToWin).length;
 
+  // Once every game in the match format (team + doubles + singles) has a winner,
+  // there's nothing left to play — mark the fixture completed. Cancelled fixtures
+  // are left alone.
+  const gamesPerMatch =
+    (settings?.maxTeamGamesPerMatch ?? 1) +
+    (settings?.maxDoublesGamesPerMatch ?? 2) +
+    (settings?.maxSinglesGamesPerMatch ?? 4);
+  const status = (fixture.matchStatus ?? "").toLowerCase();
+  const allGamesPlayed = allGames.length >= gamesPerMatch && allGames.every(
+    (g) => g.homeTeamScore >= legsToWin || g.awayTeamScore >= legsToWin
+  );
+  const shouldComplete = allGamesPlayed && status !== "completed" && status !== "cancelled";
+
   await db
     .update(fixtures)
     // isAppTeamWin is deprecated — win/loss is derived dynamically from team ids + active team.
-    .set({ homeTeamScore: homeWins, awayTeamScore: awayWins, isAppTeamWin: false, updatedAt: new Date() })
+    .set({
+      homeTeamScore: homeWins,
+      awayTeamScore: awayWins,
+      isAppTeamWin: false,
+      ...(shouldComplete ? { matchStatus: "completed" } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(fixtures.id, fixtureId));
+
+  if (shouldComplete) revalidatePath("/fixtures");
 }
 
 const actionClient = createSafeActionClient();

@@ -84,6 +84,8 @@ export async function getGame(gameId: number, activeTeamId?: number | null) {
       dartsUsed: r.dartsUsed,
       homeDartsUsed: r.homeDartsUsed,
       awayDartsUsed: r.awayDartsUsed,
+      homeDartsAtDouble: r.homeDartsAtDouble,
+      awayDartsAtDouble: r.awayDartsAtDouble,
       fineAdded: r.fineAdded,
     }));
 

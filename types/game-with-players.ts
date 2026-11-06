@@ -23,6 +23,9 @@ export type GameRound = {
   dartsUsed: number;
   homeDartsUsed: number | null;
   awayDartsUsed: number | null;
+  // Darts thrown at a double on a checkout (0 = not recorded).
+  homeDartsAtDouble: number;
+  awayDartsAtDouble: number;
   fineAdded: boolean;
 };
 
