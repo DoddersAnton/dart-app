@@ -34,7 +34,15 @@ export default function NextGameButton({
   if (!next) return null;
 
   return (
-    <Link href={`/games/dart-tracker?id=${next.id}`} className={className}>
+    <Link
+      href={`/games/dart-tracker?id=${next.id}`}
+      className={className}
+      onClick={(event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        window.location.href = event.currentTarget.href;
+      }}
+    >
       <Button className="w-full h-auto justify-between gap-3 py-2.5">
         <span className="flex flex-col items-start text-left leading-tight min-w-0">
           <span className="text-sm font-semibold">Start next game · {next.gameType}</span>
