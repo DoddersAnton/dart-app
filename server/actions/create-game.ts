@@ -28,7 +28,9 @@ async function recalculateFixtureScore(fixtureId: number) {
     (settings?.maxDoublesGamesPerMatch ?? 2) +
     (settings?.maxSinglesGamesPerMatch ?? 4);
   const status = (fixture.matchStatus ?? "").toLowerCase();
-  const allGamesPlayed = homeWins + awayWins >= gamesPerMatch;
+  const allGamesPlayed = allGames.length >= gamesPerMatch && allGames.every(
+    (g) => g.homeTeamScore >= legsToWin || g.awayTeamScore >= legsToWin
+  );
   const shouldComplete = allGamesPlayed && status !== "completed" && status !== "cancelled";
 
   await db
