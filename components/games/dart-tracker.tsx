@@ -170,8 +170,6 @@ type OpposingPlayer = { id: string; name: string; playerId?: number; nickname?: 
 
 // Seconds between a leg win and the next leg auto-starting.
 const LEG_COUNTDOWN_SECONDS = 3;
-// Upper bound for the optional "darts at double" checkout metric.
-const MAX_DARTS_AT_DOUBLE = 12;
 
 function SortablePlayerRow({ player }: { player: SidePlayer }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id! });
@@ -1812,8 +1810,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                         ><Minus className="h-3.5 w-3.5" /></Button>
                         <span className="w-8 text-center text-sm font-bold tabular-nums">{dartsAtDouble || "–"}</span>
                         <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Increase darts at double"
-                          disabled={dartsAtDouble >= MAX_DARTS_AT_DOUBLE}
-                          onClick={() => setDartsAtDouble((d) => Math.min(MAX_DARTS_AT_DOUBLE, d + 1))}
+                          onClick={() => setDartsAtDouble((d) => d + 1)}
                         ><Plus className="h-3.5 w-3.5" /></Button>
                       </div>
                       <p className="text-[10px] text-muted-foreground text-center">Optional — include misses at a double from earlier visits.</p>
