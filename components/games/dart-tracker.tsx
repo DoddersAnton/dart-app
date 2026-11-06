@@ -909,7 +909,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
     setEditingRoundIdx(null);
   };
 
-  const saveAndAdvance = async (finish: boolean) => {
+  const saveAndAdvance = async (finish: boolean, exitAfterSave = false) => {
     setSaving(true);
     try {
       // Rounds are auto-saved per throw — only save any that slipped through (e.g. no playerId)
@@ -944,6 +944,11 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
           homePlayerList: homePlayerIds,
           awayPlayerList: awayPlayerIds,
         });
+      }
+
+      if (exitAfterSave) {
+        window.location.href = `/fixtures/${gameData.fixtureId}`;
+        return;
       }
 
       if (finish || gameDecided) {
@@ -1890,7 +1895,7 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
 
       {/* Finish without winner */}
       {!winner && rounds.length > 0 && (
-        <Button variant="ghost" size="sm" className="w-full text-muted-foreground" disabled={saving} onClick={() => saveAndAdvance(true)}>
+        <Button variant="ghost" size="sm" className="w-full text-muted-foreground" disabled={saving} onClick={() => saveAndAdvance(false, true)}>
           {saving ? "Saving..." : "Save & exit without finishing leg"}
         </Button>
       )}
