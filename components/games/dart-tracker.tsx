@@ -1806,12 +1806,12 @@ export default function DartTracker({ gameData, maxLegsPerGame }: { gameData: Ga
                       {/* Optional — includes misses at a double in earlier visits this leg */}
                       <div className="flex items-center gap-2 justify-center">
                         <p className="text-xs font-medium text-muted-foreground">Darts at double:</p>
-                        <Button type="button" size="icon" variant="outline" className="h-8 w-8"
+                        <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Decrease darts at double"
                           disabled={dartsAtDouble <= 0}
                           onClick={() => setDartsAtDouble((d) => Math.max(0, d - 1))}
                         ><Minus className="h-3.5 w-3.5" /></Button>
                         <span className="w-8 text-center text-sm font-bold tabular-nums">{dartsAtDouble || "–"}</span>
-                        <Button type="button" size="icon" variant="outline" className="h-8 w-8"
+                        <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Increase darts at double"
                           disabled={dartsAtDouble >= MAX_DARTS_AT_DOUBLE}
                           onClick={() => setDartsAtDouble((d) => Math.min(MAX_DARTS_AT_DOUBLE, d + 1))}
                         ><Plus className="h-3.5 w-3.5" /></Button>
