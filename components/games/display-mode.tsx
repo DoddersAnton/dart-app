@@ -65,8 +65,13 @@ const CHECKOUT_HINTS: Record<number, string> = {
   3: "1 D1", 2: "D1",
 };
 
-function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
+function buildInitialState(gameData: GameWithPlayers, maxLegsPerGame: number): GameStateBroadcast {
   const INITIAL_SCORE = gameData.gameType === "Team Game" ? 801 : gameData.gameType === "Doubles" ? 601 : 501;
+  const legsToWin = Math.ceil(maxLegsPerGame / 2);
+  const winner =
+    gameData.homeTeamScore >= legsToWin ? "home" :
+    gameData.awayTeamScore >= legsToWin ? "away" :
+    null;
   const legNums = [...new Set(gameData.rounds.map((r) => r.leg))].sort((a, b) => a - b);
   let homeLegs = 0;
   let awayLegs = 0;
@@ -117,7 +122,9 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
     homeLegs,
     awayLegs,
     currentLeg,
-    winner: null,
+    winner,
+    isGameDecided: winner !== null,
+    gameSaved: winner !== null,
     rounds: currentRounds,
     homeTeam: gameData.homeTeam,
     awayTeam: gameData.awayTeam,
@@ -126,8 +133,8 @@ function buildInitialState(gameData: GameWithPlayers): GameStateBroadcast {
   };
 }
 
-export default function DisplayMode({ gameData, siblingGames = [] }: { gameData: GameWithPlayers; siblingGames?: SiblingGame[] }) {
-  const [state, setState] = useState<GameStateBroadcast>(() => buildInitialState(gameData));
+export default function DisplayMode({ gameData, siblingGames = [], maxLegsPerGame }: { gameData: GameWithPlayers; siblingGames?: SiblingGame[]; maxLegsPerGame: number }) {
+  const [state, setState] = useState<GameStateBroadcast>(() => buildInitialState(gameData, maxLegsPerGame));
   const [flashHome, setFlashHome] = useState(false);
   const [flashAway, setFlashAway] = useState(false);
   const [flashPending, setFlashPending] = useState(false);
