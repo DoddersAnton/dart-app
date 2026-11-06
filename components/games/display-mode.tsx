@@ -150,7 +150,7 @@ export default function DisplayMode({ gameData, siblingGames = [] }: { gameData:
     let active = true;
     getNextGame(gameData.fixtureId, gameData.id).then((g) => active && setNextGame(g));
     return () => { active = false; };
-  }, [state.isGameDecided, gameData.fixtureId, gameData.id]);
+  }, [state.isGameDecided, state.gameSaved, gameData.fixtureId, gameData.id]);
   useEffect(() => {
     if (state.gameSaved && nextGame) setNextGameCountdown(NEXT_GAME_SECONDS);
     else setNextGameCountdown(null);
