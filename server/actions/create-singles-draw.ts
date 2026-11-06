@@ -1,13 +1,17 @@
 "use server";
 
 import { createSafeActionClient } from "next-safe-action";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "..";
 import { fixtures, gamePlayers, games, singlesDraws } from "../schema";
 import { singlesDrawSchema } from "@/types/singles-draw-schema";
 
 const actionClient = createSafeActionClient();
+
+// A claim older than this with no Singles games behind it is stale (e.g. the drawn
+// games were deleted) and may be taken over. Younger claims may be a draw in flight.
+const STALE_CLAIM_MS = 30_000;
 
 // Creates one 0-0 Singles game per drawn pairing, in draw order, with each
 // game's roster set to the two drawn players.
@@ -18,12 +22,31 @@ export const createSinglesDraw = actionClient
       const fixture = await db.query.fixtures.findFirst({ where: eq(fixtures.id, fixtureId) });
       if (!fixture) return { error: "Fixture not found" };
 
-      const claim = await db
+      let claim = await db
         .insert(singlesDraws)
         .values({ fixtureId })
         .onConflictDoNothing()
         .returning({ fixtureId: singlesDraws.fixtureId });
-      if (claim.length === 0) return { error: "This fixture already has singles games" };
+
+      if (claim.length === 0) {
+        // Claimed before — only take it over if no Singles games remain and the
+        // claim isn't a concurrent draw in progress. The conditional UPDATE is
+        // atomic, so only one caller can win the takeover.
+        const singlesRemain = await db.query.games.findFirst({
+          where: and(eq(games.fixtureId, fixtureId), eq(games.gameType, "Singles")),
+        });
+        if (!singlesRemain) {
+          claim = await db
+            .update(singlesDraws)
+            .set({ createdAt: new Date() })
+            .where(and(
+              eq(singlesDraws.fixtureId, fixtureId),
+              lt(singlesDraws.createdAt, new Date(Date.now() - STALE_CLAIM_MS)),
+            ))
+            .returning({ fixtureId: singlesDraws.fixtureId });
+        }
+        if (claim.length === 0) return { error: "This fixture already has singles games" };
+      }
 
       let gameIds: number[];
       try {
