@@ -239,6 +239,13 @@
       "when": 1793827966578,
       "tag": "0033_premium_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793990951011,
+      "tag": "0034_wooden_morlocks",
+      "breakpoints": true
     }
   ]
 }

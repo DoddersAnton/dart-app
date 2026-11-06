@@ -4,7 +4,7 @@ import { createSafeActionClient } from "next-safe-action";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "..";
-import { fixtures, gamePlayers, games } from "../schema";
+import { fixtures, gamePlayers, games, singlesDraws } from "../schema";
 import { singlesDrawSchema } from "@/types/singles-draw-schema";
 
 const actionClient = createSafeActionClient();
@@ -18,42 +18,57 @@ export const createSinglesDraw = actionClient
       const fixture = await db.query.fixtures.findFirst({ where: eq(fixtures.id, fixtureId) });
       if (!fixture) return { error: "Fixture not found" };
 
-      // Guard against a double apply (e.g. two scorers drawing at once).
-      const existingSingles = await db.query.games.findFirst({
-        where: and(eq(games.fixtureId, fixtureId), eq(games.gameType, "Singles")),
-      });
-      if (existingSingles) return { error: "This fixture already has singles games" };
+      const claim = await db
+        .insert(singlesDraws)
+        .values({ fixtureId })
+        .onConflictDoNothing()
+        .returning({ fixtureId: singlesDraws.fixtureId });
+      if (claim.length === 0) return { error: "This fixture already has singles games" };
 
-      const created = await db
-        .insert(games)
-        .values(
-          matches.map(() => ({
-            fixtureId,
-            gameType: "Singles",
-            homeTeamScore: 0,
-            awayTeamScore: 0,
-            isAppTeamWin: false, // deprecated — derived downstream
-            createdAt: new Date(),
-          }))
-        )
-        .returning({ id: games.id });
-
-      const gameIds = created.map((g) => g.id).sort((a, b) => a - b);
-
-      const rosterRows = matches.flatMap((m, i) => [
-        ...(m.homePlayerId
-          ? [{ gameId: gameIds[i], playerId: m.homePlayerId, teamId: fixture.homeTeamId, side: "home" as const }]
-          : []),
-        ...(m.awayPlayerId
-          ? [{ gameId: gameIds[i], playerId: m.awayPlayerId, teamId: fixture.awayTeamId, side: "away" as const }]
-          : []),
-      ]);
-
+      let gameIds: number[];
       try {
-        await db.insert(gamePlayers).values(rosterRows);
+        const existingSingles = await db.query.games.findFirst({
+          where: and(eq(games.fixtureId, fixtureId), eq(games.gameType, "Singles")),
+        });
+        if (existingSingles) {
+          await db.delete(singlesDraws).where(eq(singlesDraws.fixtureId, fixtureId));
+          return { error: "This fixture already has singles games" };
+        }
+
+        const created = await db
+          .insert(games)
+          .values(
+            matches.map(() => ({
+              fixtureId,
+              gameType: "Singles",
+              homeTeamScore: 0,
+              awayTeamScore: 0,
+              isAppTeamWin: false, // deprecated — derived downstream
+              createdAt: new Date(),
+            }))
+          )
+          .returning({ id: games.id });
+
+        gameIds = created.map((g) => g.id).sort((a, b) => a - b);
+
+        const rosterRows = matches.flatMap((m, i) => [
+          ...(m.homePlayerId
+            ? [{ gameId: gameIds[i], playerId: m.homePlayerId, teamId: fixture.homeTeamId, side: "home" as const }]
+            : []),
+          ...(m.awayPlayerId
+            ? [{ gameId: gameIds[i], playerId: m.awayPlayerId, teamId: fixture.awayTeamId, side: "away" as const }]
+            : []),
+        ]);
+
+        try {
+          await db.insert(gamePlayers).values(rosterRows);
+        } catch (error) {
+          // No transactions on neon-http — undo the games so a retry starts clean.
+          await db.delete(games).where(inArray(games.id, gameIds));
+          throw error;
+        }
       } catch (error) {
-        // No transactions on neon-http — undo the games so a retry starts clean.
-        await db.delete(games).where(inArray(games.id, gameIds));
+        await db.delete(singlesDraws).where(eq(singlesDraws.fixtureId, fixtureId));
         throw error;
       }
 

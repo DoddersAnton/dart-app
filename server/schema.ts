@@ -95,6 +95,11 @@ export const players = pgTable("players", {
     updatedAt: timestamp("updated_at").defaultNow(),
   });
 
+  export const singlesDraws = pgTable("singles_draws", {
+    fixtureId: integer("fixture_id").primaryKey().references(() => fixtures.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  });
+
   export const rounds = pgTable("rounds", {
     id: serial("id").primaryKey(),
     roundNumber: integer("round_number").default(1).notNull(),
